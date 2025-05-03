@@ -1,19 +1,29 @@
 import React, { createContext, useContext, useState } from 'react';
-import { Themes } from '@/constants/Colors';
+import { Themes, ArtThemes } from '@/constants/Colors';
 
 export type ThemeContextType = {
-  theme: typeof Themes.default; // Use the correct type from Themes
-  setTheme: (themeName: keyof typeof Themes) => void;
+  theme: (typeof Themes)[keyof typeof Themes] | (typeof ArtThemes)[keyof typeof ArtThemes]; // Allow any theme object from Themes or ArtThemes
+  setTheme: (themeName: keyof typeof Themes | keyof typeof ArtThemes | string) => void;
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [themeName, setThemeName] = useState<keyof typeof Themes>('default');
-  const theme = Themes[themeName]; // Get the theme object based on the current theme name
+  const [themeName, setThemeName] = useState<keyof typeof Themes | keyof typeof ArtThemes>('default');
+  const theme =
+    Object.prototype.hasOwnProperty.call(Themes, themeName)
+      ? Themes[themeName as keyof typeof Themes]
+      : ArtThemes[themeName as keyof typeof ArtThemes]; // Get the theme object from Themes or ArtThemes
 
-  const setTheme = (themeName: keyof typeof Themes) => {
-    setThemeName(themeName);
+  const setTheme = (themeName: keyof typeof Themes | keyof typeof ArtThemes | string) => {
+    if (
+      Object.prototype.hasOwnProperty.call(Themes, themeName) ||
+      Object.prototype.hasOwnProperty.call(ArtThemes, themeName)
+    ) {
+      setThemeName(themeName as keyof typeof Themes | keyof typeof ArtThemes);
+    } else {
+      console.warn(`Invalid theme name: ${themeName}`);
+    }
   };
 
   return (

@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Chessboard, { ChessboardRef } from 'react-native-chessboard';
 import { ThemedText } from './ThemedText';
+import { useTheme } from '@/context/ThemeContext';
 
 // Define the props for ChessboardDemo
 interface ChessboardDemoProps {
@@ -20,6 +21,7 @@ interface ChessboardDemoRef {
 
 const ChessboardDemo = forwardRef<ChessboardDemoRef, ChessboardDemoProps>((props, ref) => {
     const chessboardRef = React.useRef<ChessboardRef>(null);
+    const { theme } = useTheme();
 
     const [puzzle, setPuzzle] = useState<any | undefined>();
     const [error, setError] = useState<string | null>(null);
@@ -48,8 +50,8 @@ const ChessboardDemo = forwardRef<ChessboardDemoRef, ChessboardDemoProps>((props
     if (loading) {
         return (
             <>
-                <ThemedText style={{ color: '#fff' }}>Loading...</ThemedText>
-                <ActivityIndicator size="large" color="#fff" />
+                <ThemedText style={{ color: theme.primaryText }}>Loading...</ThemedText>
+                <ActivityIndicator size="large" color={theme.primaryText} />
             </>
         );
     }
