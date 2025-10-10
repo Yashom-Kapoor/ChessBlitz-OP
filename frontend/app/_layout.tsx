@@ -1,4 +1,4 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -7,12 +7,12 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
@@ -28,31 +28,52 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{
-        headerBackButtonDisplayMode: 'minimal',
-        headerBackButtonMenuEnabled: false,
-        headerTintColor: '#fff',
-        headerStyle: {
-          backgroundColor: '#454A64',
-        },
-        headerTitleStyle: {
-          color: '#fff',
-        },
-      }}>
-        <Stack.Screen name="index" options={{
-          title: 'Landing',
-          headerShown: false,
-        }}/>
-        <Stack.Screen name="(tabs)" options={{
-          headerShown: false,
-        }}/>
-        <Stack.Screen name="+not-found" />
-        <Stack.Screen name="puzzles/daily-puzzle" options={{
-          title: 'Puzzle',
-        }}/>
-      </Stack>
-      <StatusBar style="light" />
+    <ThemeProvider>
+      <ThemedRoot />
     </ThemeProvider>
+  );
+}
+
+function ThemedRoot() {
+  const { theme } = useTheme(); // Access the theme from useTheme
+
+  return (
+    <>
+      <Stack
+        screenOptions={{
+          headerBackButtonDisplayMode: 'minimal',
+          headerBackButtonMenuEnabled: false,
+          headerTintColor: theme.titleText, // Use theme's title text color
+          headerStyle: {
+            backgroundColor: theme.headerBackground, // Use theme's background color
+          },
+          headerTitleStyle: {
+            color: theme.titleText, // Use theme's title text color
+          },
+        }}
+      >
+        <Stack.Screen
+          name="index"
+          options={{
+            title: 'Landing',
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="(tabs)"
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen name="+not-found" />
+        <Stack.Screen
+          name="puzzles/daily-puzzle"
+          options={{
+            title: 'Puzzle',
+          }}
+        />
+      </Stack>
+      <StatusBar style={theme.dark ? 'light' : 'dark'} />
+    </>
   );
 }

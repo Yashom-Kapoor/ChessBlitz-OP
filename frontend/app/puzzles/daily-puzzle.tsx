@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Image, ImageBackground } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ThemedView } from '@/components/ThemedView';
 import ChessboardDemo from '@/components/ChessboardDemo';
@@ -10,11 +10,125 @@ import { secondsToHMS } from '@/components/utils/Time';
 import { fetchHint } from '@/components/GetHint';
 import { detectMoveFromFEN, getTurnFromFEN } from '@/components/Notation';
 import { Chess } from 'chess.js';
+import { useTheme } from '@/context/ThemeContext';
+import backgroundImages from '@/components/utils/backgrounds';
 
 export default function DailyPuzzle() {
     const router = useRouter();
     const chessboardRef = useRef<any>(null); // Create a ref for ChessboardDemo, forwardRef
     const [chess] = useState<Chess>(new Chess);
+    const { theme } = useTheme();
+
+    const styles = StyleSheet.create({
+        container: {
+            flex: 1,
+            justifyContent: 'flex-end',
+            alignItems: 'center',
+            backgroundColor: theme.background,
+            paddingBottom: 150,
+        },
+    
+        hintContainer: {
+            width: '100%',
+            flexDirection: 'row',
+            height: 205,
+            padding: 10,
+            paddingBottom: 20,
+            alignItems: 'flex-end',
+            justifyContent: 'flex-start',
+        },
+        characterImage: {
+            width: 100,
+            height: 100,
+            marginBottom: -30,
+        },
+        hintSpeech: {
+            backgroundColor: theme.hintBubble,
+            maxWidth: '80%',
+            padding: 10,
+            marginLeft: -20,
+            paddingHorizontal: 15,
+            borderRadius: 10,
+            borderBottomLeftRadius: 0,
+            textAlign: 'left',
+            justifyContent: 'center',
+            alignItems: 'center',
+            fontSize: 16,
+            lineHeight: 20,
+        },
+    
+        infoSection: {
+            width: '100%',
+            flexDirection: 'row',
+            marginTop: 10,
+            marginBottom: -30,
+        },
+    
+        ratingContainer: {
+            flex: 1,
+            padding: 15,
+            justifyContent: 'flex-start',
+            alignItems: 'center',
+            flexDirection: 'row',
+            backgroundColor: theme.primaryButton,
+            marginVertical: 10,
+            marginRight: 20,
+            borderRadius: 10,
+            borderStartStartRadius: 0,
+            borderBottomStartRadius: 0,
+            boxShadow: `-7 7 0 ${theme.buttonShadow}`,
+        },
+        rating: {
+            color: theme.primaryText,
+            fontSize: 24,
+            lineHeight: 28,
+            fontWeight: 'bold',
+            alignItems: 'center',
+        },
+    
+        timeElapsed: {
+            flex: 1,
+            padding: 25,
+            justifyContent: 'flex-end',
+            alignItems: 'center',
+            flexDirection: 'row',
+        },
+        timeText: {
+            color: theme.primaryText,
+            fontSize: 22,
+            fontWeight: 'bold',
+            textAlign: 'right',
+        },
+        clockIcon: {
+            marginRight: 5,
+        },
+    
+        controlBar: {
+            position: 'absolute',
+            backgroundColor: theme.headerBackground,
+            height: 100,
+            width: '100%',
+            paddingHorizontal: 10,
+            bottom: 0,
+            justifyContent: 'space-evenly',
+            flexDirection: 'row',
+        },
+        controlButton: {
+            paddingVertical: 15,
+            borderRadius: 5,
+            width: 60,
+            overflow: 'visible',
+            alignItems: 'center',
+        },
+        controlText: {
+            color: theme.primaryText,
+            textAlign: 'center',
+            fontSize: 12,
+        },
+        controlIcon: {
+            marginBottom: 7,
+        },
+    });
 
     const [elapsedTime, setElapsedTime] = useState(0);
     const [hint, setHint] = useState<string | null>(null);
@@ -154,7 +268,11 @@ export default function DailyPuzzle() {
     };
 
     return (
-        <ThemedView style={styles.container}>
+        <ImageBackground
+            source={backgroundImages[theme.name] || null}
+            style={styles.container}
+            imageStyle={{opacity:0.5}}
+        >
             <View style={styles.hintContainer}>
                 <Image
                     source={require('@/assets/images/hints/bear.png')}
@@ -162,12 +280,12 @@ export default function DailyPuzzle() {
                 />
                 <ThemedText style={styles.hintSpeech}>
                     {loadingHint ? (
-                        <ThemedText style={{ color: '#000' }}>Hmmm...</ThemedText>
+                        <ThemedText style={{ color: theme.secondaryText }}>Hmmm...</ThemedText>
                     ) : (
                         error ? (
-                            <ThemedText style={{ color: '#000' }}>{error}</ThemedText>
+                            <ThemedText style={{ color: theme.secondaryText }}>{error}</ThemedText>
                         ) : (
-                            <ThemedText style={{ color: '#000' }}>{hint ? hint : 'Need a hint?'}</ThemedText>
+                            <ThemedText style={{ color: theme.secondaryText }}>{hint ? hint : 'Need a hint?'}</ThemedText>
                         )
                     )}
                 </ThemedText>
@@ -175,7 +293,7 @@ export default function DailyPuzzle() {
 
             <ChessboardDemo
                 ref={chessboardRef}
-                colors={{ black: '#454A64', white: '#FFF37E' }}
+                colors={{ black: theme.player2Square, white: theme.player1Square }}
                 onMove={({ state }) => {
                     setLastFEN(state.fen); // Update the last FEN
 
@@ -213,22 +331,22 @@ export default function DailyPuzzle() {
 
             <View style={styles.infoSection}>
                 <ThemedView style={styles.ratingContainer}>
-                    <IconSymbol size={30} style={{marginHorizontal:5}} name="puzzlepiece.extension.fill" color="#fff" />
+                    <IconSymbol size={30} style={{marginHorizontal:5}} name="puzzlepiece.extension.fill" color={theme.primaryText} />
                     <ThemedText style={styles.rating}>
                         {chessboardRef.current?.getPuzzle()?.Rating || '1000'}
                     </ThemedText>
-                    <IconSymbol size={32} style={{marginLeft:'auto'}} name="chevron.up.circle.fill" color="#fff" />
+                    <IconSymbol size={32} style={{marginLeft:'auto'}} name="chevron.up.circle.fill" color={theme.primaryText} />
                 </ThemedView>
 
                 <View style={styles.timeElapsed}>
-                    <IconSymbol style={styles.clockIcon} size={28} name="clock" color="#fff" />
+                    <IconSymbol style={styles.clockIcon} size={28} name="clock" color={theme.primaryText} />
                     <ThemedText style={styles.timeText}>
                         {secondsToHMS(elapsedTime)}
                     </ThemedText>
                 </View>
             </View>
 
-            <ThemedText style={{color: '#fff', position:'absolute', top: 5, left: 5}}>
+            <ThemedText style={{color: theme.primaryText, position:'absolute', top: 5, left: 5}}>
                 {`BEST: ${moves[2 * moveNumber - 1]}\n`}
                 {`TURN: ${getTurnFromFEN(lastFEN)}\n`}
                 {`MOVE: ${moveNumber}\n`}
@@ -236,141 +354,30 @@ export default function DailyPuzzle() {
 
             <ThemedView style={styles.controlBar}>
                 <Pressable style={styles.controlButton} onPress={handleGetHint}>
-                    <IconSymbol style={styles.controlIcon} size={24} name="lightbulb" color="#fff" />
+                    <IconSymbol style={styles.controlIcon} size={24} name="lightbulb" color={theme.primaryText} />
                     <Text style={styles.controlText}>Hint</Text>
                 </Pressable>
 
                 <Pressable style={styles.controlButton} onPress={handleUndo}>
-                    <IconSymbol style={styles.controlIcon} size={24} name="arrow.uturn.backward" color="#fff" />
+                    <IconSymbol style={styles.controlIcon} size={24} name="arrow.uturn.backward" color={theme.primaryText} />
                     <Text style={styles.controlText}>Undo</Text>
                 </Pressable>
 
                 <Pressable style={styles.controlButton} onPress={handleRedo}>
-                    <IconSymbol style={styles.controlIcon} size={24} name="arrow.uturn.right" color="#fff" />
+                    <IconSymbol style={styles.controlIcon} size={24} name="arrow.uturn.right" color={theme.primaryText} />
                     <Text style={styles.controlText}>Redo</Text>
                 </Pressable>
 
                 <Pressable style={styles.controlButton} onPress={handleReset}>
-                    <IconSymbol style={styles.controlIcon} size={24} name="restart" color="#fff" />
+                    <IconSymbol style={styles.controlIcon} size={24} name="restart" color={theme.primaryText} />
                     <Text style={styles.controlText}>Reset</Text>
                 </Pressable>
 
                 <Pressable style={styles.controlButton}>
-                    <IconSymbol style={styles.controlIcon} size={24} name="ellipsis" color="#fff" />
+                    <IconSymbol style={styles.controlIcon} size={24} name="ellipsis" color={theme.primaryText} />
                     <Text style={styles.controlText}>Options</Text>
                 </Pressable>
             </ThemedView>
-        </ThemedView>
+        </ImageBackground>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        justifyContent: 'flex-end',
-        alignItems: 'center',
-        backgroundColor: '#2B2D3B',
-        paddingBottom: 150,
-    },
-
-    hintContainer: {
-        width: '100%',
-        flexDirection: 'row',
-        height: 205,
-        padding: 10,
-        paddingBottom: 20,
-        alignItems: 'flex-end',
-        justifyContent: 'flex-start',
-    },
-    characterImage: {
-        width: 100,
-        height: 100,
-        marginBottom: -30,
-    },
-    hintSpeech: {
-        backgroundColor: '#B1B5CC',
-        maxWidth: '80%',
-        padding: 10,
-        marginLeft: -20,
-        paddingHorizontal: 15,
-        borderRadius: 10,
-        borderBottomLeftRadius: 0,
-        textAlign: 'left',
-        justifyContent: 'center',
-        alignItems: 'center',
-        fontSize: 16,
-        lineHeight: 20,
-    },
-
-    infoSection: {
-        width: '100%',
-        flexDirection: 'row',
-        marginTop: 10,
-        marginBottom: -30,
-    },
-
-    ratingContainer: {
-        flex: 1,
-        padding: 15,
-        justifyContent: 'flex-start',
-        alignItems: 'center',
-        flexDirection: 'row',
-        backgroundColor: '#191A25',
-        marginVertical: 10,
-        marginRight: 20,
-        borderRadius: 10,
-        borderStartStartRadius: 0,
-        borderBottomStartRadius: 0,
-        boxShadow: '-7 7 0 rgba(0, 0, 0, 0.25)',
-    },
-    rating: {
-        color: '#fff',
-        fontSize: 24,
-        lineHeight: 28,
-        fontWeight: 'bold',
-        alignItems: 'center',
-    },
-
-    timeElapsed: {
-        flex: 1,
-        padding: 25,
-        justifyContent: 'flex-end',
-        alignItems: 'center',
-        flexDirection: 'row',
-    },
-    timeText: {
-        color: '#fff',
-        fontSize: 22,
-        fontWeight: 'bold',
-        textAlign: 'right',
-    },
-    clockIcon: {
-        marginRight: 5,
-    },
-
-    controlBar: {
-        position: 'absolute',
-        backgroundColor: '#454A64',
-        height: 100,
-        width: '100%',
-        paddingHorizontal: 10,
-        bottom: 0,
-        justifyContent: 'space-evenly',
-        flexDirection: 'row',
-    },
-    controlButton: {
-        paddingVertical: 15,
-        borderRadius: 5,
-        width: 60,
-        overflow: 'visible',
-        alignItems: 'center',
-    },
-    controlText: {
-        color: '#fff',
-        textAlign: 'center',
-        fontSize: 12,
-    },
-    controlIcon: {
-        marginBottom: 7,
-    },
-});
