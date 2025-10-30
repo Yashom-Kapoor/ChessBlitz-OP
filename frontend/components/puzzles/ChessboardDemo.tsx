@@ -1,9 +1,8 @@
 import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { fetchRandomPuzzle } from '@/components/RandomPuzzle';
+import { fetchRandomPuzzle } from '@/api/RandomPuzzle';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Chessboard, { ChessboardRef } from 'react-native-chessboard';
-import { ThemedText } from './ThemedText';
 import { useTheme } from '@/context/ThemeContext';
 
 // Define the props for ChessboardDemo
@@ -11,6 +10,7 @@ interface ChessboardDemoProps {
     onMove?: (info: any) => void; // Optional onMove callback
     colors?: { black: string; white: string }; // Optional colors for the chessboard
     gestureEnabled?: boolean; // Optional gesture enabled flag
+    isTablet?: boolean;
 }
 
 // Define the type of the ref object
@@ -50,7 +50,7 @@ const ChessboardDemo = forwardRef<ChessboardDemoRef, ChessboardDemoProps>((props
     if (loading) {
         return (
             <>
-                <ThemedText style={{ color: theme.primaryText }}>Loading...</ThemedText>
+                <Text style={{ color: theme.primaryText }}>Loading...</Text>
                 <ActivityIndicator size="large" color={theme.primaryText} />
             </>
         );
@@ -63,7 +63,7 @@ const ChessboardDemo = forwardRef<ChessboardDemoRef, ChessboardDemoProps>((props
         );
     }
     return (
-        <GestureHandlerRootView style={styles.boardContainer}>
+        <GestureHandlerRootView style={[styles.boardContainer, { transform: props.isTablet ? 'scale(0.95)' : 'scale(1)' }]}>
             <Chessboard
                 colors={props.colors || { black: '#739552', white: '#ebecd0' }} // Default colors if not provided
                 gestureEnabled={props.gestureEnabled} // Manage gestures

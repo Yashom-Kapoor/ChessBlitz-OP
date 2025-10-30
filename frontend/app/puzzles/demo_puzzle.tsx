@@ -1,25 +1,46 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable, Image, ImageBackground } from 'react-native';
-import { useRouter } from 'expo-router';
-import { ThemedView } from '@/components/ThemedView';
-import ChessboardDemo from '@/components/ChessboardDemo';
+import { View, Text, StyleSheet, Pressable, Image, ImageBackground, Platform } from 'react-native';
+import { useGlobalSearchParams, useLocalSearchParams, useRouter } from 'expo-router';
+import ChessboardDemo from '@/components/puzzles/ChessboardDemo';
 import { IconSymbol } from '@/components/ui/IconSymbol';
-import { ChessboardRef } from 'react-native-chessboard';
-import { ThemedText } from '@/components/ThemedText';
-import { secondsToHMS } from '@/components/utils/Time';
-import { fetchHint } from '@/components/GetHint';
-import { detectMoveFromFEN, getTurnFromFEN } from '@/components/Notation';
+import { secondsToHMS } from '@/utils/Time';
+import { fetchHint } from '@/api/GetHint';
+import { detectMoveFromFEN, getTurnFromFEN } from '@/utils/Notation';
 import { Chess } from 'chess.js';
 import { useTheme } from '@/context/ThemeContext';
-import backgroundImages from '@/components/utils/backgrounds';
+import backgroundImages, { BackgroundContext } from '@/context/Backgrounds';
+import { BlurView } from 'expo-blur';
+import PuzzleBar from '@/components/puzzles/PuzzleBar';
+import GlobalStyle from '@/context/GlobalStyle';
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import GlassBlurView from '@/components/GlassBlurView';
 
-export default function DailyPuzzle() {
-    const router = useRouter();
-    const chessboardRef = useRef<any>(null); // Create a ref for ChessboardDemo, forwardRef
-    const [chess] = useState<Chess>(new Chess);
+export default function DemoPuzzle() {
     const { theme } = useTheme();
+    const isTablet = useGlobalSearchParams().isTablet === 'true';
+    const [hint, setHint] = useState<string | null>(null);
 
-    const styles = StyleSheet.create({
+    const expanded = 200;
+    const collapsed = isTablet ? 100 : 70;
+    const height = useSharedValue(collapsed);
+    const topMargin = useSharedValue(0);
+    const expandedMargin = isTablet ? -20 : -70;
+
+    const animatedStyle = useAnimatedStyle(() => {
+        return {
+            height: withTiming(height.value, { duration: 500 }),
+            marginTop: withTiming(topMargin.value, { duration: 500 }),
+        };
+    });
+    const toggleHeight = () => {
+        height.value = (height.value === expanded || !hint) ? collapsed : expanded;
+        topMargin.value = (topMargin.value === 0 && hint) ? expandedMargin : 0;
+    };
+
+    const styles = GlobalStyle(theme, isTablet);
+
+    const puzzleStyles = StyleSheet.create({
         container: {
             flex: 1,
             justifyContent: 'flex-end',
@@ -27,43 +48,24 @@ export default function DailyPuzzle() {
             backgroundColor: theme.background,
             paddingBottom: 150,
         },
-    
         hintContainer: {
+            position: 'absolute',
+            top: isTablet ? '8%' : '25%',
             width: '100%',
             flexDirection: 'row',
-            height: 205,
-            padding: 10,
-            paddingBottom: 20,
-            alignItems: 'flex-end',
+            marginBottom: isTablet ? 0 : 20,
+            alignItems: 'flex-start',
             justifyContent: 'flex-start',
         },
-        characterImage: {
-            width: 100,
-            height: 100,
-            marginBottom: -30,
-        },
         hintSpeech: {
-            backgroundColor: theme.hintBubble,
-            maxWidth: '80%',
-            padding: 10,
-            marginLeft: -20,
-            paddingHorizontal: 15,
-            borderRadius: 10,
-            borderBottomLeftRadius: 0,
+            padding: isTablet ? 13 : 10,
+            paddingHorizontal: isTablet ? 22 : 18,
             textAlign: 'left',
             justifyContent: 'center',
             alignItems: 'center',
-            fontSize: 16,
-            lineHeight: 20,
+            userSelect: 'none',
+            pointerEvents: 'none',
         },
-    
-        infoSection: {
-            width: '100%',
-            flexDirection: 'row',
-            marginTop: 10,
-            marginBottom: -30,
-        },
-    
         ratingContainer: {
             flex: 1,
             padding: 15,
@@ -73,19 +75,11 @@ export default function DailyPuzzle() {
             backgroundColor: theme.primaryButton,
             marginVertical: 10,
             marginRight: 20,
-            borderRadius: 10,
+            borderRadius: isTablet ? 30 : 20,
             borderStartStartRadius: 0,
             borderBottomStartRadius: 0,
-            boxShadow: `-7 7 0 ${theme.buttonShadow}`,
+            boxShadow: `${isTablet ? ' -14 14' : '-7 7'} 0 ${theme.buttonShadow}`,
         },
-        rating: {
-            color: theme.primaryText,
-            fontSize: 24,
-            lineHeight: 28,
-            fontWeight: 'bold',
-            alignItems: 'center',
-        },
-    
         timeElapsed: {
             flex: 1,
             padding: 25,
@@ -93,45 +87,20 @@ export default function DailyPuzzle() {
             alignItems: 'center',
             flexDirection: 'row',
         },
-        timeText: {
-            color: theme.primaryText,
-            fontSize: 22,
-            fontWeight: 'bold',
-            textAlign: 'right',
+
+        characterImage: {
+            width: isTablet ? 140 : 100,
+            height: isTablet ? 140 : 100,
         },
         clockIcon: {
             marginRight: 5,
         },
-    
-        controlBar: {
-            position: 'absolute',
-            backgroundColor: theme.headerBackground,
-            height: 100,
-            width: '100%',
-            paddingHorizontal: 10,
-            bottom: 0,
-            justifyContent: 'space-evenly',
-            flexDirection: 'row',
-        },
-        controlButton: {
-            paddingVertical: 15,
-            borderRadius: 5,
-            width: 60,
-            overflow: 'visible',
-            alignItems: 'center',
-        },
-        controlText: {
-            color: theme.primaryText,
-            textAlign: 'center',
-            fontSize: 12,
-        },
-        controlIcon: {
-            marginBottom: 7,
-        },
     });
 
+    const chessboardRef = useRef<any>(null); // Create a ref for ChessboardDemo, forwardRef
+    const [chess] = useState<Chess>(new Chess);
+    
     const [elapsedTime, setElapsedTime] = useState(0);
-    const [hint, setHint] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [moveNumber, setMoveNumber] = useState(1);
     const [loadingHint, setLoadingHint] = useState(false); // Track whether the hint is loading
@@ -141,10 +110,12 @@ export default function DailyPuzzle() {
     const [lastFEN, setLastFEN] = useState<string | null>(null); // Store the last FEN
     const [turn, setTurn] = useState<string | null>(null); // Track the turn
     const [redoUnlocked, setRedoUnlocked] = useState<number | null>(1); // Track the redo max state
-    const [puzzleCompleted, setPuzzleCompleted] = useState<boolean | null>(false); // Track puzzle completion state
+    const [puzzleCompleted, setPuzzleCompleted] = useState<boolean | null>(false); // Track puzzle completion stat
 
     const handleGetHint = async () => {
         try {
+            height.value = collapsed;
+            topMargin.value = 0;
             setLoadingHint(true); // Start loading
             const fetchedHint = await fetchHint(chessboardRef.current?.getPuzzle().ID, 2 * moveNumber);
             setHint(fetchedHint);
@@ -154,6 +125,8 @@ export default function DailyPuzzle() {
             setHint(null);
         } finally {
             setLoadingHint(false); // Stop loading
+            height.value = expanded;
+            topMargin.value = expandedMargin;
         }
     };
 
@@ -224,6 +197,8 @@ export default function DailyPuzzle() {
             setPuzzleCompleted(false);
             setRedoUnlocked(1);
             setHint(null); // Reset hint
+            height.value = collapsed;
+            topMargin.value = 0;
             setLastFEN(chessboardRef.current.getPuzzle().FEN); // Reset last FEN
             setElapsedTime(0); // Reset elapsed time
             setTurn(getTurnFromFEN(chessboardRef.current.getPuzzle().FEN)); // Reset turn
@@ -252,52 +227,39 @@ export default function DailyPuzzle() {
                 chessboardRef.current.board.resetBoard(chess.fen()); // Call the reset method on the chessboard
                 setTurn(getTurnFromFEN(chessboardRef.current.getPuzzle().FEN)); // Reset turn
             }
-            
+
         }
     };
     const handleRedo = () => {
         if (chessboardRef.current && redoUnlocked !== null) {
             if (moveNumber < redoUnlocked) {
                 setTimeout(async () => {
-                    await chessboardRef.current?.board.move({ from: moves[moveNumber * 2 - 1].substring(0, 2),
-                            to: moves[moveNumber * 2 - 1].substring(2, 4),
-                            promotion: moves[moveNumber * 2 - 1].substring(4) });
+                    await chessboardRef.current?.board.move({
+                        from: moves[moveNumber * 2 - 1].substring(0, 2),
+                        to: moves[moveNumber * 2 - 1].substring(2, 4),
+                        promotion: moves[moveNumber * 2 - 1].substring(4)
+                    });
                 }), (200);
             }
         }
     };
 
     return (
-        <ImageBackground
-            source={backgroundImages[theme.name] || null}
-            style={styles.container}
-            imageStyle={{opacity:0.5}}
-        >
-            <View style={styles.hintContainer}>
-                <Image
-                    source={require('@/assets/images/hints/bear.png')}
-                    style={styles.characterImage}
-                />
-                <ThemedText style={styles.hintSpeech}>
-                    {loadingHint ? (
-                        <ThemedText style={{ color: theme.secondaryText }}>Hmmm...</ThemedText>
-                    ) : (
-                        error ? (
-                            <ThemedText style={{ color: theme.secondaryText }}>{error}</ThemedText>
-                        ) : (
-                            <ThemedText style={{ color: theme.secondaryText }}>{hint ? hint : 'Need a hint?'}</ThemedText>
-                        )
-                    )}
-                </ThemedText>
-            </View>
+        <BackgroundContext theme={theme} style={puzzleStyles.container}>
+            <Text style={{ color: theme.primaryText, position: 'absolute', textAlign: 'right', top: 55, right: 5, zIndex: 1000 }}>
+                {`BEST: ${moves[2 * moveNumber - 1]}\n`}
+                {`TURN: ${getTurnFromFEN(lastFEN)}\n`}
+                {`MOVE: ${moveNumber}\n`}
+            </Text>
 
             <ChessboardDemo
                 ref={chessboardRef}
                 colors={{ black: theme.player2Square, white: theme.player1Square }}
+                isTablet={isTablet}
                 onMove={({ state }) => {
                     setLastFEN(state.fen); // Update the last FEN
 
-                    if(getTurnFromFEN(state.fen) === turn) {
+                    if (getTurnFromFEN(state.fen) === turn) {
                         const detectedMove = detectMoveFromFEN(lastFEN, state.fen);
                         if (detectedMove) {
                             chess.move({ from: detectedMove.substring(0, 2), to: detectedMove.substring(2, 4), promotion: detectedMove.substring(4) }); // Make the move
@@ -309,16 +271,22 @@ export default function DailyPuzzle() {
                                 setHint('Congratulations! You completed the puzzle!'); // Show success message
                                 setRedoUnlocked(moveNumber + 1);
                                 setPuzzleCompleted(true);
+                                height.value = expanded;
+                                topMargin.value = expandedMargin;
                             } else {
                                 setMoveNumber(moveNumber + 1); // Increment move number
                                 setHint('Great job! Keep going!'); // Show success message for correct move
                                 setTimeout(async () => {
-                                    chess.move({ from: moves[moveNumber * 2].substring(0, 2),
-                                            to: moves[moveNumber * 2].substring(2, 4),
-                                            promotion: moves[moveNumber * 2].substring(4) }); // Make the next move
-                                    await chessboardRef.current?.board.move({ from: moves[moveNumber * 2].substring(0, 2),
-                                            to: moves[moveNumber * 2].substring(2, 4),
-                                            promotion: moves[moveNumber * 2].substring(4) });
+                                    chess.move({
+                                        from: moves[moveNumber * 2].substring(0, 2),
+                                        to: moves[moveNumber * 2].substring(2, 4),
+                                        promotion: moves[moveNumber * 2].substring(4)
+                                    }); // Make the next move
+                                    await chessboardRef.current?.board.move({
+                                        from: moves[moveNumber * 2].substring(0, 2),
+                                        to: moves[moveNumber * 2].substring(2, 4),
+                                        promotion: moves[moveNumber * 2].substring(4)
+                                    });
                                 }), (700);
                             }
                         } else {
@@ -329,55 +297,48 @@ export default function DailyPuzzle() {
                 gestureEnabled={(getTurnFromFEN(lastFEN) !== turn) || false} // Enable gestures only if it's the player's turn
             />
 
-            <View style={styles.infoSection}>
-                <ThemedView style={styles.ratingContainer}>
-                    <IconSymbol size={30} style={{marginHorizontal:5}} name="puzzlepiece.extension.fill" color={theme.primaryText} />
-                    <ThemedText style={styles.rating}>
-                        {chessboardRef.current?.getPuzzle()?.Rating || '1000'}
-                    </ThemedText>
-                    <IconSymbol size={32} style={{marginLeft:'auto'}} name="chevron.up.circle.fill" color={theme.primaryText} />
-                </ThemedView>
+            <Animated.View style={[puzzleStyles.hintContainer, animatedStyle]}>
+                <Image
+                    source={require('@/assets/images/hints/bear.png')}
+                    style={puzzleStyles.characterImage}
+                />
+                <Pressable onPress={() => toggleHeight()} style={{ marginLeft: isTablet ? -35 : -25, marginTop: isTablet ? 50 : 30, maxWidth: isTablet ? '80%' : '75%' }}>
+                    <GlassBlurView theme={theme} isTablet={isTablet} color={theme.hintBubble} glass={'clear'} interactive />
+                    <Text style={[puzzleStyles.hintSpeech, styles.h5, { color: theme.secondaryText }]}>
+                        {loadingHint ? (
+                            <Text style={{ color: theme.secondaryText, fontWeight: 800 }}>Hmmm...</Text>
+                        ) : (
+                            error ? (
+                                <Text style={{ color: theme.secondaryText, fontWeight: 800 }}>{error}</Text>
+                            ) : ((hint ? (
+                                <Text style={{ color: theme.secondaryText, fontWeight: puzzleCompleted ? 800 : 500 }}>{hint}</Text>
+                            ) : (
+                                <Text style={{ color: theme.secondaryText, fontWeight: 800 }}>{'Need a hint?'}</Text>
+                            )))
+                        )}
+                    </Text>
+                </Pressable>
+            </Animated.View>
 
-                <View style={styles.timeElapsed}>
-                    <IconSymbol style={styles.clockIcon} size={28} name="clock" color={theme.primaryText} />
-                    <ThemedText style={styles.timeText}>
+            <View style={[styles.hStack, { marginTop: isTablet ? -10 : 10, marginBottom: -30 }]}>
+                <View style={puzzleStyles.ratingContainer}>
+                    <IconSymbol size={isTablet ? 45 : 30} style={{ marginHorizontal: 5 }} name="puzzlepiece.extension.fill" color={theme.primaryText} />
+                    <Text style={[styles.subtitle, { marginLeft: isTablet ? 5 : 0, color: theme.primaryText }]}>
+                        {chessboardRef.current?.getPuzzle()?.Rating || '1000'}
+                    </Text>
+                    <IconSymbol size={isTablet ? 40 : 32} style={{ marginLeft: 'auto' }} name="chevron.up.circle.fill" color={theme.primaryText} />
+                </View>
+
+                <View style={puzzleStyles.timeElapsed}>
+                    <IconSymbol style={puzzleStyles.clockIcon} size={isTablet ? 40 : 32} name="clock" color={theme.primaryText} />
+                    <Text style={[styles.h2, { textAlign: 'right', color: theme.primaryText }]}>
                         {secondsToHMS(elapsedTime)}
-                    </ThemedText>
+                    </Text>
                 </View>
             </View>
 
-            <ThemedText style={{color: theme.primaryText, position:'absolute', top: 5, left: 5}}>
-                {`BEST: ${moves[2 * moveNumber - 1]}\n`}
-                {`TURN: ${getTurnFromFEN(lastFEN)}\n`}
-                {`MOVE: ${moveNumber}\n`}
-            </ThemedText>
+            <PuzzleBar onHint={handleGetHint} onUndo={handleUndo} onRedo={handleRedo} onReset={handleReset} onOptions={null} isTablet={isTablet} />
 
-            <ThemedView style={styles.controlBar}>
-                <Pressable style={styles.controlButton} onPress={handleGetHint}>
-                    <IconSymbol style={styles.controlIcon} size={24} name="lightbulb" color={theme.primaryText} />
-                    <Text style={styles.controlText}>Hint</Text>
-                </Pressable>
-
-                <Pressable style={styles.controlButton} onPress={handleUndo}>
-                    <IconSymbol style={styles.controlIcon} size={24} name="arrow.uturn.backward" color={theme.primaryText} />
-                    <Text style={styles.controlText}>Undo</Text>
-                </Pressable>
-
-                <Pressable style={styles.controlButton} onPress={handleRedo}>
-                    <IconSymbol style={styles.controlIcon} size={24} name="arrow.uturn.right" color={theme.primaryText} />
-                    <Text style={styles.controlText}>Redo</Text>
-                </Pressable>
-
-                <Pressable style={styles.controlButton} onPress={handleReset}>
-                    <IconSymbol style={styles.controlIcon} size={24} name="restart" color={theme.primaryText} />
-                    <Text style={styles.controlText}>Reset</Text>
-                </Pressable>
-
-                <Pressable style={styles.controlButton}>
-                    <IconSymbol style={styles.controlIcon} size={24} name="ellipsis" color={theme.primaryText} />
-                    <Text style={styles.controlText}>Options</Text>
-                </Pressable>
-            </ThemedView>
-        </ImageBackground>
+        </BackgroundContext>
     );
 }

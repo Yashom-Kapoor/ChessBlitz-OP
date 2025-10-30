@@ -1,20 +1,32 @@
-import { DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack, useGlobalSearchParams, useLocalSearchParams, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import 'react-native-reanimated';
-
-import { useColorScheme } from '@/hooks/useColorScheme';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
+import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import GlobalStyle from '@/context/GlobalStyle';
+import { LinearGradient } from 'expo-linear-gradient';
+import GlassBlurView from '@/components/GlassBlurView';
+import { ScreenStackHeaderBackButtonImage } from 'react-native-screens';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  const isTablet = useGlobalSearchParams().isTablet === 'true';
+
   const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+    Nunito: require('../assets/fonts/Nunito.ttf'),
+    NunitoBlackItalic: require('../assets/fonts/Nunito-BlackItalic.ttf'),
+    NunitoBoldItalic: require('../assets/fonts/Nunito-BoldItalic.ttf'),
+    NunitoExtraBoldItalic: require('../assets/fonts/Nunito-ExtraBoldItalic.ttf'),
+    NunitoExtraLightItalic: require('../assets/fonts/Nunito-ExtraLightItalic.ttf'),
+    NunitoItalic: require('../assets/fonts/Nunito-Italic.ttf'),
+    NunitoLightItalic: require('../assets/fonts/Nunito-LightItalic.ttf'),
+    NunitoMediumItalic: require('../assets/fonts/Nunito-MediumItalic.ttf'),
+    NunitoSemiBoldItalic: require('../assets/fonts/Nunito-SemiBoldItalic.ttf'),
   });
 
   useEffect(() => {
@@ -29,27 +41,47 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider>
-      <ThemedRoot />
+      <ThemedRoot isTablet={isTablet} />
     </ThemeProvider>
   );
 }
 
-function ThemedRoot() {
-  const { theme } = useTheme(); // Access the theme from useTheme
+function ThemedRoot({ isTablet }: { isTablet: boolean }) {
+  const { theme } = useTheme();
+  const styles = GlobalStyle(theme, isTablet);
+  const router = useRouter();
 
   return (
     <>
       <Stack
         screenOptions={{
           headerBackButtonDisplayMode: 'minimal',
-          headerBackButtonMenuEnabled: false,
+          headerBackButtonMenuEnabled: true,
           headerTintColor: theme.titleText, // Use theme's title text color
           headerStyle: {
-            backgroundColor: theme.headerBackground, // Use theme's background color
+            backgroundColor: "transparent",
           },
           headerTitleStyle: {
             color: theme.titleText, // Use theme's title text color
+            fontWeight: '700',
+            fontSize: isTablet ? 25 : 20,
+            fontFamily: "Nunito",
           },
+          contentStyle: {
+            backgroundColor: theme.background,
+          },
+          headerTransparent: true,
+          headerTitle: ({ ...props }) =>
+            <Text style={{
+              ...styles.h4, 
+              color: theme.primaryText
+            }}>
+              {props.children}
+            </Text>,
+          headerBackground: () =>
+            <LinearGradient style={{
+              ...StyleSheet.absoluteFillObject
+            }} colors={[theme.dark ? '#00000030' : '#ffffff30', 'transparent']} />
         }}
       >
         <Stack.Screen
@@ -61,17 +93,45 @@ function ThemedRoot() {
         />
         <Stack.Screen
           name="(tabs)"
-          options={{
-            headerShown: false,
+          options={({ route }) => {
+            // derive active tab from nested tab navigator state
+            const focused = getFocusedRouteNameFromRoute(route) ?? 'puzzles';
+            // map route names to friendly titles if desired
+            const titleMap: Record<string, string> = {
+              puzzles: 'Puzzles',
+              lessons: 'Lessons',
+              ranking: 'Ranking',
+              profile: 'Profile',
+              themes: 'Themes',
+            };
+            return {
+              title: titleMap[focused] ?? 'App',
+              headerShown: true,
+              headerBackVisible: false,
+            };
           }}
+        />
+        <Stack.Screen
+          name="puzzles/demo_puzzle"
+          options={() => ({
+            title: 'Demo Puzzle',
+            animation: 'ios_from_right',
+            headerShown: true,
+            headerBackVisible: true,
+            headerBackButtonDisplayMode: 'minimal'
+          })}
+        />
+        <Stack.Screen
+          name="lessons/demo_lesson"
+          options={() => ({
+            title: 'Demo Lesson',
+            animation: 'ios_from_right',
+            headerShown: true,
+            headerBackVisible: true,
+            headerBackButtonDisplayMode: 'minimal'
+          })}
         />
         <Stack.Screen name="+not-found" />
-        <Stack.Screen
-          name="puzzles/daily-puzzle"
-          options={{
-            title: 'Puzzle',
-          }}
-        />
       </Stack>
       <StatusBar style={theme.dark ? 'light' : 'dark'} />
     </>

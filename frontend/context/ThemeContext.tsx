@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState } from 'react';
-import { Themes, ArtThemes } from '@/constants/Colors';
+import { Themes, ArtThemes } from '@/constants/Themes';
 
 export type ThemeContextType = {
   theme: (typeof Themes)[keyof typeof Themes] | (typeof ArtThemes)[keyof typeof ArtThemes]; // Allow any theme object from Themes or ArtThemes
