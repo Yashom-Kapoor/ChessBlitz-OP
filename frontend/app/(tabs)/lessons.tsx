@@ -1,6 +1,6 @@
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import React, { useEffect, useState } from 'react';
-import { ScrollView, View, ActivityIndicator, StyleSheet, ImageBackground } from 'react-native';
+import { ScrollView, View, ActivityIndicator, StyleSheet, ImageBackground, Text } from 'react-native';
 import Lesson from '@/components/Lesson';
 import { useGlobalSearchParams, useRouter } from 'expo-router';
 import { useTheme } from '@/context/ThemeContext';
@@ -19,6 +19,7 @@ export default function LessonScreen() {
 
   const [lessons, setLessons] = useState<LessonData[]>([]);
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false);
   const router = useRouter();
   const API_URL = "http://127.0.0.1:5000/lessons";
   useEffect(() => {
@@ -28,7 +29,7 @@ export default function LessonScreen() {
         const data = await response.json();
         setLessons(data);
       } catch (error) {
-        console.error("Error fetching lessons:", error);
+        setError(true);
       } finally {
         setLoading(false);
       }
@@ -56,7 +57,12 @@ export default function LessonScreen() {
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: theme.background }}>
       <BackgroundContext theme={theme}>
         <ScrollView contentContainerStyle={styles.scrollContainer}>
-          {lessons.map((lesson) => (
+          {error && (
+            <Text style={{ ...styles.b, color: theme.primaryText }} >
+              Error loading lessons oopsie daisies i dont think its implemented in backend yet but pretend this works
+            </Text>
+          )}
+          {lessons?.map((lesson) => (
             <Lesson
               key={lesson.id}
               name={lesson.name}
