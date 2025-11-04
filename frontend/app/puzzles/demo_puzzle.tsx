@@ -21,22 +21,51 @@ export default function DemoPuzzle() {
     const isTablet = useGlobalSearchParams().isTablet === 'true';
     const [hint, setHint] = useState<string | null>(null);
 
-    const expanded = 200;
-    const collapsed = isTablet ? 100 : 70;
-    const height = useSharedValue(collapsed);
-    const topMargin = useSharedValue(0);
-    const expandedMargin = isTablet ? -20 : -70;
+    const hintHeight = useSharedValue(55);
+    const hintWidth = useSharedValue(200);
+    const hintOpacity = useSharedValue(1);
+    const zIndex = useSharedValue(0);
 
-    const animatedStyle = useAnimatedStyle(() => {
+    const hintAnimStyle = useAnimatedStyle(() => {
         return {
-            height: withTiming(height.value, { duration: 500 }),
-            marginTop: withTiming(topMargin.value, { duration: 500 }),
+            maxHeight: withTiming(hintHeight.value, { duration: 500 }),
+            maxWidth: withTiming(hintWidth.value, { duration: 500 }),
+            opacity: withTiming(hintOpacity.value, { duration: 500 }),
+            pointerEvents: 'none',
         };
     });
-    const toggleHeight = () => {
-        height.value = (height.value === expanded || !hint) ? collapsed : expanded;
-        topMargin.value = (topMargin.value === 0 && hint) ? expandedMargin : 0;
-    };
+
+    const hintBubbleStyle = useAnimatedStyle(() => {
+        return {
+            opacity: withTiming(1 - hintOpacity.value, { duration: 500 }),
+            pointerEvents: 'none',
+        }
+    })
+
+    const bearHintStyle = useAnimatedStyle(() => {
+        return {
+            position: 'absolute',
+            left: isTablet ? '2%' : 0,
+            top: isTablet ? '8%' : '25%',
+            width: isTablet ? 140 : 100,
+            height: isTablet ? 140 : 100,
+            zIndex: zIndex.value,
+            shadowOpacity: 0.25,
+            shadowColor: 'black',
+            shadowRadius: 5,
+            shadowOffset: { width: 0, height: 0 },
+            marginTop: withTiming(zIndex.value / 2, { duration: 500 }),
+        }
+    });
+
+    const [expanded, setExpanded] = useState<boolean>(false);
+    const [isHintExpandable, setIsHintExpandable] = useState<boolean>(false);
+    useEffect(() => {
+        hintHeight.value = expanded ? 300 : (isTablet ? 55 : 45);
+        hintWidth.value = (expanded || !isHintExpandable) ? (isTablet ? 500 : 300) : (isTablet ? 100 : 70);
+        hintOpacity.value = (expanded || !isHintExpandable) ? 1 : 0;
+        zIndex.value = expanded ? 100 : 0;
+    }, [expanded, isHintExpandable]);
 
     const styles = GlobalStyle(theme, isTablet);
 
@@ -50,14 +79,18 @@ export default function DemoPuzzle() {
         },
         hintContainer: {
             position: 'absolute',
-            top: isTablet ? '8%' : '25%',
-            width: '100%',
+            flex: 1,
+            left: isTablet ? '17%' : '20%',
+            top: isTablet ? '12%' : '29%',
             flexDirection: 'row',
             marginBottom: isTablet ? 0 : 20,
             alignItems: 'flex-start',
             justifyContent: 'flex-start',
+            maxHeight: '50%',
+            maxWidth: '80%',
         },
         hintSpeech: {
+            position: 'relative',
             padding: isTablet ? 13 : 10,
             paddingHorizontal: isTablet ? 22 : 18,
             textAlign: 'left',
@@ -88,10 +121,6 @@ export default function DemoPuzzle() {
             flexDirection: 'row',
         },
 
-        characterImage: {
-            width: isTablet ? 140 : 100,
-            height: isTablet ? 140 : 100,
-        },
         clockIcon: {
             marginRight: 5,
         },
@@ -114,8 +143,9 @@ export default function DemoPuzzle() {
 
     const handleGetHint = async () => {
         try {
-            height.value = collapsed;
-            topMargin.value = 0;
+            setHint(null);
+            setIsHintExpandable(false);
+            setExpanded(puzzleCompleted == true);
             setLoadingHint(true); // Start loading
             const fetchedHint = await fetchHint(chessboardRef.current?.getPuzzle().ID, 2 * moveNumber);
             setHint(fetchedHint);
@@ -123,10 +153,11 @@ export default function DemoPuzzle() {
         } catch (err) {
             setError((err as Error).message);
             setHint(null);
+            setIsHintExpandable(false);
         } finally {
             setLoadingHint(false); // Stop loading
-            height.value = expanded;
-            topMargin.value = expandedMargin;
+            setIsHintExpandable(true); // Only actual hints from API are expandable
+            setExpanded(true);
         }
     };
 
@@ -175,6 +206,7 @@ export default function DemoPuzzle() {
         if (chessboardRef.current) {
             const puzzle = chessboardRef.current.getPuzzle();
             if (puzzle) {
+                chess.load(puzzle.FEN);
                 setLastFEN(puzzle.FEN); // Set the last FEN
                 chess.move({ from: moves[0].substring(0, 2), to: moves[0].substring(2, 4), promotion: moves[0].substring(4) }); // Make the first move
                 setTimeout(async () => {
@@ -197,8 +229,8 @@ export default function DemoPuzzle() {
             setPuzzleCompleted(false);
             setRedoUnlocked(1);
             setHint(null); // Reset hint
-            height.value = collapsed;
-            topMargin.value = 0;
+            setIsHintExpandable(false);
+            setExpanded(false);
             setLastFEN(chessboardRef.current.getPuzzle().FEN); // Reset last FEN
             setElapsedTime(0); // Reset elapsed time
             setTurn(getTurnFromFEN(chessboardRef.current.getPuzzle().FEN)); // Reset turn
@@ -215,6 +247,7 @@ export default function DemoPuzzle() {
             }
             setLastFEN(chess.fen());
             setHint(null);
+            setIsHintExpandable(false);
 
             if (moveNumber <= 1) {
                 chess.load(chessboardRef.current.getPuzzle().FEN); // Reset the chess board to starting position
@@ -250,7 +283,14 @@ export default function DemoPuzzle() {
                 {`BEST: ${moves[2 * moveNumber - 1]}\n`}
                 {`TURN: ${getTurnFromFEN(lastFEN)}\n`}
                 {`MOVE: ${moveNumber}\n`}
+                {`EXPANDED: ${expanded}\n`}
+                {`HINT EXPANDABLE: ${isHintExpandable}\n`}
             </Text>
+
+            <Animated.Image
+                source={require('@/assets/images/hints/bear.png')}
+                style={{ ...bearHintStyle }}
+            />
 
             <ChessboardDemo
                 ref={chessboardRef}
@@ -266,16 +306,20 @@ export default function DemoPuzzle() {
                         }
                         if (moves[moveNumber * 2 - 1] == detectMoveFromFEN(lastFEN, state.fen)) {
                             setHint(null); // Clear hint if the move is correct
+                            setIsHintExpandable(false);
 
                             if (moveNumber >= moves.length / 2) {
                                 setHint('Congratulations! You completed the puzzle!'); // Show success message
+                                setIsHintExpandable(false); // Not expandable
+                                setExpanded(false);
                                 setRedoUnlocked(moveNumber + 1);
                                 setPuzzleCompleted(true);
-                                height.value = expanded;
-                                topMargin.value = expandedMargin;
+                                setExpanded(true);
                             } else {
                                 setMoveNumber(moveNumber + 1); // Increment move number
                                 setHint('Great job! Keep going!'); // Show success message for correct move
+                                setIsHintExpandable(false); // Not expandable
+                                setExpanded(false);
                                 setTimeout(async () => {
                                     chess.move({
                                         from: moves[moveNumber * 2].substring(0, 2),
@@ -291,32 +335,42 @@ export default function DemoPuzzle() {
                             }
                         } else {
                             setHint('Try again!'); // Show error message if the move is incorrect
+                            setIsHintExpandable(false); // Not expandable
+                            setExpanded(false);
                         }
                     }
                 }}
                 gestureEnabled={(getTurnFromFEN(lastFEN) !== turn) || false} // Enable gestures only if it's the player's turn
             />
 
-            <Animated.View style={[puzzleStyles.hintContainer, animatedStyle]}>
-                <Image
-                    source={require('@/assets/images/hints/bear.png')}
-                    style={puzzleStyles.characterImage}
-                />
-                <Pressable onPress={() => toggleHeight()} style={{ marginLeft: isTablet ? -35 : -25, marginTop: isTablet ? 50 : 30, maxWidth: isTablet ? '80%' : '75%' }}>
+            <Animated.View style={[puzzleStyles.hintContainer]}>
+                <Pressable onPress={() => {
+                    if (puzzleCompleted) {
+                        setExpanded(true); // Always expanded when puzzle completed
+                    } else if (isHintExpandable) {
+                        setExpanded(!expanded); // Toggle if hint is expandable
+                    }
+                }} style={{position: 'relative', flexShrink: 1 }}>
                     <GlassBlurView theme={theme} isTablet={isTablet} color={theme.hintBubble} glass={'clear'} interactive />
-                    <Text style={[puzzleStyles.hintSpeech, styles.h5, { color: theme.secondaryText }]}>
-                        {loadingHint ? (
-                            <Text style={{ color: theme.secondaryText, fontWeight: 800 }}>Hmmm...</Text>
-                        ) : (
-                            error ? (
-                                <Text style={{ color: theme.secondaryText, fontWeight: 800 }}>{error}</Text>
-                            ) : ((hint ? (
-                                <Text style={{ color: theme.secondaryText, fontWeight: puzzleCompleted ? 800 : 500 }}>{hint}</Text>
-                            ) : (
-                                <Text style={{ color: theme.secondaryText, fontWeight: 800 }}>{'Need a hint?'}</Text>
-                            )))
-                        )}
-                    </Text>
+                    <Animated.View style={{ ...hintAnimStyle }}>
+                        <Text style={{...styles.h4, color: theme.secondaryText, ...puzzleStyles.hintSpeech }}>
+                            {loadingHint ? 'Hmmm...' : (
+                                error ? error : (
+                                    hint ? hint : 'Need a hint?'
+                                )
+                            )}
+                        </Text>
+                    </Animated.View>
+                    <Animated.Image
+                        source={require('@/assets/images/hints/hint_expand.png')}
+                        style={[{
+                            position: 'absolute',
+                            width: '100%',
+                            height: '100%',
+                            transform: [{ scale: 0.5 }],
+                        }, hintBubbleStyle]}
+                        resizeMode="center"
+                    />
                 </Pressable>
             </Animated.View>
 

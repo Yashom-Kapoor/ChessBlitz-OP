@@ -2,7 +2,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { BlurView } from "expo-blur";
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import { Tabs } from "expo-router";
-import { DynamicColorIOS, Platform, StyleSheet } from "react-native";
+import { Platform, StyleSheet } from "react-native";
 import { IconSymbol } from "./ui/IconSymbol";
 import CustomTabButton from "./CustomTabButton";
 import { LinearGradient } from "expo-linear-gradient";
