@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { FaArrowLeft } from "react-icons/fa";
+import StudentOverviewModal from "../components/StudentOverviewModal";
 
 export default function StudentHub() {
   const { classroomId } = useParams();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [students, setStudents] = useState([
     { status: 'online', name: 'John Smith', total: 12, daily: 1, elo: 1420 },
     { status: 'online', name: 'Emma Johnson', total: 7, daily: 0, elo: 1360 },
@@ -99,7 +102,15 @@ export default function StudentHub() {
                   </td>
                   <td><span className="avatar"></span></td>
                   <td>
-                    <a href="#" style={{ color: '#14728F', textDecoration: 'none' }}>
+                    <a 
+                      href="#" 
+                      style={{ color: '#14728F', textDecoration: 'none' }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setSelectedStudent(student);
+                        setIsModalOpen(true);
+                      }}
+                    >
                       {student.name}
                     </a>
                   </td>
@@ -112,6 +123,13 @@ export default function StudentHub() {
           </tbody>
         </table>
       </div>
+
+      {/* Student Overview Modal */}
+      <StudentOverviewModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        student={selectedStudent}
+      />
     </div>
   );
 }
