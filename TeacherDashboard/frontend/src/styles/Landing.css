@@ -1,0 +1,158 @@
+.landing-page {
+  height: 100vh;
+  margin: 0;
+  font-family: Nunito, sans-serif;
+  background: #292C37;
+  color: #d9d9d9;
+  position: relative;
+  width: 100vw;
+}
+
+* {
+  font-family: Nunito, sans-serif;
+}
+
+.landing-image {
+  position: fixed;
+  left: 1px;
+  bottom: 1px;
+  width: 600px;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
+
+.landing-content {
+  position: fixed;
+  transform:
+    translateY(calc(45vh - 50%))
+    translateX(max(calc(100vw - 100% - 100px), calc(50vw - 50%)))
+  ;
+  max-width: 560px;
+}
+
+.landing-title {
+  margin: 0 0 8px;
+  color: #FFF37E;
+  font-weight: 1000;
+  font-size: 100px;
+  line-height: 1.05;
+}
+
+.landing-page .tagline {
+  margin: 0 10px 24px;
+  color: #A1A5C1;
+  font-size: 25px;
+}
+
+.landing-buttons {
+  width: 100%;
+  display: flex;
+  margin-top: 5vh;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 25px;
+}
+
+.landing-page .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 12px 18px;
+  line-height: 1;
+  width: 80%;
+  border-radius: 10px;
+  font-weight: 1000;
+  font-size: 25px;
+  text-decoration: none;
+}
+
+.landing-page .btn-primary {
+  background: #FFF37E;
+  color: #2B2D3B;
+  min-height: 49px;
+  box-shadow: 0 6px 0 #7F740F;
+}
+
+.landing-page .btn-secondary {
+  background: #d1d1d1;
+  color: #2B2D3B;
+  min-height: 49px;
+  box-shadow: 0 6px 0 #60626C;
+}
+
+/* AUTH ONLY */
+.auth-form {
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.auth-form input[type="email"],
+.auth-form input[type="password"] {
+  width: 380px;
+  height: 45px;
+  padding-left: 12px;
+  border: 1px solid #00000056;
+  border-radius: 8px;
+  background: #d1d1d1;
+  color: #2B2D3B;
+  box-shadow: 0 3px 0 #60626C;
+  font-size: 18px;
+  outline: none;
+  margin-top: 5px;
+}
+
+.auth-form input::placeholder {
+  color: #605F62;
+  font-weight: 520;
+}
+
+.field-error {
+  display: block;
+  margin-top: 0;
+  text-align: left;
+  width: 380px;
+  font-size: 15px;
+  color: #ff6868;
+}
+
+.form-error {
+  color: #ff6868;
+  font-size: 15px;
+  margin-top: -10px;
+}
+
+.auth-submit-btn {
+  background: #FFF37E;
+  color: #2B2D3B;
+  width: 80%;              /* fill available width */
+  min-height: 50px;
+  box-shadow: 0 6px 0 #7F740F;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 25px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-top: 35px;
+}
+
+/* Login form positioning */
+.auth-page .auth-form#login-form {
+  top: 300px;
+}
+
+/* Login form input positioning */
+.auth-page .auth-form input[type="password"] {
+  margin-bottom: 5px;
+}
+
+/* Login form button positioning */
+.auth-page .auth-submit-btn {
+  margin-top: 15px;
+}
