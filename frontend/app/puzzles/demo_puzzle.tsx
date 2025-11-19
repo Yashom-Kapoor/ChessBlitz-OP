@@ -15,6 +15,7 @@ import GlobalStyle from '@/context/GlobalStyle';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import GlassBlurView from '@/components/GlassBlurView';
+import { postCompletedPuzzle } from '@/api/PostCompleted';
 
 export default function DemoPuzzle() {
     const { theme } = useTheme();
@@ -130,6 +131,10 @@ export default function DemoPuzzle() {
     const [chess] = useState<Chess>(new Chess);
     
     const [elapsedTime, setElapsedTime] = useState(0);
+    const [hintsUsed, setHintsUsed] = useState(0);
+    const [undosUsed, setUndosUsed] = useState(0);
+    const [redosUsed, setRedosUsed] = useState(0);
+
     const [error, setError] = useState<string | null>(null);
     const [moveNumber, setMoveNumber] = useState(1);
     const [loadingHint, setLoadingHint] = useState(false); // Track whether the hint is loading
@@ -142,22 +147,25 @@ export default function DemoPuzzle() {
     const [puzzleCompleted, setPuzzleCompleted] = useState<boolean | null>(false); // Track puzzle completion stat
 
     const handleGetHint = async () => {
-        try {
-            setHint(null);
-            setIsHintExpandable(false);
-            setExpanded(puzzleCompleted == true);
-            setLoadingHint(true); // Start loading
-            const fetchedHint = await fetchHint(chessboardRef.current?.getPuzzle().ID, 2 * moveNumber);
-            setHint(fetchedHint);
-            setError(null);
-        } catch (err) {
-            setError((err as Error).message);
-            setHint(null);
-            setIsHintExpandable(false);
-        } finally {
-            setLoadingHint(false); // Stop loading
-            setIsHintExpandable(true); // Only actual hints from API are expandable
-            setExpanded(true);
+        if (!puzzleCompleted) {
+            try {
+                setHint(null);
+                setIsHintExpandable(false);
+                setExpanded(false);
+                setLoadingHint(true); // Start loading
+                const fetchedHint = await fetchHint(chessboardRef.current?.getPuzzle().ID, 2 * moveNumber);
+                setHint(fetchedHint);
+                setHintsUsed(hintsUsed + 1); // Increment hints used
+                setError(null);
+            } catch (err) {
+                setError((err as Error).message);
+                setHint(null);
+                setIsHintExpandable(false);
+            } finally {
+                setLoadingHint(false); // Stop loading
+                setIsHintExpandable(true); // Only actual hints from API are expandable
+                setExpanded(true);
+            }
         }
     };
 
@@ -259,6 +267,7 @@ export default function DemoPuzzle() {
             } else {
                 chessboardRef.current.board.resetBoard(chess.fen()); // Call the reset method on the chessboard
                 setTurn(getTurnFromFEN(chessboardRef.current.getPuzzle().FEN)); // Reset turn
+                setUndosUsed(undosUsed + 1); // Counts undo
             }
 
         }
@@ -272,10 +281,32 @@ export default function DemoPuzzle() {
                         to: moves[moveNumber * 2 - 1].substring(2, 4),
                         promotion: moves[moveNumber * 2 - 1].substring(4)
                     });
-                }), (200);
+                    setRedosUsed(redosUsed + 1); // Counts redo
+                }, 200);
             }
         }
     };
+
+    useEffect(() => {
+        if (puzzleCompleted) {
+            const submitCompletion = async () => {
+                try {
+                    await postCompletedPuzzle({
+                        userId: 'user123', 
+                        puzzleId: chessboardRef.current?.getPuzzle()?.ID || '',
+                        timeElapsed: elapsedTime,
+                        hintsUsed: hintsUsed, 
+                        undosUsed: undosUsed, 
+                        redosUsed: redosUsed, 
+                        completed: true,
+                    });
+                } catch (error) {
+                    console.error('Failed to submit puzzle completion:', error);
+                }
+            };
+            submitCompletion();
+        }
+    }, [puzzleCompleted]);
 
     return (
         <BackgroundContext theme={theme} style={puzzleStyles.container}>
@@ -283,8 +314,7 @@ export default function DemoPuzzle() {
                 {`BEST: ${moves[2 * moveNumber - 1]}\n`}
                 {`TURN: ${getTurnFromFEN(lastFEN)}\n`}
                 {`MOVE: ${moveNumber}\n`}
-                {`EXPANDED: ${expanded}\n`}
-                {`HINT EXPANDABLE: ${isHintExpandable}\n`}
+                {`HINTS: ${hintsUsed}  UNDOs: ${undosUsed}  REDOs: ${redosUsed}`}
             </Text>
 
             <Animated.Image
@@ -368,6 +398,7 @@ export default function DemoPuzzle() {
                             width: '100%',
                             height: '100%',
                             transform: [{ scale: 0.5 }],
+                            tintColor: theme.secondaryText,
                         }, hintBubbleStyle]}
                         resizeMode="center"
                     />
