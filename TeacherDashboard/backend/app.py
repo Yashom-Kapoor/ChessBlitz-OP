@@ -204,7 +204,7 @@ def index():
 def teacher_dashboard():
     return render_template('teacher_dashboard.html')
 
-# REMOVED: @app.route('/student') - since no student dashboard
+# PORK
 
 @app.route('/sign_up', methods=['POST'])
 def sign_up_route():
