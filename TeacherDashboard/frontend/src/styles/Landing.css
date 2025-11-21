@@ -93,7 +93,8 @@
 }
 
 .auth-form input[type="email"],
-.auth-form input[type="password"] {
+.auth-form input[type="password"],
+.auth-form input[type="text"] {
   width: 380px;
   height: 45px;
   padding-left: 12px;

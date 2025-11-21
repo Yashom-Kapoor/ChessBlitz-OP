@@ -1,8 +1,14 @@
 from flask import Flask, request, jsonify, render_template
+from flask_cors import CORS
 import random
 import string
 import os
 import json
+from supabase import create_client
+
+# Supabase client initialization
+USE_SUPABASE = False
+supabase = None
 
 # Get the absolute path to the frontend folder
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -11,6 +17,9 @@ frontend_dir = os.path.join(current_dir, '../frontend')
 app = Flask(__name__, 
     template_folder=os.path.join(frontend_dir, 'templates'),
     static_folder=os.path.join(frontend_dir, 'static'))
+
+# Enable CORS for all routes
+CORS(app)
 
 # --- Setup ---
 DATA_DIR = "data"
@@ -37,9 +46,25 @@ def save_data(filename, data):
         json.dump(data, f, indent=4)
 
 # --- Initialize Databases ---
-teachers = load_data(TEACHER_FILE)
 students = load_data(STUDENT_FILE)
 classrooms = load_data(CLASSROOM_FILE)
+
+# Initialize Supabase if credentials are present
+SUPABASE_URL = "https://pqmamdtdvdjroosbhicu.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxbWFtZHRkdmRqcm9vc2JoaWN1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTA2NjE0MywiZXhwIjoyMDc2NjQyMTQzfQ.LGWfibhYzTll5EWRBDCsgcFsT7jlXqWecXpDVuc_YcQ"
+if SUPABASE_URL and SUPABASE_KEY and create_client:
+    try:
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+        USE_SUPABASE = True
+        print("Supabase client initialized. Teachers will be stored in Supabase.")
+    except Exception as e:
+        print("Failed to initialize Supabase client:", e)
+        USE_SUPABASE = False
+else:
+    if not (SUPABASE_URL and SUPABASE_KEY):
+        print("SUPABASE_URL or SUPABASE_KEY not set; using local JSON storage for teachers.")
+    else:
+        print("Supabase client library not available; using local JSON storage for teachers.")
 
 # --- Utility: Generate IDs and unique codes ---
 def generate_uid(existing_list):
@@ -56,18 +81,44 @@ def generate_unique_code():
 
 # --- Teacher functions ---
 def create_teacher(name, email, password):
-    if any(t["email"] == email for t in teachers):
+    # Now requires Supabase: only Name and email are stored in Supabase
+    if not USE_SUPABASE or supabase is None:
+        return None, "Supabase is not configured"
+
+    # Check existing teacher in Supabase
+    try:
+        resp = supabase.table('Teacher-DB').select('*').eq('email', email).execute()
+        data = resp.data if hasattr(resp, 'data') else resp[0]
+    except Exception as e:
+        return None, f"Supabase error checking existing teacher: {e}"
+    if data and len(data) > 0:
         return None, "Email already exists"
-    teacher = {
-        "UID": generate_uid(teachers),
-        "Name": name,
-        "email": email,
-        "Password": password,
-        "Class List": []
-    }
-    teachers.append(teacher)
-    save_data(TEACHER_FILE, teachers)
-    return teacher, "Teacher account created"
+
+    # Insert only Name and email (Supabase generates primary key/UUID)
+    try:
+        # Some supabase-python clients don't allow chaining `.select()` on insert.
+        insert_resp = supabase.table('Teacher-DB').insert({
+            'name': name,
+            'email': email
+        }).execute()
+
+        # Normalize returned data across different client versions
+        inserted = None
+        if hasattr(insert_resp, 'data'):
+            inserted = insert_resp.data
+        elif isinstance(insert_resp, dict) and 'data' in insert_resp:
+            inserted = insert_resp['data']
+        elif isinstance(insert_resp, list):
+            inserted = insert_resp
+
+        if inserted:
+            if isinstance(inserted, list) and len(inserted) > 0:
+                return inserted[0], "Teacher account created (Supabase)"
+            return inserted, "Teacher account created (Supabase)"
+
+        return {'name': name, 'email': email}, "Teacher account created (Supabase, no returned row)"
+    except Exception as e:
+        return None, f"Supabase insert error: {e}"
 
 # --- Student functions ---
 def create_student(name, email):
@@ -87,9 +138,19 @@ def create_student(name, email):
 
 # --- Classroom functions ---
 def create_classroom(name, teacher_email):
-    teacher = next((t for t in teachers if t["email"] == teacher_email), None)
-    if not teacher:
-        return None, "Teacher not found"
+    # Fetch teacher either from Supabase or local
+    teacher = None
+    if not USE_SUPABASE or supabase is None:
+        return None, "Supabase is not configured"
+    try:
+        resp = supabase.table('Teacher-DB').select('*').eq('email', teacher_email).execute()
+        data = resp.data if hasattr(resp, 'data') else resp[0]
+        if data and len(data) > 0:
+            teacher = data[0]
+        else:
+            return None, "Teacher not found"
+    except Exception as e:
+        return None, f"Supabase error finding teacher: {e}"
     
     classroom = {
         "UID": generate_uid(classrooms),
@@ -101,9 +162,17 @@ def create_classroom(name, teacher_email):
         "Classroom Code": generate_unique_code()
     }
     classrooms.append(classroom)
-    teacher["Class List"].append(classroom["UID"])
+    # Update classroom list locally
     save_data(CLASSROOM_FILE, classrooms)
-    save_data(TEACHER_FILE, teachers)
+
+    # Update teacher's Class List
+    try:
+        # If teacher has 'Class_List' field in Supabase, append to it; otherwise create it
+        class_list = teacher.get('Class_List', []) if isinstance(teacher, dict) else []
+        class_list.append(classroom['UID'])
+        supabase.table('Teacher-DB').update({'Class_List': class_list}).eq('email', teacher_email).execute()
+    except Exception as e:
+        return classroom, f"Classroom created but failed to update teacher in Supabase: {e}"
     return classroom, "Classroom created successfully"
 
 def join_classroom(student_name, student_email, class_code):
@@ -174,20 +243,36 @@ def join_classroom_route():
 
 @app.route('/get_classrooms/<teacher_email>', methods=['GET'])
 def get_classrooms_route(teacher_email):
-    teacher = next((t for t in teachers if t["email"] == teacher_email), None)
-    if not teacher:
-        return jsonify({"error": "Teacher not found"}), 404
+    if not USE_SUPABASE or supabase is None:
+        return jsonify({"error": "Supabase is not configured"}), 500
+    try:
+        resp = supabase.table('Teacher-DB').select('*').eq('email', teacher_email).execute()
+        data = resp.data if hasattr(resp, 'data') else resp[0]
+        if not (data and len(data) > 0):
+            return jsonify({"error": "Teacher not found"}), 404
+    except Exception as e:
+        return jsonify({"error": f"Supabase error: {e}"}), 500
     teacher_classes = [c for c in classrooms if c["Primary Teacher"] == teacher_email]
     return jsonify({"classrooms": teacher_classes})
 
 @app.route('/get_all_data', methods=['GET'])
 def get_all_data():
     """Debug route to see all databases."""
-    return jsonify({
-        "Teachers": teachers,
+    out = {
         "Students": students,
         "Classrooms": classrooms
-    })
+    }
+    if not USE_SUPABASE or supabase is None:
+        out["Teachers"] = {"error": "Supabase is not configured"}
+        return jsonify(out)
+
+    try:
+        resp = supabase.table('Teacher-DB').select('*').execute()
+        data = resp.data if hasattr(resp, 'data') else resp[0]
+        out["Teachers"] = data
+    except Exception as e:
+        out["Teachers"] = {"error": f"Supabase error: {e}"}
+    return jsonify(out)
 
 # --- Run the Flask app ---
 if __name__ == '__main__':

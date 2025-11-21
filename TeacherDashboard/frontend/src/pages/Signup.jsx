@@ -4,10 +4,13 @@ import chessblitzLogo from "../assets/ChessBlitz.png";
 import "../styles/Landing.css";
 
 export default function Signup() {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordMismatch, setPasswordMismatch] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const checkPasswords = () => {
@@ -28,16 +31,60 @@ export default function Signup() {
     setTimeout(checkPasswords, 0);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
+    setPasswordMismatch(false);
+    setError("");
+
+    if (!name.trim()) {
+      setError("Name is required");
+      return;
+    }
+
+    if (!email.trim()) {
+      setError("Email is required");
+      return;
+    }
+
+    if (!password || !confirmPassword) {
+      setError("Passwords are required");
+      return;
+    }
+
     if (password !== confirmPassword) {
       setPasswordMismatch(true);
       return;
     }
 
-    // Success → go to classrooms
-    navigate("/classrooms");
+    setLoading(true);
+
+    try {
+      const response = await fetch("http://localhost:5000/sign_up", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          password: password,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        setError(data.error || "Signup failed");
+        setLoading(false);
+        return;
+      }
+
+      // Success → go to classrooms
+      navigate("/classrooms");
+    } catch (err) {
+      setError(err.message || "Failed to connect to server. Make sure backend is running on localhost:5000");
+      setLoading(false);
+    }
   };
 
   return (
@@ -52,6 +99,15 @@ export default function Signup() {
         </p>
 
         <form className="auth-form" onSubmit={handleSubmit}>
+          <input
+            type="text"
+            id="name"
+            placeholder="Name"
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+
           <input
             type="email"
             id="email"
@@ -81,12 +137,18 @@ export default function Signup() {
 
           {passwordMismatch && (
             <span className="field-error" aria-live="polite">
-              ! password not match
+              Passwords do not match
             </span>
           )}
 
-          <button type="submit" className="auth-submit-btn">
-            Create Account
+          {error && (
+            <span className="field-error" aria-live="polite">
+              ! {error}
+            </span>
+          )}
+
+          <button type="submit" className="auth-submit-btn" disabled={loading}>
+            {loading ? "Creating Account..." : "Create Account"}
           </button>
         </form>
       </div>

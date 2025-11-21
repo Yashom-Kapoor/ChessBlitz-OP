@@ -32,6 +32,12 @@ body {
   left: 0;
   bottom: 0;
   z-index: 1000;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sidebar::-webkit-scrollbar {
+  display: none;
 }
 
 /* Shift content when a Sidebar sibling exists (only on routes that render it) */
