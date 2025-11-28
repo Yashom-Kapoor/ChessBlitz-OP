@@ -72,12 +72,20 @@ export default function Signup() {
         }),
       });
 
+      const data = await response.json();
       if (!response.ok) {
-        const data = await response.json();
         setError(data.error || "Signup failed");
         setLoading(false);
         return;
       }
+
+      // Persist teacher info for later (including uid/id)
+      try {
+        const teacher = data.teacher || {};
+        const uid = teacher.id ?? teacher.uid ?? teacher.teacher_uid;
+        const stored = { ...teacher, uid };
+        localStorage.setItem("teacher", JSON.stringify(stored));
+      } catch {}
 
       // Success → go to classrooms
       navigate("/classrooms");

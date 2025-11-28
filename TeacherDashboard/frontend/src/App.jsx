@@ -8,7 +8,7 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import CreateClassroomModal from "./components/CreateClassroomModal";
 import RenameClassroomModal from "./components/RenameClassroomModal";
-import { createClassroom, updateClassroom, deleteClassroom } from "./api/classroomApi";
+import { updateClassroom, deleteClassroom } from "./api/classroomApi";
 
 export default function App() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -17,8 +17,8 @@ export default function App() {
   const [renameClassroomName, setRenameClassroomName] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  const handleCreateClassroom = async (name) => {
-    await createClassroom(name);
+  const handleCreateClassroom = async (created) => {
+    // created may be a name string or a classroom object; in both cases just refresh the grid
     setRefreshTrigger(prev => prev + 1);
   };
 
