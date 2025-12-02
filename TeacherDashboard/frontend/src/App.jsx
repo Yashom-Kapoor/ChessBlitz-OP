@@ -8,17 +8,23 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import CreateClassroomModal from "./components/CreateClassroomModal";
 import RenameClassroomModal from "./components/RenameClassroomModal";
-import { createClassroom, updateClassroom, deleteClassroom } from "./api/classroomApi";
+import { updateClassroom, deleteClassroom } from "./api/classroomApi";
 
 export default function App() {
+  let storedTeacher = null;
+  try {
+    storedTeacher = JSON.parse(localStorage.getItem("teacher") || "null");
+  } catch {}
+  const teacherUid = storedTeacher ? (storedTeacher.uid || storedTeacher.id || storedTeacher.teacher_uid) : null;
+  
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
   const [renameClassroomId, setRenameClassroomId] = useState(null);
   const [renameClassroomName, setRenameClassroomName] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  const handleCreateClassroom = async (name) => {
-    await createClassroom(name);
+  const handleCreateClassroom = async (created) => {
+    // created may be a name string or a classroom object; in both cases just refresh the grid
     setRefreshTrigger(prev => prev + 1);
   };
 
@@ -76,6 +82,7 @@ export default function App() {
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
           onCreate={handleCreateClassroom}
+          teacherUid={teacherUid}
         />
         <RenameClassroomModal
           isOpen={isRenameModalOpen}
