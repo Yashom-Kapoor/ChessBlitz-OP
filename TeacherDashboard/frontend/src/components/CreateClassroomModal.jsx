@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { createClassroom } from "../api/classroomApi";
 
 export default function CreateClassroomModal({ isOpen, onClose, onCreate, teacherUid }) {
   const [classroomName, setClassroomName] = useState("");
@@ -31,12 +30,21 @@ export default function CreateClassroomModal({ isOpen, onClose, onCreate, teache
         } catch {}
       }
 
-      // Use centralized API helper which respects VITE_API_URL
-      let created;
-      try {
-        created = await createClassroom(classroomName.trim(), uid);
-      } catch (err) {
-        setError(err.message || "Creation failed");
+      const response = await fetch("http://localhost:5000/create_classroom", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: classroomName.trim(),
+          teacher_uid: uid
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Creation failed");
         setLoading(false);
         return;
       }
@@ -50,14 +58,12 @@ export default function CreateClassroomModal({ isOpen, onClose, onCreate, teache
       onClose();
 
       // Normalize backend response shape and safely notify parent
+      const raw = (data && (data.classroom || data)) || {};
       const safeClassroom = {
-        name: created.name ?? classroomName.trim(),
-        join_code: created.join_code ?? null,
-        id: created.id ?? created.join_code ?? null,
-        teacher_uid: created.teacher_uid ?? uid ?? null,
-        students: created.students ?? 0,
-        filled: created.filled ?? 0,
-        background: created.background
+        name: raw.name ?? classroomName.trim(),
+        join_code: raw.join_code ?? raw.Classroom_Code ?? null,
+        id: raw.id ?? raw.UID ?? null,
+        teacher_uid: raw.teacher_uid ?? uid ?? null
       };
 
       try {
@@ -67,8 +73,7 @@ export default function CreateClassroomModal({ isOpen, onClose, onCreate, teache
         setError("Something went wrong updating the list. Please try again.");
       }
     } catch (err) {
-      const apiUrl = import.meta.env.VITE_API_URL || "<backend API>";
-      setError(err.message || `Failed to connect to server. Make sure backend is reachable (${apiUrl})`);
+      setError("Failed to connect to server. Make sure backend is running on localhost:5000");
       setLoading(false);
     }
   };

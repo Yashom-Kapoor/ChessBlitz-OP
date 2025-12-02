@@ -1,6 +1,5 @@
 // Real API integration for classrooms
-// Use Vite env `VITE_API_URL` when available, otherwise fall back to Render URL.
-const API_BASE = (import.meta.env.VITE_API_URL || "https://chessblitz-2.onrender.com").replace(/\/$/, "");
+const API_BASE = "http://localhost:5000";
 
 function pickColor() {
   const colors = ["#4A90E2", "#7B68EE", "#E74C3C", "#3498DB", "#9B59B6", "#16A085", "#F39C12"];
@@ -33,15 +32,12 @@ export async function getClassroomById(id) {
   return all.find((c) => c.id === id) || null;
 }
 
-export async function createClassroom(name, teacherUid = null) {
+export async function createClassroom(name) {
   try {
-    const body = { name };
-    if (teacherUid) body.teacher_uid = teacherUid;
-
     const resp = await fetch(`${API_BASE}/create_classroom`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
+      body: JSON.stringify({ name })
     });
     const json = await resp.json();
     if (!resp.ok) throw new Error(json.error || "Failed to create classroom");
@@ -52,8 +48,7 @@ export async function createClassroom(name, teacherUid = null) {
       students: 0,
       filled: 0,
       background: pickColor(),
-      join_code: c.join_code,
-      teacher_uid: c.teacher_uid ?? teacherUid ?? null
+      join_code: c.join_code
     };
   } catch (e) {
     console.error("Create classroom error:", e);
