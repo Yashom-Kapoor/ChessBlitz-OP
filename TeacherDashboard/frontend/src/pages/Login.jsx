@@ -24,9 +24,32 @@ export default function Login() {
       setError("Password must be at least 6 characters.");
       return;
     }
+    (async () => {
+      try {
+        const apiUrl = (import.meta.env.VITE_API_URL || "https://chessblitz-2.onrender.com").replace(/\/$/, "");
+        const resp = await fetch(`${apiUrl}/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const json = await resp.json();
+        if (!resp.ok) {
+          setError(json.error || 'Login failed');
+          return;
+        }
 
-    // Success → redirect to classrooms
-    navigate("/classrooms");
+        // Persist teacher info for later actions (create classroom)
+        try {
+          const teacher = json.teacher || {};
+          const uid = teacher.id ?? teacher.uid ?? teacher.teacher_uid;
+          localStorage.setItem('teacher', JSON.stringify({ ...teacher, uid }));
+        } catch {}
+
+        navigate('/classrooms');
+      } catch (err) {
+        setError(err.message || 'Failed to connect to server');
+      }
+    })();
   };
 
   return (

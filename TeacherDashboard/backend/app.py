@@ -105,6 +105,15 @@ def create_classroom(name, teacher_uid=None):
     if not teacher_uid:
         return None, "teacher_uid is required"
 
+    # Verify teacher exists
+    try:
+        t_resp = supabase.table('Teacher-DB').select('*').eq('id', teacher_uid).execute()
+        t_data = t_resp.data if hasattr(t_resp, 'data') else t_resp[0]
+        if not t_data or len(t_data) == 0:
+            return None, "teacher_uid not found"
+    except Exception as e:
+        return None, f"Supabase error verifying teacher: {e}"
+
     # Check existing classroom in Supabase
     try:
         resp = supabase.table('Classroom-DB').select('*').eq('name', name).execute()
@@ -179,6 +188,30 @@ def sign_up_route():
     if teacher:
         return jsonify({"message": message, "teacher": teacher}), 201
     return jsonify({"error": message}), 400
+
+
+@app.route('/login', methods=['POST'])
+def login_route():
+    """Login: check Teacher-DB for the provided email and return teacher row if exists.
+    Password is not validated here because the teacher rows currently only store name/email.
+    """
+    if not USE_SUPABASE or supabase is None:
+        return jsonify({"error": "Supabase is not configured"}), 500
+
+    data = request.get_json() or {}
+    email = data.get('email')
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+
+    try:
+        resp = supabase.table('Teacher-DB').select('*').eq('email', email).execute()
+        rows = resp.data if hasattr(resp, 'data') else resp[0]
+        if not rows or len(rows) == 0:
+            return jsonify({"error": "Teacher not found"}), 404
+        teacher = rows[0] if isinstance(rows, list) else rows
+        return jsonify({"teacher": teacher}), 200
+    except Exception as e:
+        return jsonify({"error": f"Supabase error: {e}"}), 500
 
 @app.route('/create_classroom', methods=['POST'])
 def create_classroom_route():

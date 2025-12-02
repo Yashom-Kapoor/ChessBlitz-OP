@@ -60,7 +60,8 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      const response = await fetch("https://chessblitz-2.onrender.com/sign_up", {
+      const apiUrl = (import.meta.env.VITE_API_URL || "https://chessblitz-2.onrender.com").replace(/\/$/, "");
+      const response = await fetch(`${apiUrl}/sign_up`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -90,7 +91,8 @@ export default function Signup() {
       // Success → go to classrooms
       navigate("/classrooms");
     } catch (err) {
-      setError(err.message || "Failed to connect to server. Make sure backend is running on localhost:5000");
+      const apiUrl = import.meta.env.VITE_API_URL || "<backend API>";
+      setError(err.message || `Failed to connect to server. Make sure backend is reachable (${apiUrl})`);
       setLoading(false);
     }
   };
