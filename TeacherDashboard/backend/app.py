@@ -21,6 +21,8 @@ app = Flask(__name__,
 # Enable CORS for all routes
 CORS(app)
 
+# --- Local JSON storage removed; Supabase only ---
+
 # Initialize Supabase if credentials are present
 load_dotenv() 
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")

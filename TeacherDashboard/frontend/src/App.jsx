@@ -12,6 +12,12 @@ import RenameClassroomModal from "./components/RenameClassroomModal";
 import { updateClassroom, deleteClassroom } from "./api/classroomApi";
 
 export default function App() {
+  let storedTeacher = null;
+  try {
+    storedTeacher = JSON.parse(localStorage.getItem("teacher") || "null");
+  } catch {}
+  const teacherUid = storedTeacher ? (storedTeacher.uid || storedTeacher.id || storedTeacher.teacher_uid) : null;
+  
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
   const [renameClassroomId, setRenameClassroomId] = useState(null);
@@ -83,6 +89,7 @@ export default function App() {
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
           onCreate={handleCreateClassroom}
+          teacherUid={teacherUid}
         />
         <RenameClassroomModal
           isOpen={isRenameModalOpen}
