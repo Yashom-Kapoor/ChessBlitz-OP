@@ -180,6 +180,36 @@ def sign_up_route():
         return jsonify({"message": message, "teacher": teacher}), 201
     return jsonify({"error": message}), 400
 
+@app.route('/login', methods=['POST'])
+def login_route():
+    """Login route - authenticates teacher by email"""
+    if not USE_SUPABASE or supabase is None:
+        return jsonify({"error": "Supabase is not configured"}), 500
+    
+    data = request.get_json()
+    email = data.get('email')
+    password = data.get('password')  # Note: Password validation not implemented yet
+    
+    if not email or not password:
+        return jsonify({"error": "Email and password are required"}), 400
+    
+    try:
+        # Find teacher by email
+        resp = supabase.table('Teacher-DB').select('*').eq('email', email).execute()
+        data = resp.data if hasattr(resp, 'data') else resp[0]
+        
+        if not data or len(data) == 0:
+            return jsonify({"error": "Invalid email or password"}), 401
+        
+        teacher = data[0] if isinstance(data, list) else data
+        
+        # TODO: In production, verify password hash here
+        # For now, we just return the teacher if email exists
+        
+        return jsonify({"message": "Login successful", "teacher": teacher}), 200
+    except Exception as e:
+        return jsonify({"error": f"Login error: {e}"}), 500
+
 @app.route('/create_classroom', methods=['POST'])
 def create_classroom_route():
     data = request.get_json()
@@ -240,6 +270,68 @@ def get_all_data():
     except Exception as e:
         out["Classrooms"] = {"error": f"Supabase error: {e}"}
     return jsonify(out)
+
+@app.route('/get_teacher_profile', methods=['GET'])
+def get_teacher_profile():
+    """Get teacher profile by teacher_uid"""
+    if not USE_SUPABASE or supabase is None:
+        return jsonify({"error": "Supabase is not configured"}), 500
+    
+    teacher_uid = request.args.get('teacher_uid')
+    if not teacher_uid:
+        return jsonify({"error": "teacher_uid is required"}), 400
+    
+    try:
+        resp = supabase.table('Teacher-DB').select('*').eq('teacher_uid', teacher_uid).execute()
+        data = resp.data if hasattr(resp, 'data') else resp[0]
+        
+        if not data or len(data) == 0:
+            return jsonify({"error": "Teacher not found"}), 404
+        
+        profile = data[0] if isinstance(data, list) else data
+        return jsonify({"profile": profile}), 200
+    except Exception as e:
+        return jsonify({"error": f"Supabase error: {e}"}), 500
+
+@app.route('/update_teacher_profile', methods=['PUT'])
+def update_teacher_profile():
+    """Update teacher profile"""
+    if not USE_SUPABASE or supabase is None:
+        return jsonify({"error": "Supabase is not configured"}), 500
+    
+    data = request.get_json()
+    teacher_uid = data.get('teacher_uid')
+    
+    if not teacher_uid:
+        return jsonify({"error": "teacher_uid is required"}), 400
+    
+    # Build update object from provided fields
+    update_data = {}
+    if 'name' in data:
+        update_data['name'] = data['name']
+    if 'bio' in data:
+        update_data['bio'] = data['bio']
+    if 'favorite_opening_move' in data:
+        update_data['favorite_opening_move'] = data['favorite_opening_move']
+    
+    if not update_data:
+        return jsonify({"error": "No fields to update"}), 400
+    
+    try:
+        # Update the teacher record
+        update_resp = supabase.table('Teacher-DB').update(update_data).eq('teacher_uid', teacher_uid).execute()
+        
+        # Fetch the updated record
+        fetch_resp = supabase.table('Teacher-DB').select('*').eq('teacher_uid', teacher_uid).execute()
+        fetch_data = fetch_resp.data if hasattr(fetch_resp, 'data') else fetch_resp[0]
+        
+        if not fetch_data or len(fetch_data) == 0:
+            return jsonify({"error": "Teacher not found after update"}), 404
+        
+        profile = fetch_data[0] if isinstance(fetch_data, list) else fetch_data
+        return jsonify({"message": "Profile updated", "profile": profile}), 200
+    except Exception as e:
+        return jsonify({"error": f"Supabase error: {e}"}), 500
 
 # --- Run the Flask app ---
 if __name__ == '__main__':

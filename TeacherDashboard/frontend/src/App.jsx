@@ -6,6 +6,7 @@ import StudentHub from "./pages/StudentHub";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import Profile from "./pages/Profile";
 import CreateClassroomModal from "./components/CreateClassroomModal";
 import RenameClassroomModal from "./components/RenameClassroomModal";
 import { updateClassroom, deleteClassroom } from "./api/classroomApi";
@@ -58,7 +59,7 @@ export default function App() {
           <Route path="/classrooms" element={
             <>
               <Sidebar onCreateClassroomClick={() => setIsCreateModalOpen(true)} />
-              <MyClassrooms 
+              <MyClassrooms
                 refreshTrigger={refreshTrigger}
                 onRenameClassroom={openRenameModal}
                 onDeleteClassroom={handleDeleteClassroom}
@@ -69,6 +70,12 @@ export default function App() {
             <>
               <Sidebar onCreateClassroomClick={() => setIsCreateModalOpen(true)} />
               <StudentHub />
+            </>
+          } />
+          <Route path="/profile" element={
+            <>
+              <Sidebar onCreateClassroomClick={() => setIsCreateModalOpen(true)} />
+              <Profile />
             </>
           } />
         </Routes>
