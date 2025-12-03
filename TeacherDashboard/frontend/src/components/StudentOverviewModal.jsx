@@ -1,4 +1,4 @@
-import { FaTimes } from "react-icons/fa";
+import { FaArrowLeft } from "react-icons/fa";
 import "./StudentOverviewModal.css";
 
 export default function StudentOverviewModal({ isOpen, onClose, student }) {
@@ -8,13 +8,17 @@ export default function StudentOverviewModal({ isOpen, onClose, student }) {
   const accuracy = Math.floor(Math.random() * 30) + 70; // 70-99%
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        {/* Close button */}
-        <button className="modal-close-btn" onClick={onClose}>
-          <FaTimes />
+    <div className="student-overview-page">
+      {/* Sidebar */}
+      <aside className="student-overview-sidebar">
+        <button onClick={onClose} className="back-button">
+          <FaArrowLeft />
+          <span>Back</span>
         </button>
+      </aside>
 
+      {/* Main content */}
+      <div className="student-overview-main">
         {/* Header */}
         <h1 className="overview-title">Student Overview</h1>
 

@@ -18,6 +18,7 @@ export default function GlobalStyle(
             gap: isTablet ? 30 : 20,
             marginTop: 120,
             paddingBottom: 60,
+            minHeight: '90%',
         },
         hStack: {
             width: '100%',

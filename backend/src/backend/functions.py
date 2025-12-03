@@ -395,3 +395,28 @@ def friends_leaderboard(db: Database, userid: str, limit: int = 25) -> List[Dict
         return sorted_leaderboard[:limit]
     except Exception as e:
         return [{"error": f"Failed to get friends leaderboard: {e}"}]
+
+#Rating
+
+def deltaRating(currentRating, puzzleRating, num_solved, solved):
+  '''
+  currentRating = student current rating
+  puzzleRating = how hard the puzzle is
+  num_solved = number_solved
+  solved = 0/1 if they solved the puzzle
+  deltaMax = max amount of change
+  shapeOfDecay = how much the deltaRating changes as the student progresses
+  '''
+
+  deltaMax = 100
+  shapeOfDecay = 2
+  Kmin = 12 #Learning Rate
+  Kmax = 75 #Learning Rates
+  k = Kmin + (Kmax - Kmin) * (1/(1+num_solved)) ** shapeOfDecay
+
+  expected = 1 / (1 + 10 ** ((puzzleRating - currentRating) / 400))
+
+  delta = k * (solved - expected)
+  delta = max(-deltaMax, min(delta, deltaMax))
+
+  return delta

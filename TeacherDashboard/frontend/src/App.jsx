@@ -6,19 +6,26 @@ import StudentHub from "./pages/StudentHub";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import Profile from "./pages/Profile";
 import CreateClassroomModal from "./components/CreateClassroomModal";
 import RenameClassroomModal from "./components/RenameClassroomModal";
-import { createClassroom, updateClassroom, deleteClassroom } from "./api/classroomApi";
+import { updateClassroom, deleteClassroom } from "./api/classroomApi";
 
 export default function App() {
+  let storedTeacher = null;
+  try {
+    storedTeacher = JSON.parse(localStorage.getItem("teacher") || "null");
+  } catch {}
+  const teacherUid = storedTeacher ? (storedTeacher.uid || storedTeacher.id || storedTeacher.teacher_uid) : null;
+  
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
   const [renameClassroomId, setRenameClassroomId] = useState(null);
   const [renameClassroomName, setRenameClassroomName] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  const handleCreateClassroom = async (name) => {
-    await createClassroom(name);
+  const handleCreateClassroom = async (created) => {
+    // created may be a name string or a classroom object; in both cases just refresh the grid
     setRefreshTrigger(prev => prev + 1);
   };
 
@@ -58,7 +65,7 @@ export default function App() {
           <Route path="/classrooms" element={
             <>
               <Sidebar onCreateClassroomClick={() => setIsCreateModalOpen(true)} />
-              <MyClassrooms 
+              <MyClassrooms
                 refreshTrigger={refreshTrigger}
                 onRenameClassroom={openRenameModal}
                 onDeleteClassroom={handleDeleteClassroom}
@@ -71,11 +78,18 @@ export default function App() {
               <StudentHub />
             </>
           } />
+          <Route path="/profile" element={
+            <>
+              <Sidebar onCreateClassroomClick={() => setIsCreateModalOpen(true)} />
+              <Profile />
+            </>
+          } />
         </Routes>
         <CreateClassroomModal
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
           onCreate={handleCreateClassroom}
+          teacherUid={teacherUid}
         />
         <RenameClassroomModal
           isOpen={isRenameModalOpen}

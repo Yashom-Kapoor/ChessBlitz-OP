@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import logoImage from "../assets/logo.png";
 import profileIcon from "../assets/profile.png";
 import classroomsIcon from "../assets/classrooms.png";
@@ -6,6 +7,15 @@ import settingsIcon from "../assets/settings.png";
 import logoutIcon from "../assets/logout.png";
 
 export default function Sidebar({ onCreateClassroomClick }) {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    // Clear authentication data
+    localStorage.removeItem("teacher");
+    // Redirect to landing page
+    navigate("/");
+  };
+
   return (
     <div className="sidebar">
       {/* Logo */}
@@ -18,12 +28,12 @@ export default function Sidebar({ onCreateClassroomClick }) {
       {/* Navigation Items */}
       <div className="sidebar-nav">
         {/* Profile */}
-        <div className="nav-item">
+        <a href="/profile" className="nav-item">
           <div className="nav-icon">
             <img src={profileIcon} alt="Profile" />
           </div>
           <span className="nav-text">Profile</span>
-        </div>
+        </a>
 
         {/* My Classrooms - Active */}
         <a href="/classrooms" className="nav-item active">
@@ -52,12 +62,12 @@ export default function Sidebar({ onCreateClassroomClick }) {
 
       {/* Log Out */}
       <div className="sidebar-footer">
-        <a href="/" className="nav-item">
+        <div className="nav-item" onClick={handleLogout} style={{ cursor: "pointer" }}>
           <div className="nav-icon">
             <img src={logoutIcon} alt="Log Out" />
           </div>
           <span className="nav-text">Log Out</span>
-        </a>
+        </div>
       </div>
     </div>
   );

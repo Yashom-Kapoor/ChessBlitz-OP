@@ -44,6 +44,73 @@ def get_random_puzzle() -> Tuple[Dict[str, Any], int]:
         return jsonify({"error": "Puzzle does not exist"}), 404
     except:
         return jsonify({"error": "Server function error"}), 500
+    
+@app.route("/puzzles/completed", methods=["POST"])
+def post_completed_puzzle() -> Tuple[Dict[str, Any], int]:
+    """Record a completed puzzle with stats"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['userId', 'puzzleId', 'timeElapsed', 'hintsUsed', 'undosUsed', 'redosUsed', 'completed']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({"error": f"Missing required field: {field}"}), 400
+        
+        user_id = data['userId']
+        puzzle_id = data['puzzleId']
+        time_elapsed = data['timeElapsed']
+        hints_used = data['hintsUsed']
+        undos_used = data['undosUsed']
+        redos_used = data['redosUsed']
+        completed = data['completed']
+        
+        # Validate data types
+        if not isinstance(time_elapsed, (int, float)) or time_elapsed < 0:
+            return jsonify({"error": "timeElapsed must be a non-negative number"}), 400
+        
+        if not isinstance(hints_used, int) or hints_used < 0:
+            return jsonify({"error": "hintsUsed must be a non-negative integer"}), 400
+        
+        if not isinstance(undos_used, int) or undos_used < 0:
+            return jsonify({"error": "undosUsed must be a non-negative integer"}), 400
+            
+        if not isinstance(redos_used, int) or redos_used < 0:
+            return jsonify({"error": "redosUsed must be a non-negative integer"}), 400
+        
+        if not isinstance(completed, bool):
+            return jsonify({"error": "completed must be a boolean"}), 400
+        
+        # Store completed puzzle data in Firebase
+        completed_data = {
+            "puzzleId": puzzle_id,
+            "timeElapsed": time_elapsed,
+            "hintsUsed": hints_used,
+            "undosUsed": undos_used,
+            "redosUsed": redos_used,
+            "completed": completed,
+            "timestamp": str(datetime.now())
+        }
+        
+        # Push to user's completed puzzles
+        db.child("users").child(user_id).child("completed_puzzles").push(completed_data)
+        
+        # Update user stats if puzzle was completed successfully
+        if completed:
+            user_data = db.child("users").child(user_id).get().val()
+            current_completed = user_data.get("total_completed", 0) if user_data else 0
+            db.child("users").child(user_id).update({
+                "total_completed": current_completed + 1
+            })
+        
+        print(completed_data)
+        return jsonify({
+            "message": "Puzzle completion recorded successfully",
+            "data": completed_data
+        }), 201
+        
+    except Exception as e:
+        return jsonify({"error": f"Failed to record completed puzzle: {str(e)}"}), 500
 
 @app.route("/puzzles/<puzzle_id>/best-moves/<int:move_number>", methods=["GET"])
 def get_best_move(puzzle_id: int, move_number: int) -> Tuple[Dict[str, Any], int]:
@@ -328,10 +395,60 @@ def update_rating():
 
     except Exception as e:
         return jsonify({"error": f"Failed to update rating: {str(e)}"}), 500
+    
+# Lessons
+lessons = []
+
+@app.route('/lessons', methods=['GET'])
+def get_lessons():
+    return jsonify(lessons)
+
+@app.route('/lessons/<string:lesson_name>', methods=['GET'])
+def get_lesson(lesson_name):
+    lesson = next((l for l in lessons if l['name'] == lesson_name), None)
+    if lesson:
+        return jsonify(lesson)
+    return jsonify({'error': 'Lesson not found'}), 404
+                    
+@app.route('/lessons', methods=['POST'])
+def create_lesson():
+    data = request.get_json()
+    new_lesson = {
+        'id': lessons[-1]['id'] + 1 if lessons else 1,
+        'name': data.get('name'),
+        'desc': data.get('desc'),
+        'content': data.get('content'),
+        'icon': data.get('icon')
+    }
+    lessons.append(new_lesson)
+    return jsonify(new_lesson), 201
+
+@app.route('/lessons/<string:lesson_name>', methods=['PUT'])
+def update_lesson(lesson_name):
+    data = request.get_json()
+    lesson = next((l for l in lessons if l['name'] == lesson_name), None)
+    if lesson:
+        lesson['name'] = data.get('name', lesson['name'])
+        lesson['desc'] = data.get('desc', lesson['desc'])
+        lesson['content'] = data.get('content', lesson['content'])
+        lesson['icon'] = data.get('icon', lesson['icon'])
+        return jsonify(lesson)
+    return jsonify({'error': 'Lesson not found'}), 404
+                    
+@app.route('/lessons/<string:lesson_name>', methods=['DELETE'])
+def delete_lesson(lesson_name):
+    global lessons
+    lessons = [l for l in lessons if l['name'] != lesson_name]
+    return jsonify({'message': 'Lesson deleted'}), 200
+                    
+if __name__ == '__main__':
+    app.run(debug=True)
 
 def main():
     #app.run(debug=False, host='0.0.0.0', port=int(os.getenv("PORT", 5000)))
     app.run(debug=True)
+
+ 
 
 if __name__ == "__main__":
     main()

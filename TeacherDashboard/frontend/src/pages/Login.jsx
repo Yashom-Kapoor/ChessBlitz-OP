@@ -7,11 +7,12 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Clear error
     setError("");
 
@@ -25,8 +26,39 @@ export default function Login() {
       return;
     }
 
-    // Success → redirect to classrooms
-    navigate("/classrooms");
+    setLoading(true);
+
+    try {
+      const response = await fetch("http://localhost:5000/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Login failed");
+        setLoading(false);
+        return;
+      }
+
+      // Store teacher info in localStorage (same pattern as Signup)
+      try {
+        const teacher = data.teacher || {};
+        const uid = teacher.id ?? teacher.uid ?? teacher.teacher_uid;
+        const stored = { ...teacher, uid };
+        localStorage.setItem("teacher", JSON.stringify(stored));
+      } catch (err) {
+        console.error("Error storing teacher data:", err);
+      }
+
+      // Success → redirect to classrooms
+      navigate("/classrooms");
+    } catch (err) {
+      setError("Failed to connect to server. Make sure backend is running.");
+      setLoading(false);
+    }
   };
 
   return (
@@ -61,8 +93,8 @@ export default function Login() {
 
           {error && <p className="form-error" aria-live="polite">{error}</p>}
 
-          <button type="submit" className="auth-submit-btn">
-            Log In
+          <button type="submit" className="auth-submit-btn" disabled={loading}>
+            {loading ? "Logging in..." : "Log In"}
           </button>
         </form>
       </div>
