@@ -1,7 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { createClient } from "@supabase/supabase-js";
 import chessblitzLogo from "../assets/ChessBlitz.png";
 import "../styles/Landing.css";
+import { SUPABASE_URL, SUPABASE_KEY } from "../config";
+
+// supabase client for auth & database
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 export default function Signup() {
   const [name, setName] = useState("");
@@ -13,42 +18,15 @@ export default function Signup() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const checkPasswords = () => {
-    if (password && confirmPassword && password !== confirmPassword) {
-      setPasswordMismatch(true);
-    } else {
-      setPasswordMismatch(false);
-    }
-  };
-
-  const handlePasswordChange = (value) => {
-    setPassword(value);
-    setTimeout(checkPasswords, 0);
-  };
-
-  const handleConfirmPasswordChange = (value) => {
-    setConfirmPassword(value);
-    setTimeout(checkPasswords, 0);
-  };
+  const checkPasswords = () => setPasswordMismatch(password !== confirmPassword);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    setPasswordMismatch(false);
     setError("");
+    setPasswordMismatch(false);
 
-    if (!name.trim()) {
-      setError("Name is required");
-      return;
-    }
-
-    if (!email.trim()) {
-      setError("Email is required");
-      return;
-    }
-
-    if (!password || !confirmPassword) {
-      setError("Passwords are required");
+    if (!name.trim() || !email.trim() || !password || !confirmPassword) {
+      setError("All fields are required");
       return;
     }
 
@@ -60,37 +38,45 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      const response = await fetch("http://localhost:5000/sign_up", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: name.trim(),
-          email: email.trim(),
-          password: password,
-        }),
+      // 1️⃣ Create user in Supabase Auth
+      const { data: authUser, error: authError } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
       });
 
-      const data = await response.json();
-      if (!response.ok) {
-        setError(data.error || "Signup failed");
+      if (authError) {
+        setError(authError.message);
+        setLoading(false);
+        return;
+      }
+      
+      // 2️⃣ Insert teacher row directly using Supabase client
+      const userId = authUser.user.id;
+      const { data: teacher, error: teacherError } = await supabase
+        .from("Teacher-DB")
+        .insert({
+          teacher_uid: userId,
+          name: name.trim(),
+          email: email.trim(),
+          bio: null,
+          favorite_opening_move: null,
+        })
+        .select()
+        .single();
+
+      if (teacherError) {
+        setError(teacherError.message);
         setLoading(false);
         return;
       }
 
-      // Persist teacher info for later (including uid/id)
-      try {
-        const teacher = data.teacher || {};
-        const uid = teacher.id ?? teacher.uid ?? teacher.teacher_uid;
-        const stored = { ...teacher, uid };
-        localStorage.setItem("teacher", JSON.stringify(stored));
-      } catch {}
+      // 3️⃣ Store teacher locally for session
+      localStorage.setItem("teacher", JSON.stringify(teacher));
 
-      // Success → go to classrooms
+      // 4️⃣ Success → go to classrooms
       navigate("/classrooms");
     } catch (err) {
-      setError(err.message || "Failed to connect to server. Make sure backend is running on localhost:5000");
+      setError(err.message || "Something went wrong");
       setLoading(false);
     }
   };
@@ -98,7 +84,6 @@ export default function Signup() {
   return (
     <div className="landing-page">
       <img src={chessblitzLogo} alt="ChessBlitz" className="landing-image" />
-
       <div className="landing-content">
         <h1 className="landing-title">ChessBlitz</h1>
         <p className="tagline">
@@ -109,59 +94,39 @@ export default function Signup() {
         <form className="auth-form" onSubmit={handleSubmit}>
           <input
             type="text"
-            id="name"
             placeholder="Name"
-            required
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={e => setName(e.target.value)}
+            required
           />
-
           <input
             type="email"
-            id="email"
             placeholder="Email"
-            required
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={e => setEmail(e.target.value)}
+            required
           />
-
           <input
             type="password"
-            id="create-password"
             placeholder="Create Password"
-            required
             value={password}
-            onChange={(e) => handlePasswordChange(e.target.value)}
+            onChange={e => setPassword(e.target.value)}
+            required
           />
-
           <input
             type="password"
-            id="confirm-password"
             placeholder="Confirm Password"
-            required
             value={confirmPassword}
-            onChange={(e) => handleConfirmPasswordChange(e.target.value)}
+            onChange={e => setConfirmPassword(e.target.value)}
+            required
           />
-
-          {passwordMismatch && (
-            <span className="field-error" aria-live="polite">
-              Passwords do not match
-            </span>
-          )}
-
-          {error && (
-            <span className="field-error" aria-live="polite">
-              ! {error}
-            </span>
-          )}
-
-          <button type="submit" className="auth-submit-btn" disabled={loading}>
+          {passwordMismatch && <span className="field-error">Passwords do not match</span>}
+          {error && <span className="field-error">! {error}</span>}
+          <button type="submit" disabled={loading}>
             {loading ? "Creating Account..." : "Create Account"}
           </button>
         </form>
       </div>
-
     </div>
   );
 }
-

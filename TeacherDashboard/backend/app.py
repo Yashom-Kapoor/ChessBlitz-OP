@@ -27,6 +27,8 @@ CORS(app)
 load_dotenv() 
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
+PORT = os.getenv("PORT")
+
 
 if SUPABASE_URL and SUPABASE_KEY and create_client:
     try:
@@ -72,6 +74,29 @@ def create_teacher(name, email, password):
         return None, f"Supabase error checking existing teacher: {e}"
     if data and len(data) > 0:
         return None, "Email already exists"
+    
+def validate_teacher_data(data):
+    """Check required fields"""
+    required = ["user_id", "name", "email"]
+    missing = [field for field in required if not data.get(field)]
+    if missing:
+        return False, f"Missing required fields: {', '.join(missing)}"
+    return True, None
+
+def insert_teacher(data):
+    """Insert teacher row into Teacher-DB"""
+    insert_data = {
+        "teacher_uid": data["user_id"],
+        "name": data["name"],
+        "email": data["email"],
+        "bio": data.get("bio"),
+        "favorite_opening_move": data.get("favorite_opening_move"),
+    }
+    resp = supabase.table("Teacher-DB").insert(insert_data).execute()
+    inserted = resp.data if hasattr(resp, "data") else resp[0]
+    if not inserted:
+        return None
+    return inserted[0] if isinstance(inserted, list) else inserted
 
     # Insert only Name and email (Supabase generates primary key/UUID)
     try:
@@ -197,9 +222,11 @@ def login_route():
     
     try:
         # Find teacher by email
+        print(email)
         resp = supabase.table('Teacher-DB').select('*').eq('email', email).execute()
+        print(resp.data)
         data = resp.data if hasattr(resp, 'data') else resp[0]
-        
+        print(len(data))
         if not data or len(data) == 0:
             return jsonify({"error": "Invalid email or password"}), 401
         
@@ -334,10 +361,29 @@ def update_teacher_profile():
         return jsonify({"message": "Profile updated", "profile": profile}), 200
     except Exception as e:
         return jsonify({"error": f"Supabase error: {e}"}), 500
+    
+@app.route("/create_teacher", methods=["POST"])
+def create_teacher_route():
+    if not supabase:
+        return jsonify({"error": "Supabase not initialized"}), 500
+
+    data = request.get_json()
+    is_valid, err = validate_teacher_data(data)
+    if not is_valid:
+        return jsonify({"error": err}), 400
+
+    try:
+        teacher = insert_teacher(data)
+        if not teacher:
+            return jsonify({"error": "Failed to create teacher"}), 500
+        return jsonify({"message": "Teacher created", "teacher": teacher}), 201
+    except Exception as e:
+        return jsonify({"error": f"Supabase insert error: {e}"}), 500
+
 
 # --- Run the Flask app ---
 if __name__ == '__main__':
     print(f"Template folder: {app.template_folder}")
     print(f"Static folder: {app.static_folder}")
-    print("Starting server on http://localhost:5000")
-    app.run(debug=True)
+    print(f"Starting server on http://localhost:{PORT}")
+    app.run(debug=True, port=8000)
