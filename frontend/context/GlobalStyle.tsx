@@ -102,10 +102,25 @@ export default function GlobalStyle(
             fontSize: isTablet ? 20 : 14,
             lineHeight: isTablet ? 26 : 20,
         },
+        text: {
+            fontFamily: 'Nunito',
+        },
         link: {
             fontFamily: 'Nunito',
             fontSize: isTablet ? 20 : 16,
             textDecorationLine: 'underline',
+        },
+        bullet: {
+            fontFamily: 'Nunito',
+            fontSize: isTablet ? 20 : 14,
+            lineHeight: isTablet ? 26 : 20, 
+        },
+        blockquote: {
+            fontFamily: 'Nunito',
+            marginTop: 10,
+            marginBottom: 10,
+            fontSize: isTablet ? 20 : 14,
+            lineHeight: isTablet ? 26 : 20,
         }
     });  
 }

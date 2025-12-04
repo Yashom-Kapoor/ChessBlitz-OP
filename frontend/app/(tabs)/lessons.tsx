@@ -48,7 +48,7 @@ export default function LessonScreen() {
     fetchLessons();
   }, []);
 
-  const completedLessons = 0; // Placeholder for completed lessons logic
+  const completedLessons = 3; // Placeholder for completed lessons logic
 
   const styles = GlobalStyle(theme, isTablet);
   const localStyles = StyleSheet.create({
@@ -93,6 +93,7 @@ export default function LessonScreen() {
                   />
                   {(lessonBubble == lesson.id) && (
                     <LessonBubble
+                      id={lesson.id}
                       name={lessons[lessonBubble - 1].name} 
                       description={lessons[lessonBubble - 1].desc} 
                       offset={{ x: point.y / (isTablet ? 2 : 5), y: point.x }} 

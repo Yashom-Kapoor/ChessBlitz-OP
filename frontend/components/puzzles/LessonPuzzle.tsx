@@ -17,7 +17,11 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import GlassBlurView from '@/components/GlassBlurView';
 import { postCompletedPuzzle } from '@/api/PostCompleted';
 
-export default function DemoPuzzle() {
+interface LessonPuzzleProps {
+    NavBar: React.ComponentType<any>;
+}
+
+export default function LessonPuzzle({ NavBar }: LessonPuzzleProps) {
     const { theme } = useTheme();
     const isTablet = useGlobalSearchParams().isTablet === 'true';
     const [hint, setHint] = useState<string | null>(null);
@@ -127,7 +131,7 @@ export default function DemoPuzzle() {
         },
     });
 
-    const chessboardRef = useRef<any>(null); // Create a ref for ChessboardDemo, forwardRef
+    const chessboardRef = useRef<any>(null); // Create a ref for LessonPuzzle, forwardRef
     const [chess] = useState<Chess>(new Chess);
     
     const [elapsedTime, setElapsedTime] = useState(0);
@@ -402,22 +406,7 @@ export default function DemoPuzzle() {
                 </Pressable>
             </Animated.View>
 
-            <View style={[styles.hStack, { marginTop: isTablet ? -10 : 10, marginBottom: -30 }]}>
-                <View style={localStyles.ratingContainer}>
-                    <IconSymbol size={isTablet ? 45 : 30} style={{ marginHorizontal: 5 }} name="puzzlepiece.extension.fill" color={theme.primaryText} />
-                    <Text style={[styles.subtitle, { marginLeft: isTablet ? 5 : 0, color: theme.primaryText }]}>
-                        {chessboardRef.current?.getPuzzle()?.Rating || '1000'}
-                    </Text>
-                    <IconSymbol size={isTablet ? 40 : 32} style={{ marginLeft: 'auto' }} name="chevron.up.circle.fill" color={theme.primaryText} />
-                </View>
-
-                <View style={localStyles.timeElapsed}>
-                    <IconSymbol style={localStyles.clockIcon} size={isTablet ? 40 : 32} name="clock" color={theme.primaryText} />
-                    <Text style={[styles.h2, { textAlign: 'right', color: theme.primaryText }]}>
-                        {secondsToHMS(elapsedTime)}
-                    </Text>
-                </View>
-            </View>
+            <NavBar />
 
             <PuzzleBar onHint={handleGetHint} onUndo={handleUndo} onRedo={handleRedo} onReset={handleReset} onOptions={null} isTablet={isTablet} />
 

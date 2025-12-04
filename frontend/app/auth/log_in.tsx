@@ -63,7 +63,7 @@ export default function LogInScreen() {
         landingContainer: {
             gap: 20,
             flexDirection: 'column',
-            marginBottom: 300,
+            marginBottom: 100,
             alignItems: 'center',
             justifyContent: 'center',
         },

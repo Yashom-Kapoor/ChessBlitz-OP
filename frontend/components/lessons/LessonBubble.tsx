@@ -5,19 +5,20 @@ import { Image, Pressable, StyleSheet, Text, TouchableOpacity, View } from "reac
 import GlobalStyle from "@/context/GlobalStyle";
 
 interface LessonBubbleProps {
+    id: number;
     name: string;
     description: string;
     offset: any;
     available: boolean;
 }
 
-export default function LessonBubble({ name, description, offset, available }: LessonBubbleProps) {
+export default function LessonBubble({ id, name, description, offset, available }: LessonBubbleProps) {
     const { theme } = useTheme();
     const isTablet = useGlobalSearchParams().isTablet === 'true';
     const router = useRouter();
 
     const onPress = () => {
-        router.push(`/lessons/demo_lesson?isTablet=${isTablet}`)
+        router.push(`/lessons/${id}?isTablet=${isTablet}`)
     }
 
     const styles = GlobalStyle(theme, isTablet);
