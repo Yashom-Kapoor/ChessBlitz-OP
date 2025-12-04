@@ -1,5 +1,5 @@
 import GlassBlurView from '@/components/GlassBlurView';
-import { BackgroundContext } from '@/context/Backgrounds';
+import backgroundImages, { BackgroundContext } from '@/context/Backgrounds';
 import GlobalStyle from '@/context/GlobalStyle';
 import { useTheme } from '@/context/ThemeContext';
 import { useGlobalSearchParams } from 'expo-router';
