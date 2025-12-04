@@ -19,7 +19,7 @@ export default function GlassBlurView({ theme, isTablet, color, glass, interacti
                 borderRadius: borderRadius,
                 backgroundColor: color,
                 opacity: 0.8,
-                boxShadow: outset ? `0 -20px 0 inset ${theme.buttonShadow}` : undefined
+                boxShadow: outset ? `0 -${isTablet ? 20 : 12}px 0 inset ${theme.buttonShadow}` : undefined
             }}
                 glassEffectStyle={glass}
                 isInteractive={interactive}
@@ -35,6 +35,7 @@ export default function GlassBlurView({ theme, isTablet, color, glass, interacti
             shadowOpacity: 1,
             shadowRadius: 20,
             shadowColor: '#000',
+            boxShadow: outset ? `0 -${isTablet ? 20 : 12}px 0 inset ${theme.buttonShadow}` : undefined
         }} />
     );
 }

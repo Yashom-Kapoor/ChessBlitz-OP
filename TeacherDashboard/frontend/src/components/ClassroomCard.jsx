@@ -59,7 +59,7 @@ export default function ClassroomCard({ classroom, onRenameClassroom, onDeleteCl
       >
         {/* Menu dots */}
         <div className="card-menu" ref={menuRef} onClick={handleMenuClick}>
-          <FaEllipsisV />
+          <FaEllipsisV style={{ marginTop: 4 }} />
           {showMenu && (
             <div className="card-menu-popup">
               <button className="menu-item" onClick={handleRename}>

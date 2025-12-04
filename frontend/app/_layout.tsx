@@ -1,5 +1,5 @@
 import { useFonts } from 'expo-font';
-import { Stack, useGlobalSearchParams, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useGlobalSearchParams, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -49,6 +49,7 @@ export default function RootLayout() {
 function ThemedRoot({ isTablet }: { isTablet: boolean }) {
   const { theme } = useTheme();
   const styles = GlobalStyle(theme, isTablet);
+  const navigation = useNavigation();
   const router = useRouter();
 
   return (
@@ -87,9 +88,30 @@ function ThemedRoot({ isTablet }: { isTablet: boolean }) {
         <Stack.Screen
           name="index"
           options={{
-            title: 'Landing',
-            headerShown: false,
+            title: '',
+            headerShown: true,
+            headerBackVisible: false,
           }}
+        />
+        <Stack.Screen
+          name="auth/sign_up"
+          options={() => ({
+            title: 'Sign Up',
+            animation: 'ios_from_right',
+            headerShown: true,
+            headerBackVisible: true,
+            headerBackButtonDisplayMode: 'minimal'
+          })}
+        />
+        <Stack.Screen
+          name="auth/log_in"
+          options={() => ({
+            title: 'Log In',
+            animation: 'ios_from_right',
+            headerShown: true,
+            headerBackVisible: true,
+            headerBackButtonDisplayMode: 'minimal'
+          })}
         />
         <Stack.Screen
           name="(tabs)"
@@ -122,9 +144,8 @@ function ThemedRoot({ isTablet }: { isTablet: boolean }) {
           })}
         />
         <Stack.Screen
-          name="lessons/demo_lesson"
+          name="lessons/[lesson]"
           options={() => ({
-            title: 'Demo Lesson',
             animation: 'ios_from_right',
             headerShown: true,
             headerBackVisible: true,

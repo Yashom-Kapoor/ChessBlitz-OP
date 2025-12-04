@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { API_BASE_URL } from "../config";
 
 export default function CreateClassroomModal({ isOpen, onClose, onCreate, teacherUid }) {
   const [classroomName, setClassroomName] = useState("");
@@ -30,7 +31,7 @@ export default function CreateClassroomModal({ isOpen, onClose, onCreate, teache
         } catch {}
       }
 
-      const response = await fetch("http://localhost:5000/create_classroom", {
+      const response = await fetch(`${API_BASE_URL}/create_classroom`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -73,7 +74,7 @@ export default function CreateClassroomModal({ isOpen, onClose, onCreate, teache
         setError("Something went wrong updating the list. Please try again.");
       }
     } catch (err) {
-      setError("Failed to connect to server. Make sure backend is running on localhost:5000");
+      setError(`Failed to connect to server. Make sure backend is running on ${`${API_BASE_URL}`}`);
       setLoading(false);
     }
   };

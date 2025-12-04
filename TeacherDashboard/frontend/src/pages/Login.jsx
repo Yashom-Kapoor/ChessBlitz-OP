@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import chessblitzLogo from "../assets/ChessBlitz.png";
 import "../styles/Landing.css";
+import { supabase } from "../supabaseClient"; // ✅ changed from API fetch
 
 export default function Login({ onLogin }) {
   const [email, setEmail] = useState("");
@@ -26,34 +27,30 @@ export default function Login({ onLogin }) {
     setLoading(true);
 
     try {
-      const apiUrl = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/$/, "");
-      const response = await fetch(`${apiUrl}/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+      await supabase.auth.refreshSession();
+      
+      // ✅ Use Supabase Auth instead of fetch
+      const { data, error: supaError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.error || "Login failed");
+      if (supaError) {
+        setError(supaError.message || "Login failed");
         setLoading(false);
         return;
       }
 
-      try {
-        const teacher = data.teacher || {};
-        const uid = teacher.id ?? teacher.uid ?? teacher.teacher_uid;
-        const stored = { ...teacher, uid };
-        localStorage.setItem("teacher", JSON.stringify(stored));
-        if (onLogin) onLogin(stored);
-      } catch (err) {
-        console.error("Error storing teacher data:", err);
-      }
+      // ✅ Store the Supabase user object in localStorage
+      const user = data.user;
+      localStorage.setItem("teacher", JSON.stringify({ ...user, uid: user.id }));
 
+      // ✅ Redirect on success
       navigate("/classrooms");
     } catch (err) {
-      setError("Failed to connect to server. Make sure backend is reachable.");
+      console.error(err);
+      setError("Unexpected error occurred during login.");
+    } finally {
       setLoading(false);
     }
   };
@@ -72,20 +69,18 @@ export default function Login({ onLogin }) {
         <form className="auth-form" onSubmit={handleSubmit}>
           <input
             type="email"
-            id="email"
             placeholder="Email"
-            required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            required
           />
 
           <input
             type="password"
-            id="password"
             placeholder="Password"
-            required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            required
           />
 
           {error && <p className="form-error" aria-live="polite">{error}</p>}

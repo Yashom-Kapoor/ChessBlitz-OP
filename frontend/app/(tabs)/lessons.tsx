@@ -48,10 +48,10 @@ export default function LessonScreen() {
     fetchLessons();
   }, []);
 
-  const completedLessons = 1; // Placeholder for completed lessons logic
+  const completedLessons = 3; // Placeholder for completed lessons logic
 
   const styles = GlobalStyle(theme, isTablet);
-  const lessonsStyles = StyleSheet.create({
+  const localStyles = StyleSheet.create({
     container: {
       backgroundColor: theme.background,
       padding: 20,
@@ -61,7 +61,7 @@ export default function LessonScreen() {
   });
   if (loading) {
     return (
-      <View style={[lessonsStyles.container, { justifyContent: "center", alignItems: "center" }]}>
+      <View style={[localStyles.container, { justifyContent: "center", alignItems: "center" }]}>
         <ActivityIndicator size="large" color="theme.text" />
       </View>
     );
@@ -76,7 +76,7 @@ export default function LessonScreen() {
               Error loading lessons oopsie daisies i dont think its implemented in backend yet but pretend this works
             </Text>
           )}
-          {getEquidistantSinePoints(220, 2.5, lessons.length * 7, lessons.length * 300, isTablet ? 60 : 60).map((point, i) => {
+          {getEquidistantSinePoints(isTablet ? 220 : 130, 2.5, lessons.length * 7, lessons.length * (isTablet ? 300 : 250), isTablet ? 60 : 35).map((point, i) => {
             if (i % 7 == 0) {
               const lesson = lessons[Math.floor(i / 7)];
               const isAvailable = Math.floor(i / 7) < completedLessons + 1;
@@ -93,9 +93,10 @@ export default function LessonScreen() {
                   />
                   {(lessonBubble == lesson.id) && (
                     <LessonBubble
+                      id={lesson.id}
                       name={lessons[lessonBubble - 1].name} 
                       description={lessons[lessonBubble - 1].desc} 
-                      offset={{ x: point.y / 2, y: point.x }} 
+                      offset={{ x: point.y / (isTablet ? 2 : 5), y: point.x }} 
                       available={isAvailable}
                     />
                   )}
@@ -104,8 +105,8 @@ export default function LessonScreen() {
               );
             }
             const isAvailable = Math.floor(i / 7) < completedLessons;
-            return <View key={i} style={{ opacity: (i % 7 == 1 || i % 7 == 6 || i > lessons.length * 7 - 6) ? 0 : (isAvailable ? 1 : 0.3), height: 24, width: 24, borderRadius: '100%', backgroundColor: theme.secondaryButton, position: 'absolute', 
-                left: '50%', top: 60, transform: `translate(${point.y - 12}px, ${point.x - 12}px)`, transformOrigin: 'center' }} />;
+            return <View key={i} style={{ opacity: (i % 7 == 1 || i % 7 == 6 || i > lessons.length * 7 - 6) ? 0 : (isAvailable ? 1 : 0.3), height: isTablet ? 24 : 18, width: isTablet ? 24 : 18, borderRadius: '100%', backgroundColor: theme.secondaryButton, position: 'absolute', 
+                left: '50%', top: 60, transform: `translate(${point.y - (isTablet ? 12 : 9)}px, ${point.x - (isTablet ? 12 : 9)}px)`, transformOrigin: 'center', pointerEvents: 'none' }} />;
           })}
         </ScrollView>
       </BackgroundContext>
