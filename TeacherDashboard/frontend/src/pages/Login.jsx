@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import chessblitzLogo from "../assets/ChessBlitz.png";
 import "../styles/Landing.css";
 
-export default function Login() {
+export default function Login({ onLogin }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -13,10 +13,7 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Clear error
     setError("");
-
-    // Validation
     if (!email) {
       setError("Please enter your email.");
       return;
@@ -29,7 +26,8 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const response = await fetch("http://localhost:5000/login", {
+      const apiUrl = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/$/, "");
+      const response = await fetch(`${apiUrl}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -43,20 +41,19 @@ export default function Login() {
         return;
       }
 
-      // Store teacher info in localStorage (same pattern as Signup)
       try {
         const teacher = data.teacher || {};
         const uid = teacher.id ?? teacher.uid ?? teacher.teacher_uid;
         const stored = { ...teacher, uid };
         localStorage.setItem("teacher", JSON.stringify(stored));
+        if (onLogin) onLogin(stored);
       } catch (err) {
         console.error("Error storing teacher data:", err);
       }
 
-      // Success → redirect to classrooms
       navigate("/classrooms");
     } catch (err) {
-      setError("Failed to connect to server. Make sure backend is running.");
+      setError("Failed to connect to server. Make sure backend is reachable.");
       setLoading(false);
     }
   };
@@ -98,8 +95,6 @@ export default function Login() {
           </button>
         </form>
       </div>
-
     </div>
   );
 }
-

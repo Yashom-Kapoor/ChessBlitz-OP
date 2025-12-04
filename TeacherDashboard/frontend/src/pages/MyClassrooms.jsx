@@ -1,7 +1,7 @@
 import ClassroomGrid from "../components/ClassroomGrid";
 import EditPanel from "../components/EditPanel";
 
-export default function MyClassrooms({ refreshTrigger, onRenameClassroom, onDeleteClassroom }) {
+export default function MyClassrooms({ refreshTrigger, onRenameClassroom, onDeleteClassroom, teacherUid, onEmpty }) {
   return (
     <div className="main-content">
       <h1 className="page-title">My Classrooms</h1>
@@ -12,6 +12,8 @@ export default function MyClassrooms({ refreshTrigger, onRenameClassroom, onDele
             refreshTrigger={refreshTrigger}
             onRenameClassroom={onRenameClassroom}
             onDeleteClassroom={onDeleteClassroom}
+            teacherUid={teacherUid}
+            onEmpty={onEmpty}
           />
         </div>
         <div style={{ flexShrink: 0 }}>
