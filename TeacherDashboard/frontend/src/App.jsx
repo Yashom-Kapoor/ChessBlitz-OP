@@ -12,17 +12,21 @@ import RenameClassroomModal from "./components/RenameClassroomModal";
 import { updateClassroom, deleteClassroom } from "./api/classroomApi";
 
 export default function App() {
-  let storedTeacher = null;
-  try {
-    storedTeacher = JSON.parse(localStorage.getItem("teacher") || "null");
-  } catch {}
-  const teacherUid = storedTeacher ? (storedTeacher.uid || storedTeacher.id || storedTeacher.teacher_uid) : null;
-  
+  const [teacher, setTeacher] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("teacher") || "null");
+    } catch {
+      return null;
+    }
+  });
+  const teacherUid = teacher ? (teacher.uid || teacher.id || teacher.teacher_uid) : null;
+
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
   const [renameClassroomId, setRenameClassroomId] = useState(null);
   const [renameClassroomName, setRenameClassroomName] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [showCreateCoachmark, setShowCreateCoachmark] = useState(false);
 
   const handleCreateClassroom = async (created) => {
     // created may be a name string or a classroom object; in both cases just refresh the grid
@@ -38,7 +42,11 @@ export default function App() {
 
   const handleDeleteClassroom = async (id) => {
     if (window.confirm("Are you sure you want to delete this classroom? This action cannot be undone.")) {
-      await deleteClassroom(id);
+      const ok = await deleteClassroom(id);
+      if (!ok) {
+        alert('Failed to delete classroom. Check console for details.');
+        return;
+      }
       setRefreshTrigger(prev => prev + 1);
     }
   };
@@ -60,15 +68,21 @@ export default function App() {
       <div className="app-container">
         <Routes>
           <Route path="/" element={<Landing />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
+          <Route path="/login" element={<Login onLogin={setTeacher} />} />
+          <Route path="/signup" element={<Signup onLogin={setTeacher} />} />
           <Route path="/classrooms" element={
             <>
-              <Sidebar onCreateClassroomClick={() => setIsCreateModalOpen(true)} />
+              <Sidebar onCreateClassroomClick={() => { setIsCreateModalOpen(true); setShowCreateCoachmark(false); }} showCoachmark={showCreateCoachmark} onDismissCoachmark={() => setShowCreateCoachmark(false)} />
               <MyClassrooms
                 refreshTrigger={refreshTrigger}
                 onRenameClassroom={openRenameModal}
                 onDeleteClassroom={handleDeleteClassroom}
+                teacherUid={teacherUid}
+                onEmpty={(isEmpty) => {
+                  // Show coachmark only if teacher is logged in and there are no classrooms
+                  if (isEmpty && teacherUid) setShowCreateCoachmark(true);
+                  else setShowCreateCoachmark(false);
+                }}
               />
             </>
           } />

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import chessblitzLogo from "../assets/ChessBlitz.png";
 import "../styles/Landing.css";
 
-export default function Signup() {
+export default function Signup({ onLogin }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -85,6 +85,7 @@ export default function Signup() {
         const uid = teacher.id ?? teacher.uid ?? teacher.teacher_uid;
         const stored = { ...teacher, uid };
         localStorage.setItem("teacher", JSON.stringify(stored));
+        if (onLogin) onLogin(stored);
       } catch {}
 
       // Success → go to classrooms
