@@ -1,14 +1,15 @@
 // Real API integration for classrooms
-const API_BASE = "http://localhost:5000";
+const API_BASE = "http://localhost:5001";
 
 function pickColor() {
   const colors = ["#4A90E2", "#7B68EE", "#E74C3C", "#3498DB", "#9B59B6", "#16A085", "#F39C12"];
   return colors[Math.floor(Math.random() * colors.length)];
 }
 
-export async function getClassrooms() {
+export async function getClassrooms(teacherUid = null) {
   try {
-    const resp = await fetch(`${API_BASE}/get_classrooms`);
+    const url = teacherUid ? `${API_BASE}/get_classrooms?teacher_uid=${encodeURIComponent(teacherUid)}` : `${API_BASE}/get_classrooms`;
+    const resp = await fetch(url);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const json = await resp.json();
     const rows = Array.isArray(json.classrooms) ? json.classrooms : [];
@@ -63,7 +64,17 @@ export async function updateClassroom(id, name) {
 }
 
 export async function deleteClassroom(id) {
-  // Placeholder: implement when backend provides delete endpoint
-  console.warn("deleteClassroom not implemented against backend");
-  return false;
+  try {
+    const resp = await fetch(`${API_BASE}/delete_classroom`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id })
+    });
+    const json = await resp.json();
+    if (!resp.ok) throw new Error(json.error || `Failed to delete classroom (${resp.status})`);
+    return true;
+  } catch (e) {
+    console.error("deleteClassroom error:", e);
+    return false;
+  }
 }

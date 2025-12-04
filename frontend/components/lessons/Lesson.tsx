@@ -23,7 +23,7 @@ export default function Lesson({ name, description, id, icon, offset, available,
     const router = useRouter();
 
     const styles = GlobalStyle(theme, isTablet);
-    const lessonStyles = StyleSheet.create({
+    const localStyles = StyleSheet.create({
         lesson: {
             position: 'absolute',
             width: isTablet ? 150 : 100,
@@ -62,20 +62,20 @@ export default function Lesson({ name, description, id, icon, offset, available,
     });
 
     return (
-        <TouchableOpacity style={{...lessonStyles.lesson, left: '50%', top: 60,
+        <TouchableOpacity style={{...localStyles.lesson, left: '50%', top: 60,
                 transform: `translate(${offset.x - (isTablet ? 75 : 50)}px, ${offset.y - (isTablet ? 75 : 50)}px)`}}
                 onPress={onPress} >
             <GlassBlurView borderRadius={1000} theme={theme} isTablet={isTablet} color={theme.dark ? theme.player1Square : theme.player2Square} glass={'clear'} outset />
-            {icon && <Image source={icon} style={lessonStyles.icon} />}
+            {icon && <Image source={icon} style={localStyles.icon} />}
             <Text style={{...styles.title, position: 'absolute', textAlign: 'center', color: theme.secondaryText}}>{id}</Text>
         </TouchableOpacity>
     );
 
     return (
-        <TouchableOpacity style={lessonStyles.card} onPress={onPress}>
+        <TouchableOpacity style={localStyles.card} onPress={onPress}>
             <GlassBlurView theme={theme} isTablet={isTablet} color={theme.primaryButton} glass={'clear'} />
-            {icon && <Image source={icon} style={lessonStyles.icon} />}
-            <View style={lessonStyles.textContainer}>
+            {icon && <Image source={icon} style={localStyles.icon} />}
+            <View style={localStyles.textContainer}>
                 <Text style={[styles.h3, { color: theme.primaryText }]}>{name}</Text>
                 <Text style={[styles.h5, { color: theme.primaryText }]}>{description}</Text>
             </View>

@@ -102,21 +102,21 @@ export default function IpadPagesBar({ }) {
                 }}
             />
             <Tabs.Screen
-                name="profile"
-                options={{
-                    title: 'Profile',
-                    tabBarIcon: ({ color, focused }) => <IconSymbol size={30} name={focused ? "person.fill" : "person"} color={color} />,
-                    tabBarActiveTintColor: theme.dark ? '#FF7E7E' : '#dc4141',
-                    tabBarButton: (props) => <CustomTabButton {...props} routeName="profile" />,
-                }}
-            />
-            <Tabs.Screen
                 name="themes"
                 options={{
                     title: 'Themes',
                     tabBarIcon: ({ color, focused }) => <IconSymbol size={30} name={focused ? "paintbrush.fill" : "paintbrush"} color={color} />,
                     tabBarActiveTintColor: theme.dark ? '#6bddcd' : '#0aa3a5',
                     tabBarButton: (props) => <CustomTabButton {...props} routeName="themes" />,
+                }}
+            />
+            <Tabs.Screen
+                name="profile"
+                options={{
+                    title: 'Profile',
+                    tabBarIcon: ({ color, focused }) => <IconSymbol size={30} name={focused ? "person.fill" : "person"} color={color} />,
+                    tabBarActiveTintColor: theme.dark ? '#FF7E7E' : '#dc4141',
+                    tabBarButton: (props) => <CustomTabButton {...props} routeName="profile" />,
                 }}
             />
         </Tabs>

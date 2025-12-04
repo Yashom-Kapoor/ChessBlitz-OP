@@ -8,7 +8,7 @@ import { SUPABASE_URL, SUPABASE_KEY } from "../config";
 // supabase client for auth & database
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-export default function Signup() {
+export default function Signup({ onLogin }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

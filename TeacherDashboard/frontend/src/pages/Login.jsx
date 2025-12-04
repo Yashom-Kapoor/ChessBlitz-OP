@@ -4,7 +4,7 @@ import chessblitzLogo from "../assets/ChessBlitz.png";
 import "../styles/Landing.css";
 import { supabase } from "../supabaseClient"; // ✅ changed from API fetch
 
-export default function Login() {
+export default function Login({ onLogin }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -15,7 +15,6 @@ export default function Login() {
     e.preventDefault();
 
     setError("");
-
     if (!email) {
       setError("Please enter your email.");
       return;

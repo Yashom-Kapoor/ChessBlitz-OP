@@ -141,6 +141,27 @@ def create_classroom(name, teacher_uid=None):
     if data and len(data) > 0:
         return None, "Classroom name already exists"
 
+    # Verify teacher exists — try multiple likely column names and tolerate missing columns
+    t_data = None
+    last_exc = None
+    possible_cols = ['id', 'teacher_uid', 'uid', 'email']
+    for col in possible_cols:
+        try:
+            t_resp = supabase.table('Teacher-DB').select('*').eq(col, teacher_uid).execute()
+            t_data = t_resp.data if hasattr(t_resp, 'data') else t_resp[0]
+            if t_data and len(t_data) > 0:
+                break
+        except Exception as e:
+            # record exception and try next column name instead of failing immediately
+            last_exc = e
+            t_data = None
+            continue
+
+    if not t_data or len(t_data) == 0:
+        if last_exc:
+            return None, f"Supabase error verifying teacher: {last_exc}"
+        return None, "teacher_uid not found"
+
     # Generate unique join code
     join_code = generate_unique_code()
 
@@ -273,11 +294,69 @@ def get_classrooms_route():
         return jsonify({"error": "Supabase is not configured"}), 500
     
     try:
-        resp = supabase.table('Classroom-DB').select('*').execute()
+        teacher_uid = request.args.get('teacher_uid')
+        if teacher_uid:
+            resp = supabase.table('Classroom-DB').select('*').eq('teacher_uid', teacher_uid).execute()
+        else:
+            resp = supabase.table('Classroom-DB').select('*').execute()
         data = resp.data if hasattr(resp, 'data') else resp[0]
         return jsonify({"classrooms": data if data else []})
     except Exception as e:
         return jsonify({"error": f"Supabase error: {e}"}), 500
+
+
+@app.route('/delete_classroom', methods=['POST', 'DELETE'])
+def delete_classroom_route():
+    """Delete a classroom by id or join_code. Expects JSON { id } or { join_code } or { classroom_id }."""
+    if not USE_SUPABASE or supabase is None:
+        return jsonify({"error": "Supabase is not configured"}), 500
+
+    data = request.get_json() or {}
+    classroom_id = data.get('id') or data.get('classroom_id')
+    join_code = data.get('join_code')
+
+    if not classroom_id and not join_code:
+        return jsonify({"error": "id or join_code is required to delete classroom"}), 400
+
+    # Try deleting by a set of possible identifier columns to be robust
+    possible_cols = []
+    if classroom_id:
+        possible_cols = ['id', 'uid', 'join_code']
+    else:
+        possible_cols = ['join_code', 'id', 'uid']
+
+    last_exc = None
+    deleted = False
+    deleted_row = None
+    for col in possible_cols:
+        try:
+            val = classroom_id if classroom_id else join_code
+            del_resp = supabase.table('Classroom-DB').delete().eq(col, val).execute()
+            del_data = del_resp.data if hasattr(del_resp, 'data') else del_resp[0]
+            # If backend returns rows deleted, consider success
+            if del_data:
+                deleted = True
+                # del_data may be a list or single row
+                deleted_row = del_data[0] if isinstance(del_data, list) and len(del_data) > 0 else del_data
+                break
+            # Some clients may return empty on success; still treat as success
+            # Check by attempting to fetch the row
+            fetch_resp = supabase.table('Classroom-DB').select('*').eq(col, val).execute()
+            fetch_data = fetch_resp.data if hasattr(fetch_resp, 'data') else fetch_resp[0]
+            if not fetch_data or len(fetch_data) == 0:
+                deleted = True
+                deleted_row = {col: val}
+                break
+        except Exception as e:
+            last_exc = e
+            continue
+
+    if not deleted:
+        if last_exc:
+            return jsonify({"error": f"Supabase error deleting classroom: {last_exc}"}), 500
+        return jsonify({"error": "Classroom not found or could not be deleted"}), 404
+
+    return jsonify({"message": "Classroom deleted", "deleted": deleted_row}), 200
 
 @app.route('/get_all_data', methods=['GET'])
 def get_all_data():

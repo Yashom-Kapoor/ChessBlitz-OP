@@ -397,7 +397,57 @@ def update_rating():
         return jsonify({"error": f"Failed to update rating: {str(e)}"}), 500
     
 # Lessons
-lessons = []
+lessons = [
+    {
+        'id': 1,
+        'name': 'Introduction to Chess',
+        'desc': 'Learn the basics of chess, including piece movements and rules.',
+        'content': 'Chess is a two-player strategy board game played on a checkered board...',
+        'icon': 'default'
+    },
+    {
+        'id': 2,
+        'name': 'Opening Principles',
+        'desc': 'Understand the fundamental principles of chess openings.',
+        'content': 'In the opening phase of chess, it is important to control the center...',
+        'icon': 'default'
+    },
+    {
+        'id': 3,
+        'name': 'Basic Tactics',
+        'desc': 'Learn essential chess tactics like forks, pins, and skewers.',
+        'content': 'Tactics are short-term tactical patterns that can be used to gain an advantage in a game of chess.',
+        'icon': 'default'
+    },
+    {
+        'id': 4,
+        'name': 'Endgame Strategies',
+        'desc': 'Master key endgame concepts and techniques.',
+        'content': 'The endgame is the final phase of a chess game where there are few pieces left on the board...',
+        'icon': 'default'
+    },
+    {
+        'id': 5,
+        'name': 'Advanced Tactics',
+        'desc': 'Explore advanced tactical motifs and combinations.',
+        'content': 'Advanced tactics involve more complex patterns and combinations that can lead to decisive advantages...',
+        'icon': 'default'
+    },
+    {
+        'id': 6,
+        'name': 'Positional Play',
+        'desc': 'Learn how to improve your position and control key squares.',
+        'content': 'Positional play focuses on long-term strategic advantages rather than immediate tactical gains...',
+        'icon': 'default'
+    },
+    {
+        'id': 7,
+        'name': 'Pawn Structures',
+        'desc': 'Understand different pawn structures and their implications.',
+        'content': 'Pawn structures play a crucial role in determining the strategic plans for both sides...',
+        'icon': 'default'
+    }
+]
 
 @app.route('/lessons', methods=['GET'])
 def get_lessons():
@@ -440,15 +490,10 @@ def delete_lesson(lesson_name):
     global lessons
     lessons = [l for l in lessons if l['name'] != lesson_name]
     return jsonify({'message': 'Lesson deleted'}), 200
-                    
-if __name__ == '__main__':
-    app.run(debug=True)
 
 def main():
     #app.run(debug=False, host='0.0.0.0', port=int(os.getenv("PORT", 5000)))
     app.run(debug=True)
-
- 
 
 if __name__ == "__main__":
     main()

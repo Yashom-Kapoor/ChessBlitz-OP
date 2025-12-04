@@ -70,7 +70,7 @@ export default function DemoPuzzle() {
 
     const styles = GlobalStyle(theme, isTablet);
 
-    const puzzleStyles = StyleSheet.create({
+    const localStyles = StyleSheet.create({
         container: {
             flex: 1,
             justifyContent: 'flex-end',
@@ -309,7 +309,7 @@ export default function DemoPuzzle() {
     }, [puzzleCompleted]);
 
     return (
-        <BackgroundContext theme={theme} style={puzzleStyles.container}>
+        <BackgroundContext theme={theme} style={localStyles.container}>
             <Text style={{ color: theme.primaryText, position: 'absolute', textAlign: 'right', top: 55, right: 5, zIndex: 1000 }}>
                 {`BEST: ${moves[2 * moveNumber - 1]}\n`}
                 {`TURN: ${getTurnFromFEN(lastFEN)}\n`}
@@ -373,7 +373,7 @@ export default function DemoPuzzle() {
                 gestureEnabled={(getTurnFromFEN(lastFEN) !== turn) || false} // Enable gestures only if it's the player's turn
             />
 
-            <Animated.View style={[puzzleStyles.hintContainer]}>
+            <Animated.View style={[localStyles.hintContainer]}>
                 <Pressable onPress={() => {
                     if (puzzleCompleted) {
                         setExpanded(true); // Always expanded when puzzle completed
@@ -383,7 +383,7 @@ export default function DemoPuzzle() {
                 }} style={{position: 'relative', flexShrink: 1 }}>
                     <GlassBlurView theme={theme} isTablet={isTablet} color={theme.hintBubble} glass={'clear'} interactive />
                     <Animated.View style={{ ...hintAnimStyle }}>
-                        <Text style={{...styles.h4, color: theme.secondaryText, ...puzzleStyles.hintSpeech }}>
+                        <Text style={{...styles.h4, color: theme.secondaryText, ...localStyles.hintSpeech }}>
                             {loadingHint ? 'Hmmm...' : (
                                 error ? error : (
                                     hint ? hint : 'Need a hint?'
@@ -406,7 +406,7 @@ export default function DemoPuzzle() {
             </Animated.View>
 
             <View style={[styles.hStack, { marginTop: isTablet ? -10 : 10, marginBottom: -30 }]}>
-                <View style={puzzleStyles.ratingContainer}>
+                <View style={localStyles.ratingContainer}>
                     <IconSymbol size={isTablet ? 45 : 30} style={{ marginHorizontal: 5 }} name="puzzlepiece.extension.fill" color={theme.primaryText} />
                     <Text style={[styles.subtitle, { marginLeft: isTablet ? 5 : 0, color: theme.primaryText }]}>
                         {chessboardRef.current?.getPuzzle()?.Rating || '1000'}
@@ -414,8 +414,8 @@ export default function DemoPuzzle() {
                     <IconSymbol size={isTablet ? 40 : 32} style={{ marginLeft: 'auto' }} name="chevron.up.circle.fill" color={theme.primaryText} />
                 </View>
 
-                <View style={puzzleStyles.timeElapsed}>
-                    <IconSymbol style={puzzleStyles.clockIcon} size={isTablet ? 40 : 32} name="clock" color={theme.primaryText} />
+                <View style={localStyles.timeElapsed}>
+                    <IconSymbol style={localStyles.clockIcon} size={isTablet ? 40 : 32} name="clock" color={theme.primaryText} />
                     <Text style={[styles.h2, { textAlign: 'right', color: theme.primaryText }]}>
                         {secondsToHMS(elapsedTime)}
                     </Text>

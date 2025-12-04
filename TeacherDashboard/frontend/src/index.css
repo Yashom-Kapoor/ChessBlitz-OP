@@ -218,8 +218,8 @@ a.nav-item {
   right: 12px;
   color: white;
   cursor: pointer;
-  padding: 8px;
-  border-radius: 50%;
+  padding: 4px;
+  border-radius: 20%;
   transition: background-color 0.2s;
   z-index: 10;
 }
