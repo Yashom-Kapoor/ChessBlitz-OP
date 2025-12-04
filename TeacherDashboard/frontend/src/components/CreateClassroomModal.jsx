@@ -30,7 +30,7 @@ export default function CreateClassroomModal({ isOpen, onClose, onCreate, teache
         } catch {}
       }
 
-      const response = await fetch("http://localhost:5000/create_classroom", {
+      const response = await fetch("http://localhost:5001/create_classroom", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

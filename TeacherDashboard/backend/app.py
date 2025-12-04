@@ -419,4 +419,4 @@ if __name__ == '__main__':
     print(f"Template folder: {app.template_folder}")
     print(f"Static folder: {app.static_folder}")
     print("Starting server on http://localhost:5000")
-    app.run(debug=True)
+    app.run(debug=True, port=5001, host="0.0.0.0")

@@ -38,13 +38,13 @@ export default function ProfileScreen() {
 
   const PuzzleTypeCard = ({ title, rating, icon, color }: PuzzleTypeCardProps) => {
     return (
-      <InfoBox style={profileStyles.puzzleCard} theme={theme} isTablet={isTablet} >
-        <View style={[profileStyles.puzzleIconContainer, { backgroundColor: color }]}>
-          <Text style={profileStyles.puzzleIcon}>{icon}</Text>
+      <InfoBox style={localStyles.puzzleCard} theme={theme} isTablet={isTablet} >
+        <View style={[localStyles.puzzleIconContainer, { backgroundColor: color }]}>
+          <Text style={localStyles.puzzleIcon}>{icon}</Text>
         </View>
-        <Text style={[styles.h5, profileStyles.puzzleTitle]}>{title}</Text>
-        <Text style={[styles.h2, profileStyles.puzzleRating]}>{rating}</Text>
-        <Text style={[styles.h6, profileStyles.ratingLabel]}>Rating</Text>
+        <Text style={[styles.h5, localStyles.puzzleTitle]}>{title}</Text>
+        <Text style={[styles.h2, localStyles.puzzleRating]}>{rating}</Text>
+        <Text style={[styles.h6, localStyles.ratingLabel]}>Rating</Text>
       </InfoBox>
     );
   };
@@ -76,7 +76,7 @@ export default function ProfileScreen() {
     { title: 'Defense', rating: userData.puzzleRatings.defense, icon: '🛡️', color: '#DFE6E9' }
   ];
 
-  const profileStyles = StyleSheet.create({
+  const localStyles = StyleSheet.create({
     header: {
       alignItems: 'center',
       paddingVertical: 20,
@@ -201,12 +201,12 @@ export default function ProfileScreen() {
         <ScrollView contentContainerStyle={styles.scrollContainer}>
 
           {/* Header Section */}
-          <View style={profileStyles.header}>
-            <View style={profileStyles.avatarContainer}>
-              <Text style={profileStyles.avatarText}>CM</Text>
+          <View style={localStyles.header}>
+            <View style={localStyles.avatarContainer}>
+              <Text style={localStyles.avatarText}>CM</Text>
             </View>
             <TouchableOpacity
-              style={profileStyles.editButton}
+              style={localStyles.editButton}
               onPress={() => setIsEditing(!isEditing)}
             >
               <GlassBlurView theme={theme} isTablet={isTablet} color={theme.primaryButton} glass={'clear'} />
@@ -217,77 +217,77 @@ export default function ProfileScreen() {
           </View>
 
           {/* General Information Box */}
-          <InfoBox style={profileStyles.generalInfoBox} theme={theme} isTablet={isTablet} >
+          <InfoBox style={localStyles.generalInfoBox} theme={theme} isTablet={isTablet} >
             <Text style={[styles.h4, { color: theme.primaryText, marginBottom: isTablet ? 20 : 15 }]}>General Information</Text>
-            <View style={profileStyles.infoRow}>
-              <Text style={profileStyles.icon}>👤</Text>
-              <View style={profileStyles.infoContent}>
+            <View style={localStyles.infoRow}>
+              <Text style={localStyles.icon}>👤</Text>
+              <View style={localStyles.infoContent}>
                 <Text style={[styles.h6, { color: `${theme.primaryText}60` }]}>Name</Text>
                 {isEditing ? (
                   <TextInput
-                    style={[styles.h5, profileStyles.input]}
+                    style={[styles.h5, localStyles.input]}
                     value={userData.name}
                     onChangeText={(text) => setUserData({ ...userData, name: text })}
                   />
                 ) : (
-                  <Text style={[styles.h5, profileStyles.infoValue]}>{userData.name}</Text>
+                  <Text style={[styles.h5, localStyles.infoValue]}>{userData.name}</Text>
                 )}
               </View>
             </View>
-            <View style={profileStyles.infoRow}>
-              <Text style={profileStyles.icon}>📧</Text>
-              <View style={profileStyles.infoContent}>
+            <View style={localStyles.infoRow}>
+              <Text style={localStyles.icon}>📧</Text>
+              <View style={localStyles.infoContent}>
                 <Text style={[styles.h6, { color: `${theme.primaryText}60` }]}>Email</Text>
                 {isEditing ? (
                   <TextInput
-                    style={[styles.h5, profileStyles.input]}
+                    style={[styles.h5, localStyles.input]}
                     value={userData.email}
                     onChangeText={(text) => setUserData({ ...userData, email: text })}
                     keyboardType="email-address"
                   />
                 ) : (
-                  <Text style={[styles.h5, profileStyles.infoValue]}>{userData.email}</Text>
+                  <Text style={[styles.h5, localStyles.infoValue]}>{userData.email}</Text>
                 )}
               </View>
             </View>
-            <View style={profileStyles.infoRow}>
-              <Text style={profileStyles.icon}>🔒</Text>
-              <View style={profileStyles.infoContent}>
+            <View style={localStyles.infoRow}>
+              <Text style={localStyles.icon}>🔒</Text>
+              <View style={localStyles.infoContent}>
                 <Text style={[styles.h6, { color: `${theme.primaryText}60` }]}>Password</Text>
                 {isEditing ? (
                   <TextInput
-                    style={[styles.h5, profileStyles.input]}
+                    style={[styles.h5, localStyles.input]}
                     value={userData.password}
                     secureTextEntry
                     placeholder="Enter new password"
                   />
                 ) : (
-                  <Text style={[styles.h5, profileStyles.infoValue]}>{userData.password}</Text>
+                  <Text style={[styles.h5, localStyles.infoValue]}>{userData.password}</Text>
                 )}
               </View>
             </View>
-            <View style={profileStyles.divider} />
-            <View style={profileStyles.statsRow}>
-              <View style={profileStyles.statItem}>
-                <Text style={profileStyles.statIcon}>🏆</Text>
-                <Text style={[styles.h2, profileStyles.statValue]}>{userData.overallRating}</Text>
-                <Text style={[styles.h6, profileStyles.statLabel]}>Overall Rating</Text>
+            <View style={localStyles.divider} />
+            <View style={localStyles.statsRow}>
+              <View style={localStyles.statItem}>
+                <Text style={localStyles.statIcon}>🏆</Text>
+                <Text style={[styles.h2, localStyles.statValue]}>{userData.overallRating}</Text>
+                <Text style={[styles.h6, localStyles.statLabel]}>Overall Rating</Text>
               </View>
-              <View style={profileStyles.statDivider} />
-              <View style={profileStyles.statItem}>
-                <Text style={profileStyles.statIcon}>🎯</Text>
-                <Text style={[styles.h2, profileStyles.statValue]}>{userData.totalPuzzlesSolved}</Text>
-                <Text style={[styles.h6, profileStyles.statLabel]}>Puzzles Solved</Text>
+              <View style={localStyles.statDivider} />
+              <View style={localStyles.statItem}>
+                <Text style={localStyles.statIcon}>🎯</Text>
+                <Text style={[styles.h2, localStyles.statValue]}>{userData.totalPuzzlesSolved}</Text>
+                <Text style={[styles.h6, localStyles.statLabel]}>Puzzles Solved</Text>
               </View>
             </View>
-            <View style={profileStyles.infoContent}>
+            <View style={localStyles.infoContent}>
               <Text style={[styles.h6, { color: `${theme.primaryText}60` }]}>Member Since</Text>
-              <Text style={[styles.h5, profileStyles.infoValue]}>{userData.joinDate}</Text>
+              <Text style={[styles.h5, localStyles.infoValue]}>{userData.joinDate}</Text>
             </View>
           </InfoBox>
           {/* Puzzle Categories Section */}
           <Text style={[styles.subtitle, { textAlign: 'center', marginTop: 10 }]}>Puzzle Ratings</Text>
-          <View style={profileStyles.puzzleGrid}>
+          <View style={localStyles.puzzleGrid}>
             {puzzleTypes.map((puzzle, index) => (
               <PuzzleTypeCard
                 key={index}
@@ -299,7 +299,7 @@ export default function ProfileScreen() {
             ))}
           </View>
           {/* Bottom Spacing */}
-          <View style={profileStyles.bottomSpacing} />
+          <View style={localStyles.bottomSpacing} />
         </ScrollView>
       </BackgroundContext>
     </GestureHandlerRootView>

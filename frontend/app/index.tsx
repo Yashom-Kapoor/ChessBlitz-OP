@@ -27,7 +27,7 @@ export default function HomeScreen() {
   }, []);
 
   const styles = GlobalStyle(theme, isTablet);
-  const indexStyles = StyleSheet.create({
+  const localStyles = StyleSheet.create({
     landingContainer: {
       gap: 20,
       flexDirection: 'column',
@@ -77,11 +77,11 @@ export default function HomeScreen() {
       source={backgroundImages[theme.name] || null}
       style={styles.contentContainer}
     >
-      <Image source={require('@/assets/images/backgrounds/icon-full.png')} style={indexStyles.backgroundImg} />
+      <Image source={require('@/assets/images/backgrounds/icon-full.png')} style={localStyles.backgroundImg} />
 
-      <SafeAreaProvider style={indexStyles.landingContainer}>
+      <SafeAreaProvider style={localStyles.landingContainer}>
         <TouchableOpacity // Continue without account button
-          style={indexStyles.continueButton}
+          style={localStyles.continueButton}
           onPress={() => router.push({
             pathname: `/(tabs)/puzzles`,
             params: {
@@ -99,20 +99,20 @@ export default function HomeScreen() {
         </Text>
 
         <TouchableOpacity // Sign up
-          style={[indexStyles.button]}
-        //onPress={() => router.push('/')}>
+          style={[localStyles.button]}
+          onPress={() => router.push(`/auth/sign_up?isTablet=${isTablet}`)}
         >
-          <GlassBlurView theme={theme} isTablet={isTablet} color={theme.primaryButton} glass={'clear'} />
-          <Text style={[styles.h4, { color: theme.primaryText }]}>Sign Up with Email</Text>
+          <GlassBlurView theme={theme} isTablet={isTablet} color={theme.secondaryButton} glass={'clear'} />
+          <Text style={[styles.h4, { color: theme.secondaryText }]}>Sign Up with Email</Text>
         </TouchableOpacity>
 
         <Text style={[styles.h5, { color: theme.primaryText, paddingTop: 15 }]}>Already have an account?</Text>
         <TouchableOpacity // Sign in
-          style={[indexStyles.button]}
-        //onPress={() => router.push('/sign-in')}
+          style={[localStyles.button]}
+          onPress={() => router.push(`/auth/log_in?isTablet=${isTablet}`)}
         >
-          <GlassBlurView theme={theme} isTablet={isTablet} color={theme.secondaryButton} glass={'clear'} />
-          <Text style={[styles.h4, { color: theme.secondaryText }]}>Log In</Text>
+          <GlassBlurView theme={theme} isTablet={isTablet} color={theme.primaryButton} glass={'clear'} />
+          <Text style={[styles.h4, { color: theme.primaryText }]}>Log In</Text>
         </TouchableOpacity>
 
       </SafeAreaProvider>

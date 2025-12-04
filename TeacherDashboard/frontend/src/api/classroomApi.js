@@ -1,5 +1,5 @@
 // Real API integration for classrooms
-const API_BASE = "http://localhost:5000";
+const API_BASE = "http://localhost:5001";
 
 function pickColor() {
   const colors = ["#4A90E2", "#7B68EE", "#E74C3C", "#3498DB", "#9B59B6", "#16A085", "#F39C12"];

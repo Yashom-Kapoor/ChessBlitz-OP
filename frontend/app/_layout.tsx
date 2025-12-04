@@ -87,9 +87,30 @@ function ThemedRoot({ isTablet }: { isTablet: boolean }) {
         <Stack.Screen
           name="index"
           options={{
-            title: 'Landing',
-            headerShown: false,
+            title: '',
+            headerShown: true,
+            headerBackVisible: false,
           }}
+        />
+        <Stack.Screen
+          name="auth/sign_up"
+          options={() => ({
+            title: 'Sign Up',
+            animation: 'ios_from_right',
+            headerShown: true,
+            headerBackVisible: true,
+            headerBackButtonDisplayMode: 'minimal'
+          })}
+        />
+        <Stack.Screen
+          name="auth/log_in"
+          options={() => ({
+            title: 'Log In',
+            animation: 'ios_from_right',
+            headerShown: true,
+            headerBackVisible: true,
+            headerBackButtonDisplayMode: 'minimal'
+          })}
         />
         <Stack.Screen
           name="(tabs)"

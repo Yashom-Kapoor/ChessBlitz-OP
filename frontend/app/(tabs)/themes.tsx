@@ -20,7 +20,7 @@ export default function ThemesScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
 
   const styles = GlobalStyle(theme, isTablet);
-  const themesStyles = StyleSheet.create({
+  const localStyles = StyleSheet.create({
     root: {
       flex: 1,
       backgroundColor: theme.background,
@@ -59,19 +59,19 @@ export default function ThemesScreen() {
   }
 
   return (
-    <GestureHandlerRootView style={themesStyles.root}>
+    <GestureHandlerRootView style={localStyles.root}>
       <BackgroundContext theme={theme}>
-        <View style={themesStyles.switcherContainer}>
+        <View style={localStyles.switcherContainer}>
           <Pressable
             style={[
-              themesStyles.switcherButton,
+              localStyles.switcherButton,
               { backgroundColor: themePage === 0 ? theme.primaryButton : theme.background },
             ]}
             onPress={() => handleThemePageChange(0)}
           >
             <Text
               style={[styles.h5, 
-                themesStyles.switcherText,
+                localStyles.switcherText,
                 { color: themePage === 0 ? theme.primaryText : theme.titleText },
               ]}
             >
@@ -80,14 +80,14 @@ export default function ThemesScreen() {
           </Pressable>
           <Pressable
             style={[
-              themesStyles.switcherButton,
+              localStyles.switcherButton,
               { backgroundColor: themePage === 1 ? theme.primaryButton : theme.background },
             ]}
             onPress={() => handleThemePageChange(1)}
           >
             <Text
               style={[styles.h5, 
-                themesStyles.switcherText,
+                localStyles.switcherText,
                 { color: themePage === 1 ? theme.primaryText : theme.titleText },
               ]}
             >
@@ -96,14 +96,14 @@ export default function ThemesScreen() {
           </Pressable>
         </View>
 
-        <ScrollView ref={scrollViewRef} contentContainerStyle={themesStyles.scrollContent}>
+        <ScrollView ref={scrollViewRef} contentContainerStyle={localStyles.scrollContent}>
           {themePage == 0 ? (
             <>
               {Object.values(Themes).map((t, index) => {
                 return (
                   <TouchableOpacity
                     key={index}
-                    style={[themesStyles.themeRow, { backgroundColor: t.secondaryButton }]}
+                    style={[localStyles.themeRow, { backgroundColor: t.secondaryButton }]}
                     onPress={() => setTheme(t.name)}
                   >
                     <Text style={{ ...styles.h2, color: t.secondaryText }}>
@@ -121,7 +121,7 @@ export default function ThemesScreen() {
                 return (
                   <TouchableOpacity
                     key={index}
-                    style={[themesStyles.themeRow, { backgroundColor: t.secondaryButton }]}
+                    style={[localStyles.themeRow, { backgroundColor: t.secondaryButton }]}
                     onPress={() => setTheme(t.name)}
                   >
                     <Text style={{ ...styles.h2, color: t.secondaryText }}>

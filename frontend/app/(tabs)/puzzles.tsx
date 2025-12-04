@@ -15,16 +15,16 @@ export default function PuzzlesScreen() {
   const isTablet = useGlobalSearchParams().isTablet === 'true';
 
   const styles = GlobalStyle(theme, isTablet);
-  const puzzlesStyles = StyleSheet.create({
+  const localStyles = StyleSheet.create({
     
   });
 
   return (
     <GestureHandlerRootView style={styles.contentContainer} >
       <BackgroundContext theme={theme}>
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <ScrollView contentContainerStyle={{...styles.scrollContainer, alignItems: 'flex-start'}}>
           <TouchableOpacity
-            style={styles.flexBigButton}
+            style={{...styles.flexBigButton}}
             onPress={() => {
               router.push(`/puzzles/demo_puzzle?isTablet=${isTablet}`);
             }}
@@ -38,7 +38,7 @@ export default function PuzzlesScreen() {
             </Text>
           </TouchableOpacity>
 
-          <View style={{flexDirection: 'row', alignItems: 'center', flex: 1, gap: isTablet ? 30 : 20}}>
+          <View style={{flexDirection: 'row', alignItems: 'center', gap: isTablet ? 30 : 20}}>
             <TouchableOpacity
               style={[styles.flexButton, { flex: 1 }]}
               onPress={() => router.navigate(`/?isTablet=${isTablet}`)}
