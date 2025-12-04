@@ -21,6 +21,7 @@ export default function SignUpScreen() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [passwordConfirm, setPasswordConfirm] = useState('');
+    const [classCode, setClassCode] = useState('');
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -30,7 +31,7 @@ export default function SignUpScreen() {
     }, []);
 
     const handleSignUp = async () => {
-    if (!username || !firstName || !lastName || !email || !password || !passwordConfirm) {
+    if (!username || !firstName || !lastName || !email || !password || !passwordConfirm || !classCode) {
         Alert.alert('Error', 'Fill out all required boxes!');
         return;
     }
@@ -104,7 +105,7 @@ export default function SignUpScreen() {
         landingContainer: {
             gap: 20,
             flexDirection: 'column',
-            marginBottom: 300,
+            marginBottom: 100,
             alignItems: 'center',
             justifyContent: 'center',
         },
@@ -248,6 +249,19 @@ export default function SignUpScreen() {
                             autoCorrect={false}
                             secureTextEntry
                             style={{...styles.h4, ...localStyles.input, color: theme.primaryText }}
+                    ></TextInput>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={[localStyles.button]}>
+                    <GlassBlurView theme={theme} isTablet={isTablet} color={theme.secondaryButton} glass={'clear'} />
+                    <TextInput
+                            placeholderTextColor={`${theme.secondaryText}30`}
+                            placeholder={'Class Code'}
+                            value={classCode}
+                            onChangeText={setClassCode}
+                            autoCapitalize={'characters'}
+                            autoCorrect={false}
+                            style={{...styles.h4, ...localStyles.input, color: theme.secondaryText }}
                     ></TextInput>
                 </TouchableOpacity>
 
