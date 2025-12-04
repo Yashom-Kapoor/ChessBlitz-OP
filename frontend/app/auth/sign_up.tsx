@@ -8,6 +8,7 @@ import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert, Image, ImageBackground, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { supabase } from "@/api/SupabaseClient";
 
 export default function SignUpScreen() {
     const router = useRouter(); // Access router object
@@ -29,41 +30,73 @@ export default function SignUpScreen() {
     }, []);
 
     const handleSignUp = async () => {
-        if (!username || !firstName || !lastName || !email || !password || !passwordConfirm) {
-            Alert.alert('Error', 'Fill out all required boxes!');
-            return;
+    if (!username || !firstName || !lastName || !email || !password || !passwordConfirm) {
+        Alert.alert('Error', 'Fill out all required boxes!');
+        return;
+    }
+    if (password !== passwordConfirm) {
+        Alert.alert('Error', 'Passwords must match!');
+        return;
+    }
+
+    setLoading(true);
+    try {
+        // 1️⃣ Sign up in Supabase Auth
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        });
+
+        if (authError) {
+        Alert.alert('Error', authError.message);
+        setLoading(false);
+        return;
         }
-        if (password != passwordConfirm) {
-            Alert.alert('Error', 'Passwords must match!')
-            return;
-        }
 
-        setLoading(true);
-        try {
-            const response = await fetch(`${API_URL}/sign_up`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ username, firstName, lastName, email, password }),
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                // Store user ID if needed (consider using AsyncStorage or secure storage)
-                const userId = data.uid;
-                Alert.alert('Success', 'Logged in successfully!');
-                router.push(`/(tabs)/lessons?isTablet=${isTablet}`);
-            } else {
-                Alert.alert('Error', data.error || data.message || 'Sign up failed');
-            }
-        } catch (error) {
-            Alert.alert('Error', 'Network error. Please try again.');
-            console.error('Login error:', error);
-        } finally {
+        if (!authData.user) {
+            Alert.alert('Error', 'No user returned from Supabase. Try again.');
             setLoading(false);
+            return;
         }
+
+        const userId = authData.user.id;
+
+        // 2️⃣ Insert row in Student-DB
+        const { data: student, error: studentError } = await supabase
+        .from("Student-DB")
+        .insert([{
+            uid: userId, // match auth user ID
+            username: username.trim(),
+            name: `${firstName.trim()} ${lastName.trim()}`,
+            email: email.trim(),
+            ratings: 0,
+            total_puzzles_completed: 0,
+            classroom_code: null,
+            daily_puzzle: false,
+        }])
+        .select()
+        .single();
+
+        if (studentError) {
+        Alert.alert('Error', studentError.message);
+        setLoading(false);
+        return;
+        }
+
+        // 3️⃣ Optionally store locally (doesnt work on native)
+        // localStorage.setItem("student", JSON.stringify(student));
+
+        Alert.alert('Success', 'Signed up successfully!');
+        router.push(`/(tabs)/lessons?isTablet=${isTablet}`);
+    } catch (err: unknown) {
+        if (err instanceof Error) {
+            Alert.alert('Error', err.message);
+        } else {
+            Alert.alert('Error', 'Something went wrong.');
+        }
+    } finally {
+        setLoading(false);
+    }
     };
 
     const styles = GlobalStyle(theme, isTablet);
