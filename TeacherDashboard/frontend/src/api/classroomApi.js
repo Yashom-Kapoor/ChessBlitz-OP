@@ -1,5 +1,5 @@
 // Real API integration for classrooms
-const API_BASE = "http://localhost:5001";
+import { API_BASE_URL } from "../config";
 
 function pickColor() {
   const colors = ["#4A90E2", "#7B68EE", "#E74C3C", "#3498DB", "#9B59B6", "#16A085", "#F39C12"];
@@ -8,7 +8,7 @@ function pickColor() {
 
 export async function getClassrooms(teacherUid = null) {
   try {
-    const url = teacherUid ? `${API_BASE}/get_classrooms?teacher_uid=${encodeURIComponent(teacherUid)}` : `${API_BASE}/get_classrooms`;
+    const url = teacherUid ? `${API_BASE_URL}/get_classrooms?teacher_uid=${encodeURIComponent(teacherUid)}` : `${API_BASE_URL}/get_classrooms`;
     const resp = await fetch(url);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const json = await resp.json();
@@ -35,7 +35,7 @@ export async function getClassroomById(id) {
 
 export async function createClassroom(name) {
   try {
-    const resp = await fetch(`${API_BASE}/create_classroom`, {
+    const resp = await fetch(`${API_BASE_URL}/create_classroom`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name })
@@ -65,7 +65,7 @@ export async function updateClassroom(id, name) {
 
 export async function deleteClassroom(id) {
   try {
-    const resp = await fetch(`${API_BASE}/delete_classroom`, {
+    const resp = await fetch(`${API_BASE_URL}/delete_classroom`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id })
