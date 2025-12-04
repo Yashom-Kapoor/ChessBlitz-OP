@@ -7,6 +7,12 @@ export default function StudentOverviewModal({ isOpen, onClose, student }) {
   // Calculate accuracy (mock data for now)
   const accuracy = Math.floor(Math.random() * 30) + 70; // 70-99%
 
+  // Normalize incoming student fields to be resilient to backend variations
+  const resolvedName = student.name || student.username || student.display_name || 'Unknown Student';
+  const resolvedTotal = (student.total ?? student.total_puzzles_completed ?? student.totalCompleted ?? student.totalCompletedPuzzles) || 0;
+  const resolvedDaily = Boolean(student.daily ?? student.daily_puzzle ?? student.did_daily ?? student.dailyPuzzle);
+  const resolvedRating = student.rating ?? student.ratings ?? 'N';
+
   return (
     <div className="student-overview-page">
       {/* Sidebar */}
@@ -24,8 +30,8 @@ export default function StudentOverviewModal({ isOpen, onClose, student }) {
 
         {/* Student name with avatar */}
         <div className="student-header">
-          <div className="student-name-section">
-            <h2 className="student-name">{student.name}</h2>
+            <div className="student-name-section">
+            <h2 className="student-name">{resolvedName}</h2>
             <div className="student-avatar-circle">
               <span className="avatar-placeholder">👤</span>
             </div>
@@ -36,12 +42,12 @@ export default function StudentOverviewModal({ isOpen, onClose, student }) {
         <div className="stats-container">
           <div className="stat-card">
             <div className="stat-label">Lessons Completed</div>
-            <div className="stat-value">{student.total ?? "##"}</div>
+            <div className="stat-value">{resolvedTotal ?? "##"}</div>
           </div>
           <div className="stat-card">
             <div className="stat-label">Daily Puzzle</div>
             <div className="stat-value">
-              {student.daily > 0 ? (
+              {resolvedDaily ? (
                 <span className="checkmark">✓</span>
               ) : (
                 <span className="no-checkmark">✗</span>
@@ -51,6 +57,10 @@ export default function StudentOverviewModal({ isOpen, onClose, student }) {
           <div className="stat-card">
             <div className="stat-label">Overall Accuracy</div>
             <div className="stat-value accuracy">{accuracy}%</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Rating</div>
+            <div className="stat-value">{resolvedRating}</div>
           </div>
         </div>
 

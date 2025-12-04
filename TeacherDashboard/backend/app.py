@@ -1,10 +1,12 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, Response, stream_with_context
 from flask_cors import CORS
 import random
 import string
 import os
 from supabase import create_client
 from dotenv import load_dotenv
+import json
+import time
 
 # Supabase client initialization
 USE_SUPABASE = False
@@ -48,7 +50,6 @@ def generate_unique_code():
     """Generate a unique 6-character code for classrooms"""
     while True:
         code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-        # Check against Supabase classrooms
         if USE_SUPABASE and supabase:
             try:
                 resp = supabase.table('Classroom-DB').select('join_code').eq('join_code', code).execute()
@@ -59,6 +60,355 @@ def generate_unique_code():
                 return code
         else:
             return code
+
+
+def resolve_student_name_by_uid(uid):
+    """Try several common tables to resolve a student's display name from their uid."""
+    if not USE_SUPABASE or supabase is None:
+        return None
+    possible_tables = ['users', 'profiles', 'Student-Users', 'StudentUsers', 'Student-Profile', 'User-DB']
+    for tbl in possible_tables:
+        try:
+            resp = supabase.table(tbl).select('name,username').eq('uid', uid).execute()
+            data = resp.data if hasattr(resp, 'data') else resp[0]
+            if data and len(data) > 0:
+                row = data[0] if isinstance(data, list) else data
+                return row.get('name') or row.get('username')
+        except Exception:
+            continue
+    return None
+
+
+def find_link_info_for_student(student_uid, canonical_class_id=None, classroom_code=None):
+    """Try to find a linking row for a student to read flags like is_active.
+    Returns a dict of link info or None.
+    """
+    if not USE_SUPABASE or supabase is None:
+        return None
+
+    possible_link_tables = [
+        'Classroom_student-DB', 'Classroom_students-DB', 'Classroom-students-DB',
+        'classroom_students', 'classroom_student', 'ClassroomStudent', 'Classroom_Students'
+    ]
+    possible_student_cols = ['student_uid', 'studentUid', 'student_id', 'uid']
+    possible_class_cols = ['classroom_id', 'classroom', 'class_id', 'classroomId', 'join_code', 'classroom_code']
+
+    for tbl in possible_link_tables:
+        for s_col in possible_student_cols:
+            try:
+                # Build base query
+                query = supabase.table(tbl).select('*').eq(s_col, student_uid)
+                # If we have a canonical id, try to include it
+                if canonical_class_id is not None:
+                    for c_col in possible_class_cols:
+                        try:
+                            resp = supabase.table(tbl).select('*').eq(s_col, student_uid).eq(c_col, canonical_class_id).execute()
+                            data = resp.data if hasattr(resp, 'data') else resp[0]
+                            if data and len(data) > 0:
+                                row = data[0] if isinstance(data, list) else data
+                                return row
+                        except Exception:
+                            continue
+                # Try classroom_code if provided
+                if classroom_code is not None:
+                    for c_col in possible_class_cols:
+                        try:
+                            resp = supabase.table(tbl).select('*').eq(s_col, student_uid).eq(c_col, classroom_code).execute()
+                            data = resp.data if hasattr(resp, 'data') else resp[0]
+                            if data and len(data) > 0:
+                                row = data[0] if isinstance(data, list) else data
+                                return row
+                        except Exception:
+                            continue
+                # Last resort: just fetch by student uid only
+                try:
+                    resp = supabase.table(tbl).select('*').eq(s_col, student_uid).execute()
+                    data = resp.data if hasattr(resp, 'data') else resp[0]
+                    if data and len(data) > 0:
+                        row = data[0] if isinstance(data, list) else data
+                        return row
+                except Exception:
+                    continue
+            except Exception:
+                continue
+    return None
+
+
+def fetch_students_for_classroom(classroom_code):
+    """Return a list of normalized student dicts for the given classroom_code.
+    This mirrors the logic previously in the get_students route so both the
+    REST and SSE endpoints can reuse it.
+    """
+    if not USE_SUPABASE or supabase is None:
+        return []
+
+    # Direct Student-DB fast-path: many schemas store classroom_code on student rows
+    try:
+        # Try multiple possible Student-DB columns and value forms to be tolerant to schema
+        candidate_student_queries = [
+            ('classroom_code', classroom_code),
+            ('classroom_code', str(classroom_code)),
+            ('classroom_id', classroom_code),
+            ('classroom_id', str(classroom_code)),
+            ('classroom', classroom_code),
+            ('classroom', str(classroom_code)),
+            ('classroomCode', classroom_code),
+            ('classroomCode', str(classroom_code)),
+        ]
+
+        s_data = None
+        for col, val in candidate_student_queries:
+            try:
+                s_resp = supabase.table('Student-DB').select('*').eq(col, val).execute()
+                s_data = s_resp.data if hasattr(s_resp, 'data') else s_resp[0]
+                if s_data and len(s_data) > 0:
+                    break
+            except Exception:
+                s_data = None
+                continue
+
+        students_out = []
+        if s_data and len(s_data) > 0:
+            for srow in (s_data if isinstance(s_data, list) else [s_data]):
+                uid = srow.get('uid') or srow.get('id')
+                name = srow.get('name') or srow.get('username') or resolve_student_name_by_uid(uid)
+                rating = srow.get('rating') if srow.get('rating') is not None else srow.get('ratings')
+                total = srow.get('total_puzzles_completed') or srow.get('total_completed') or 0
+                daily = srow.get('daily_puzzle') if srow.get('daily_puzzle') is not None else srow.get('daily') or False
+
+                # prefer link-table is_active when available
+                is_active = None
+                try:
+                    link = find_link_info_for_student(uid, canonical_class_id=None, classroom_code=classroom_code)
+                    if link and isinstance(link, dict):
+                        is_active = link.get('is_active') if 'is_active' in link else link.get('active') if 'active' in link else link.get('isActive') if 'isActive' in link else None
+                except Exception:
+                    is_active = None
+
+                if is_active is None:
+                    is_active = srow.get('is_active') if srow.get('is_active') is not None else srow.get('active') if srow.get('active') is not None else False
+
+                students_out.append({
+                    'name': name,
+                    'rating': rating,
+                    'total_puzzles_completed': total,
+                    'daily_puzzle': daily,
+                    'is_active': bool(is_active),
+                })
+            return students_out
+    except Exception:
+        # fall through to relational lookup
+        pass
+
+    # If direct queries returned nothing, try to fetch all students and filter locally
+    try:
+        try:
+            all_resp = supabase.table('Student-DB').select('*').execute()
+            all_students = all_resp.data if hasattr(all_resp, 'data') else all_resp[0]
+        except Exception:
+            all_students = None
+
+        if all_students and len(all_students) > 0:
+            filtered = []
+            for s in (all_students if isinstance(all_students, list) else [all_students]):
+                code = s.get('classroom_code') or s.get('classroom') or s.get('classroomId') or s.get('classroom_id') or s.get('classroomCode')
+                if code is None:
+                    continue
+                if str(code) == str(classroom_code):
+                    filtered.append(s)
+
+            if filtered and len(filtered) > 0:
+                students_out = []
+                for srow in filtered:
+                    uid = srow.get('uid') or srow.get('id')
+                    name = srow.get('name') or srow.get('username') or resolve_student_name_by_uid(uid)
+                    rating = srow.get('rating') if srow.get('rating') is not None else srow.get('ratings')
+                    total = srow.get('total_puzzles_completed') or srow.get('total_completed') or 0
+                    daily = srow.get('daily_puzzle') if srow.get('daily_puzzle') is not None else srow.get('daily') or False
+                    is_active = None
+                    try:
+                        link = find_link_info_for_student(uid, canonical_class_id=None, classroom_code=classroom_code)
+                        if link and isinstance(link, dict):
+                            is_active = link.get('is_active') if 'is_active' in link else link.get('active') if 'active' in link else link.get('isActive') if 'isActive' in link else None
+                    except Exception:
+                        is_active = None
+                    if is_active is None:
+                        is_active = srow.get('is_active') if srow.get('is_active') is not None else srow.get('active') if srow.get('active') is not None else False
+                    students_out.append({
+                        'name': name,
+                        'rating': rating,
+                        'total_puzzles_completed': total,
+                        'daily_puzzle': daily,
+                        'is_active': bool(is_active),
+                    })
+                return students_out
+    except Exception:
+        pass
+
+    # Relational fallback: Classroom -> Classroom_student link table -> Student rows
+    classroom_row = None
+    try:
+        resp = supabase.table('Classroom-DB').select('*').or_(f"classroom_id.eq.{classroom_code},join_code.eq.{classroom_code},id.eq.{classroom_code}").execute()
+        data = resp.data if hasattr(resp, 'data') else resp[0]
+        if data and len(data) > 0:
+            classroom_row = data[0] if isinstance(data, list) else data
+    except Exception:
+        classroom_row = None
+
+    if not classroom_row:
+        return []
+
+    canonical_class_id = classroom_row.get('classroom_id') or classroom_row.get('id') or classroom_row.get('join_code')
+    if not canonical_class_id:
+        return []
+
+    # query linking table for student_uid entries — try several likely table and column names
+    cs_data = None
+    explicit_tbl = 'Classroom_student-DB'
+    possible_class_cols = ['classroom_id', 'classroom', 'class_id', 'classroomId', 'classroom_id']
+    cs_error = None
+    try:
+        for col in possible_class_cols:
+            try:
+                cs_resp = supabase.table(explicit_tbl).select('*').eq(col, canonical_class_id).execute()
+                cs_data = cs_resp.data if hasattr(cs_resp, 'data') else cs_resp[0]
+                if cs_data and len(cs_data) >= 0:
+                    break
+            except Exception as e:
+                cs_error = e
+                cs_data = None
+                try:
+                    cs_resp = supabase.table(explicit_tbl).select('*').eq(col, str(canonical_class_id)).execute()
+                    cs_data = cs_resp.data if hasattr(cs_resp, 'data') else cs_resp[0]
+                    if cs_data and len(cs_data) >= 0:
+                        break
+                except Exception:
+                    cs_data = None
+                    continue
+        if not cs_data:
+            possible_link_tables = [
+                'Classroom_students-DB', 'Classroom-students-DB',
+                'classroom_students', 'classroom_student', 'ClassroomStudent', 'Classroom_Students'
+            ]
+            for tbl in possible_link_tables:
+                for col in possible_class_cols:
+                    try:
+                        cs_resp = supabase.table(tbl).select('*').eq(col, canonical_class_id).execute()
+                        cs_data = cs_resp.data if hasattr(cs_resp, 'data') else cs_resp[0]
+                        if cs_data and len(cs_data) >= 0:
+                            break
+                    except Exception as e:
+                        cs_error = e
+                        cs_data = None
+                        try:
+                            cs_resp = supabase.table(tbl).select('*').eq(col, str(canonical_class_id)).execute()
+                            cs_data = cs_resp.data if hasattr(cs_resp, 'data') else cs_resp[0]
+                            if cs_data and len(cs_data) >= 0:
+                                break
+                        except Exception:
+                            cs_data = None
+                            continue
+                if cs_data:
+                    break
+    except Exception as e:
+        cs_error = e
+
+    if cs_data is None or (isinstance(cs_data, list) and len(cs_data) == 0):
+        return []
+
+    # Build a mapping of student_uid -> link attributes (e.g. is_active)
+    student_uids = []
+    student_link_map = {}
+    for row in cs_data:
+        uid = None
+        is_active = None
+        if isinstance(row, dict):
+            uid = row.get('student_uid') or row.get('studentUid') or row.get('student_id') or row.get('uid') or row.get('id')
+            is_active = row.get('is_active') if 'is_active' in row else row.get('active') if 'active' in row else row.get('isActive') if 'isActive' in row else None
+        else:
+            uid = row
+        if uid:
+            student_uids.append(uid)
+            student_link_map[uid] = {'is_active': bool(is_active) if is_active is not None else None}
+
+    # Batch fetch all student rows in one query to reduce round trips
+    students_out = []
+    try:
+        # Attempt to fetch all student rows where uid in student_uids
+        s_resp = supabase.table('Student-DB').select('*').in_('uid', student_uids).execute() if hasattr(supabase.table('Student-DB'), 'in_') else supabase.table('Student-DB').select('*').execute()
+        # The Supabase client may not expose in_ helper; fallback to multiple filters if unavailable
+        s_data = None
+        try:
+            s_data = s_resp.data if hasattr(s_resp, 'data') else s_resp[0]
+        except Exception:
+            s_data = None
+
+        if not s_data:
+            # Fallback: fetch all and filter locally (rare)
+            all_resp = supabase.table('Student-DB').select('*').execute()
+            all_students = all_resp.data if hasattr(all_resp, 'data') else all_resp[0]
+            s_data = [r for r in (all_students or []) if (r.get('uid') or r.get('id')) in student_uids]
+
+        # Map fetched rows by uid for quick lookup
+        fetched_map = {}
+        if isinstance(s_data, list):
+            for r in s_data:
+                key = r.get('uid') or r.get('id')
+                if key:
+                    fetched_map[str(key)] = r
+        elif isinstance(s_data, dict):
+            key = s_data.get('uid') or s_data.get('id')
+            if key:
+                fetched_map[str(key)] = s_data
+
+        for su in student_uids:
+            srow = fetched_map.get(str(su))
+            if not srow:
+                continue
+            name = srow.get('name') or srow.get('username') or resolve_student_name_by_uid(srow.get('uid') or su)
+            rating = srow.get('rating') if srow.get('rating') is not None else srow.get('ratings')
+            total = srow.get('total_puzzles_completed') or srow.get('total_completed') or 0
+            daily = srow.get('daily_puzzle') if srow.get('daily_puzzle') is not None else srow.get('daily') or False
+            link_info = student_link_map.get(su, {})
+            is_active = link_info.get('is_active')
+            if is_active is None:
+                is_active = srow.get('is_active') if srow.get('is_active') is not None else srow.get('active') if srow.get('active') is not None else False
+
+            students_out.append({
+                'name': name,
+                'rating': rating,
+                'total_puzzles_completed': total,
+                'daily_puzzle': daily,
+                'is_active': bool(is_active),
+            })
+    except Exception:
+        # as a last resort, fall back to per-student fetch (keeps behavior but slower)
+        for su in student_uids:
+            try:
+                s_resp = supabase.table('Student-DB').select('*').eq('uid', su).execute()
+                s_data = s_resp.data if hasattr(s_resp, 'data') else s_resp[0]
+                if s_data and len(s_data) > 0:
+                    srow = s_data[0] if isinstance(s_data, list) else s_data
+                    name = srow.get('name') or srow.get('username') or resolve_student_name_by_uid(srow.get('uid') or su)
+                    rating = srow.get('rating') if srow.get('rating') is not None else srow.get('ratings')
+                    total = srow.get('total_puzzles_completed') or srow.get('total_completed') or 0
+                    daily = srow.get('daily_puzzle') if srow.get('daily_puzzle') is not None else srow.get('daily') or False
+                    link_info = student_link_map.get(su, {})
+                    is_active = link_info.get('is_active')
+                    if is_active is None:
+                        is_active = srow.get('is_active') if srow.get('is_active') is not None else srow.get('active') if srow.get('active') is not None else False
+
+                    students_out.append({
+                        'name': name,
+                        'rating': rating,
+                        'total_puzzles_completed': total,
+                        'daily_puzzle': daily,
+                        'is_active': bool(is_active),
+                    })
+            except Exception:
+                continue
+
+    return students_out
 
 # --- Teacher functions ---
 def create_teacher(name, email, password):
@@ -98,13 +448,16 @@ def insert_teacher(data):
         return None
     return inserted[0] if isinstance(inserted, list) else inserted
 
-    # Insert only Name and email (Supabase generates primary key/UUID)
+    # Direct insert into Teacher-DB (no Supabase Auth creation)
+    # NOTE: If your DB enforces a foreign-key on `teacher_uid` referencing Auth users,
+    # this insert may fail. In that case either make `teacher_uid` nullable/remove the FK,
+    # or provide a valid `teacher_uid` that exists in the Auth users table.
     try:
-        # Some supabase-python clients don't allow chaining `.select()` on insert.
-        insert_resp = supabase.table('Teacher-DB').insert({
+        insert_payload = {
             'name': name,
             'email': email
-        }).execute()
+        }
+        insert_resp = supabase.table('Teacher-DB').insert(insert_payload).execute()
 
         # Normalize returned data across different client versions
         inserted = None
@@ -122,7 +475,11 @@ def insert_teacher(data):
 
         return {'name': name, 'email': email}, "Teacher account created (Supabase, no returned row)"
     except Exception as e:
-        return None, f"Supabase insert error: {e}"
+        # Return a clear message suggesting the probable schema constraint
+        msg = f"Supabase insert error: {e}"
+        if 'foreign key' in str(e).lower() or 'violates foreign key constraint' in str(e).lower():
+            msg += "\nHint: your `Teacher-DB` table enforces a foreign-key on `teacher_uid`. Either make `teacher_uid` nullable, remove the FK, or supply a valid `teacher_uid` that exists in the Auth users table."
+        return None, msg
 
 # --- Classroom functions ---
 def create_classroom(name, teacher_uid=None):
@@ -377,7 +734,156 @@ def get_all_data():
         out["Classrooms"] = c_resp.data if hasattr(c_resp, 'data') else c_resp[0]
     except Exception as e:
         out["Classrooms"] = {"error": f"Supabase error: {e}"}
+    try:
+        s_resp = supabase.table('Student-DB').select('*').execute()
+        out["Students"] = s_resp.data if hasattr(s_resp, 'data') else s_resp[0]
+    except Exception as e:
+        out["Students"] = {"error": f"Supabase error: {e}"}
     return jsonify(out)
+
+
+@app.route('/get_students', methods=['GET'])
+def get_students_route():
+    """Return students for a classroom_code. Query param: classroom_code=<code>"""
+    if not USE_SUPABASE or supabase is None:
+        return jsonify({"error": "Supabase is not configured"}), 500
+
+    classroom_code = request.args.get('classroom_code')
+    if not classroom_code:
+        return jsonify({"error": "classroom_code is required"}), 400
+    # New relational flow:
+    # 1) Find classroom row in Classroom-DB using classroom_code as either classroom_id, join_code or id
+    # 2) Read the canonical classroom id from column 'classroom_id'
+    # 3) Query Classroom_student-DB where classroom_id matches to get student_uid list
+    # 4) Query Student-DB for each student_uid and return requested fields
+
+    try:
+        students = fetch_students_for_classroom(classroom_code)
+        return jsonify({"students": students}), 200
+    except Exception as e:
+        return jsonify({"error": f"Supabase error: {e}"}), 500
+
+
+@app.route('/stream_students', methods=['GET'])
+def stream_students_route():
+    """Server-Sent Events stream that pushes student roster updates for a classroom.
+    Query param: classroom_code
+    """
+    if not USE_SUPABASE or supabase is None:
+        return jsonify({"error": "Supabase is not configured"}), 500
+
+    classroom_code = request.args.get('classroom_code')
+    if not classroom_code:
+        return jsonify({"error": "classroom_code is required"}), 400
+
+    def event_stream(code):
+        try:
+            while True:
+                students = fetch_students_for_classroom(code)
+                payload = json.dumps({"students": students})
+                # Always send the payload (heartbeat) so clients receive updates every second
+                yield f"data: {payload}\n\n"
+                time.sleep(1)
+        except GeneratorExit:
+            return
+
+    headers = {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'X-Accel-Buffering': 'no'
+    }
+    return Response(stream_with_context(event_stream(classroom_code)), headers=headers)
+
+
+@app.route('/debug_roster', methods=['GET'])
+def debug_roster_route():
+    """Return raw debug info for a classroom: raw Student-DB rows, normalized roster,
+    and attempted linking-table query results to help identify schema mismatches.
+    Query param: classroom_code
+    """
+    if not USE_SUPABASE or supabase is None:
+        return jsonify({"error": "Supabase is not configured"}), 500
+
+    classroom_code = request.args.get('classroom_code')
+    if not classroom_code:
+        return jsonify({"error": "classroom_code is required"}), 400
+
+    out = {"requested_classroom_code": classroom_code, "raw_students": None, "normalized_roster": None, "link_table_attempts": []}
+
+    # Raw student rows by classroom_code
+    try:
+        s_resp = supabase.table('Student-DB').select('*').eq('classroom_code', classroom_code).execute()
+        raw_students = s_resp.data if hasattr(s_resp, 'data') else s_resp[0]
+        out['raw_students'] = raw_students
+    except Exception as e:
+        out['raw_students'] = {"error": str(e)}
+
+    # Normalized roster
+    try:
+        roster = fetch_students_for_classroom(classroom_code)
+        out['normalized_roster'] = roster
+    except Exception as e:
+        out['normalized_roster'] = {"error": str(e)}
+
+    # Try several linking table names and collect results
+    possible_link_tables = [
+        'Classroom_student-DB', 'Classroom_students-DB', 'Classroom-students-DB',
+        'classroom_students', 'classroom_student', 'ClassroomStudent', 'Classroom_Students'
+    ]
+    possible_class_cols = ['classroom_id', 'classroom', 'class_id', 'classroomId', 'join_code', 'classroom_code']
+
+    # Resolve classroom canonical id if possible
+    canonical = None
+    try:
+        resp = supabase.table('Classroom-DB').select('*').or_(f"classroom_id.eq.{classroom_code},join_code.eq.{classroom_code},id.eq.{classroom_code}").execute()
+        data = resp.data if hasattr(resp, 'data') else resp[0]
+        if data and len(data) > 0:
+            row = data[0] if isinstance(data, list) else data
+            canonical = row.get('classroom_id') or row.get('id') or row.get('join_code')
+            out['resolved_classroom_row'] = row
+    except Exception as e:
+        out['resolved_classroom_row'] = {"error": str(e)}
+
+    for tbl in possible_link_tables:
+        tbl_entry = {"table": tbl, "queries": []}
+        for col in possible_class_cols:
+            try:
+                q = supabase.table(tbl).select('*').eq(col, canonical if canonical is not None else classroom_code).execute()
+                qdata = q.data if hasattr(q, 'data') else q[0]
+                tbl_entry['queries'].append({"column": col, "result_count": len(qdata) if isinstance(qdata, list) else (1 if qdata else 0), "sample": (qdata[0] if isinstance(qdata, list) and len(qdata) > 0 else qdata)})
+            except Exception as e:
+                tbl_entry['queries'].append({"column": col, "error": str(e)})
+        out['link_table_attempts'].append(tbl_entry)
+
+    return jsonify(out), 200
+
+
+@app.route('/get_classroom', methods=['GET'])
+def get_classroom_route():
+    """Return a single classroom by id or join_code. Query params: id= or join_code="""
+    if not USE_SUPABASE or supabase is None:
+        return jsonify({"error": "Supabase is not configured"}), 500
+
+    classroom_id = request.args.get('id')
+    join_code = request.args.get('join_code')
+
+    if not classroom_id and not join_code:
+        return jsonify({"error": "id or join_code is required"}), 400
+
+    try:
+        if classroom_id:
+            resp = supabase.table('Classroom-DB').select('*').eq('id', classroom_id).execute()
+            data = resp.data if hasattr(resp, 'data') else resp[0]
+            if data and len(data) > 0:
+                return jsonify({"classroom": data[0]}), 200
+        if join_code:
+            resp = supabase.table('Classroom-DB').select('*').eq('join_code', join_code).execute()
+            data = resp.data if hasattr(resp, 'data') else resp[0]
+            if data and len(data) > 0:
+                return jsonify({"classroom": data[0]}), 200
+        return jsonify({"error": "Classroom not found"}), 404
+    except Exception as e:
+        return jsonify({"error": f"Supabase error: {e}"}), 500
 
 @app.route('/get_teacher_profile', methods=['GET'])
 def get_teacher_profile():

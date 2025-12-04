@@ -192,10 +192,12 @@ a.nav-item {
   cursor: pointer;
 }
 
+
 .classroom-card:hover {
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
   transform: translateY(-2px);
 }
+
 
 .card-header {
   height: 128px;
@@ -240,6 +242,35 @@ a.nav-item {
   overflow: hidden;
   z-index: 1000;
   animation: fadeInDown 0.15s ease-out;
+}
+
+/* Footer-specific menu styles: make the three-dot visible on white footer */
+.card-footer .card-menu {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  top: auto;
+  color: #374151; /* dark icon color on white background */
+  background: rgba(255,255,255,0.0);
+  padding: 6px;
+  border-radius: 8px;
+  z-index: 20;
+}
+
+.card-footer .card-menu:hover {
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.card-footer .card-menu svg {
+  color: inherit;
+}
+
+/* Popup above footer menu */
+.card-footer .card-menu-popup {
+  bottom: calc(100% + 8px);
+  top: auto;
+  right: 0;
+  left: auto;
 }
 
 @keyframes fadeInDown {
@@ -296,6 +327,19 @@ a.nav-item {
   margin-bottom: 12px;
 }
 
+/* placeholder line used instead of '0 students' text to preserve layout */
+.card-subtitle.placeholder-line {
+  display: block;
+  /* stretch the thin line edge-to-edge by offsetting the card padding */
+  width: calc(100% + 32px);
+  margin-left: -16px;
+  height: 1px; /* hairline */
+  background-color: #111; /* dark hairline */
+  border-radius: 0;
+  margin-bottom: 12px;
+  opacity: 0.9;
+}
+
 .card-footer {
   display: flex;
   justify-content: flex-end;
@@ -303,6 +347,11 @@ a.nav-item {
   gap: 8px;
   font-size: 14px;
   color: #4B5563;
+}
+
+/* allow absolutely-positioned menu inside footer to position relative to footer */
+.card-footer {
+  position: relative;
 }
 
 /* Edit Panel Styles */
