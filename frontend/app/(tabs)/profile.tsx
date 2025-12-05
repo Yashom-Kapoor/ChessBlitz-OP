@@ -284,7 +284,7 @@ export default function ProfileScreen() {
           <InfoBox style={localStyles.notificationsBox} theme={theme} isTablet={isTablet}>
             <Text
               style={[
-                styles.h4,
+                styles.h2,
                 localStyles.notificationsTitle,
                 { color: theme.primaryText },
               ]}
@@ -315,20 +315,6 @@ export default function ProfileScreen() {
                 onValueChange={() => toggleNotification('newLessons')}
               />
             </View>
-          </InfoBox>
-
-
-          <InfoBox style={localStyles.generalInfoBox} theme={theme} isTablet={isTablet}>
-            <Text
-              style={[
-                styles.h2,
-                { color: theme.primaryText },
-              ]}
-            >
-              Options
-            </Text>
-
-            
 
             <View style={localStyles.divider} />
 
