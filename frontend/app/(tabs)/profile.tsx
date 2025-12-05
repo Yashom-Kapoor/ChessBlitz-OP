@@ -4,7 +4,7 @@ import GlobalStyle from '@/context/GlobalStyle';
 import { useTheme } from '@/context/ThemeContext';
 import { useGlobalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Switch } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 const InfoBox = ({
@@ -53,6 +53,19 @@ export default function ProfileScreen() {
   });
 
   const [isEditing, setIsEditing] = useState(false);
+
+  const [notifications, setNotifications] = useState({
+  lessonReminders: true,
+  newPuzzles: true,
+  newLessons: true,
+  });
+
+  const toggleNotification = (key: 'lessonReminders' | 'newPuzzles' | 'newLessons') => {
+    setNotifications(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  
+
 
   const localStyles = StyleSheet.create({
     header: {
@@ -137,6 +150,22 @@ export default function ProfileScreen() {
     },
     bottomSpacing: {
       height: 30,
+    },
+    notificationsBox: {
+      marginTop: 24,
+    },
+    notificationsTitle: {
+      marginBottom: isTablet ? 16 : 12,
+    },
+    notificationRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginVertical: 6,
+    },
+    notificationLabel: {
+      color: theme.primaryText,
+      fontSize: isTablet ? 18 : 16,
     },
   });
 
@@ -249,6 +278,44 @@ export default function ProfileScreen() {
               <Text style={[styles.h5, localStyles.infoValue]}>{userData.joinDate}</Text>
             </View>
           </InfoBox>
+
+          {/* Notifications Box */}
+          <InfoBox style={localStyles.notificationsBox} theme={theme} isTablet={isTablet}>
+            <Text
+              style={[
+                styles.h4,
+                localStyles.notificationsTitle,
+                { color: theme.primaryText },
+              ]}
+            >
+              Notifications
+            </Text>
+
+            <View style={localStyles.notificationRow}>
+              <Text style={localStyles.notificationLabel}>Lesson Reminders</Text>
+              <Switch
+                value={notifications.lessonReminders}
+                onValueChange={() => toggleNotification('lessonReminders')}
+              />
+            </View>
+
+            <View style={localStyles.notificationRow}>
+              <Text style={localStyles.notificationLabel}>New Puzzles</Text>
+              <Switch
+                value={notifications.newPuzzles}
+                onValueChange={() => toggleNotification('newPuzzles')}
+              />
+            </View>
+
+            <View style={localStyles.notificationRow}>
+              <Text style={localStyles.notificationLabel}>New Lessons</Text>
+              <Switch
+                value={notifications.newLessons}
+                onValueChange={() => toggleNotification('newLessons')}
+              />
+            </View>
+          </InfoBox>
+
 
           <View style={localStyles.bottomSpacing} />
         </ScrollView>
