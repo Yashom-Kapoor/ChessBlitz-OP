@@ -72,7 +72,7 @@ export default function SignUpScreen() {
             email: email.trim(),
             ratings: 0,
             total_puzzles_completed: 0,
-            classroom_code: null,
+            classroom_code: classCode.trim(),
             daily_puzzle: false,
         }])
         .select()
