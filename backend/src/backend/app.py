@@ -460,7 +460,14 @@ lessons = [
         'desc': 'Understand different pawn structures and their implications.',
         'content': 'Pawn structures play a crucial role in determining the strategic plans for both sides...',
         'icon': 'default'
-    }
+    },
+    {
+        'id': 8,
+        'name': 'lesson 8',
+        'desc': 'Understand different pawn structures and their implications.',
+        'content': 'Pawn structures play a crucial role in determining the strategic plans for both sides...',
+        'icon': 'default'
+    },
 ]
 
 @app.route('/lessons', methods=['GET'])
