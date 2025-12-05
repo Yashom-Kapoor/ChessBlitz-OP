@@ -64,8 +64,22 @@ export default function ProfileScreen() {
     setNotifications(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  
+    const [classes, setClasses] = useState<string[]>([
+    'Class Name #1',
+    'Class Name #2',
+    'Class Name #3',
+  ]);
 
+  const demoEnrollCode = ['6', 'H', 'X', '7', '5', 'P'];
+
+  const handleEnroll = () => {
+    // later you can replace this with a real enroll call
+    console.log('Enroll with code:', demoEnrollCode.join(''));
+  };
+
+  const handleUnenroll = (index: number) => {
+    setClasses(prev => prev.filter((_, i) => i !== index));
+  };
 
   const localStyles = StyleSheet.create({
     header: {
@@ -166,6 +180,78 @@ export default function ProfileScreen() {
     notificationLabel: {
       color: theme.primaryText,
       fontSize: isTablet ? 18 : 16,
+    },
+        // --- Enroll / Unenroll box ---
+    enrollBox: {
+      marginTop: 24,
+    },
+    enrollTitle: {
+      marginBottom: isTablet ? 16 : 12,
+    },
+    enrollTopRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 12,
+    },
+    codeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: 6,
+    },
+    codeBox: {
+      minWidth: 30,
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: `${theme.primaryText}40`,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    codeText: {
+      color: theme.primaryText,
+      fontSize: isTablet ? 18 : 16,
+      fontWeight: '600',
+    },
+    enrollButton: {
+      paddingHorizontal: isTablet ? 20 : 16,
+      paddingVertical: isTablet ? 10 : 8,
+      borderRadius: 999,
+      backgroundColor: theme.primaryText,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    enrollButtonText: {
+      color: theme.primaryButton,
+      fontWeight: '600',
+      fontSize: isTablet ? 16 : 14,
+    },
+    enrollSubtext: {
+      marginTop: 8,
+      color: `${theme.primaryText}80`,
+      fontSize: isTablet ? 14 : 12,
+    },
+    classesHeader: {
+      marginTop: 20,
+      marginBottom: 8,
+      color: `${theme.primaryText}80`,
+      fontSize: isTablet ? 14 : 12,
+    },
+    classRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 4,
+    },
+    className: {
+      color: theme.primaryText,
+      fontSize: isTablet ? 16 : 14,
+    },
+    classAction: {
+      color: '#FF6B6B', // same red as puzzle "Fork" color
+      fontSize: isTablet ? 14 : 13,
     },
   });
 
@@ -316,6 +402,49 @@ export default function ProfileScreen() {
             </View>
           </InfoBox>
 
+
+          {/* Enroll / Unenroll Box */}
+          <InfoBox style={localStyles.enrollBox} theme={theme} isTablet={isTablet}>
+            <View style={localStyles.enrollTopRow}>
+              <Text
+                style={[
+                  styles.h4,
+                  localStyles.enrollTitle,
+                  { color: theme.primaryText },
+                ]}
+              >
+                Enroll/Unenroll
+              </Text>
+
+              <TouchableOpacity style={localStyles.enrollButton} onPress={handleEnroll}>
+                <Text style={localStyles.enrollButtonText}>Enroll</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Code boxes */}
+            <View style={localStyles.codeRow}>
+              {demoEnrollCode.map((ch, idx) => (
+                <View key={idx} style={localStyles.codeBox}>
+                  <Text style={localStyles.codeText}>{ch}</Text>
+                </View>
+              ))}
+            </View>
+
+            <Text style={localStyles.enrollSubtext}>
+              You are joining Mr. Jackson's class.
+            </Text>
+
+            {/* Classes list */}
+            <Text style={localStyles.classesHeader}>Your classes</Text>
+            {classes.map((className, idx) => (
+              <View key={idx} style={localStyles.classRow}>
+                <Text style={localStyles.className}>{className}</Text>
+                <TouchableOpacity onPress={() => handleUnenroll(idx)}>
+                  <Text style={localStyles.classAction}>Unenroll</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </InfoBox>
 
           <View style={localStyles.bottomSpacing} />
         </ScrollView>
