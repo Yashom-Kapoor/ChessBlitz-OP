@@ -419,8 +419,6 @@ export default function ProfileScreen() {
                 onValueChange={() => toggleNotification('newLessons')}
               />
             </View>
-
-            <View style={localStyles.divider} />
           </InfoBox>
 
           {/* Enroll / Unenroll Box */}
