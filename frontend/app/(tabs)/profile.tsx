@@ -254,6 +254,24 @@ export default function ProfileScreen() {
       color: '#FF6B6B', // same red as puzzle "Fork" color
       fontSize: isTablet ? 14 : 13,
     },
+        logoutContainer: {
+      marginTop: 24,
+      alignItems: 'center',
+    },
+    logoutButton: {
+      paddingVertical: isTablet ? 14 : 12,
+      paddingHorizontal: isTablet ? 40 : 32,
+      borderRadius: 20,
+      backgroundColor: 'rgba(255, 80, 80, 0.15)',  // light red with low opacity
+      borderWidth: 1,
+      borderColor: 'rgba(255, 80, 80, 0.25)',      // subtle border
+    },
+    logoutText: {
+      color: '#FFFFFF',
+      fontSize: isTablet ? 18 : 16,
+      fontWeight: '600',
+    },
+
   });
 
   return (
@@ -403,10 +421,6 @@ export default function ProfileScreen() {
             </View>
 
             <View style={localStyles.divider} />
-
-            <TouchableOpacity style={localStyles.infoContent} onPress={() => router.replace('/')}>
-              <Text style={{...styles.h4, ...localStyles.infoValue }}>Log Out</Text>
-            </TouchableOpacity>
           </InfoBox>
 
           {/* Enroll / Unenroll Box */}
@@ -451,6 +465,13 @@ export default function ProfileScreen() {
               </View>
             ))}
           </InfoBox>
+          
+          {/* Log Out Button */}
+          <View style={localStyles.logoutContainer}>
+            <TouchableOpacity style={localStyles.logoutButton} onPress={() => console.log('Logging out')}>
+              <Text style={localStyles.logoutText}>Log Out</Text>
+            </TouchableOpacity>
+          </View>
 
           <View style={localStyles.bottomSpacing} />
         </ScrollView>
