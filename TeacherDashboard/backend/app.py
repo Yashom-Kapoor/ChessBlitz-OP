@@ -32,7 +32,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 PORT = os.getenv("PORT")
 
 
-if SUPABASE_URL and SUPABASE_KEY and create_client:
+if SUPABASE_URL and SUPABASE_KEY:
     try:
         supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
         USE_SUPABASE = True
@@ -150,10 +150,6 @@ def fetch_students_for_classroom(classroom_code):
             ('classroom_code', str(classroom_code)),
             ('classroom_id', classroom_code),
             ('classroom_id', str(classroom_code)),
-            ('classroom', classroom_code),
-            ('classroom', str(classroom_code)),
-            ('classroomCode', classroom_code),
-            ('classroomCode', str(classroom_code)),
         ]
 
         s_data = None
@@ -252,7 +248,7 @@ def fetch_students_for_classroom(classroom_code):
         data = resp.data if hasattr(resp, 'data') else resp[0]
         if data and len(data) > 0:
             classroom_row = data[0] if isinstance(data, list) else data
-    except Exception:
+    except Exception as e:
         classroom_row = None
 
     if not classroom_row:
@@ -262,56 +258,23 @@ def fetch_students_for_classroom(classroom_code):
     if not canonical_class_id:
         return []
 
-    # query linking table for student_uid entries — try several likely table and column names
+    # query linking table for student_uid entries — try a couple of likely table names only
     cs_data = None
-    explicit_tbl = 'Classroom_student-DB'
-    possible_class_cols = ['classroom_id', 'classroom', 'class_id', 'classroomId', 'classroom_id']
-    cs_error = None
-    try:
+    possible_link_tables = ['Classroom_student-DB', 'Classroom_students-DB', 'classroom_students']
+    possible_class_cols = ['classroom_id', 'class_id', 'join_code']
+    
+    for tbl in possible_link_tables:
+        if cs_data:
+            break
         for col in possible_class_cols:
             try:
-                cs_resp = supabase.table(explicit_tbl).select('*').eq(col, canonical_class_id).execute()
+                cs_resp = supabase.table(tbl).select('*').eq(col, canonical_class_id).execute()
                 cs_data = cs_resp.data if hasattr(cs_resp, 'data') else cs_resp[0]
-                if cs_data and len(cs_data) >= 0:
+                if cs_data and len(cs_data) > 0:
                     break
-            except Exception as e:
-                cs_error = e
+            except Exception:
                 cs_data = None
-                try:
-                    cs_resp = supabase.table(explicit_tbl).select('*').eq(col, str(canonical_class_id)).execute()
-                    cs_data = cs_resp.data if hasattr(cs_resp, 'data') else cs_resp[0]
-                    if cs_data and len(cs_data) >= 0:
-                        break
-                except Exception:
-                    cs_data = None
-                    continue
-        if not cs_data:
-            possible_link_tables = [
-                'Classroom_students-DB', 'Classroom-students-DB',
-                'classroom_students', 'classroom_student', 'ClassroomStudent', 'Classroom_Students'
-            ]
-            for tbl in possible_link_tables:
-                for col in possible_class_cols:
-                    try:
-                        cs_resp = supabase.table(tbl).select('*').eq(col, canonical_class_id).execute()
-                        cs_data = cs_resp.data if hasattr(cs_resp, 'data') else cs_resp[0]
-                        if cs_data and len(cs_data) >= 0:
-                            break
-                    except Exception as e:
-                        cs_error = e
-                        cs_data = None
-                        try:
-                            cs_resp = supabase.table(tbl).select('*').eq(col, str(canonical_class_id)).execute()
-                            cs_data = cs_resp.data if hasattr(cs_resp, 'data') else cs_resp[0]
-                            if cs_data and len(cs_data) >= 0:
-                                break
-                        except Exception:
-                            cs_data = None
-                            continue
-                if cs_data:
-                    break
-    except Exception as e:
-        cs_error = e
+                continue
 
     if cs_data is None or (isinstance(cs_data, list) and len(cs_data) == 0):
         return []
@@ -412,7 +375,7 @@ def fetch_students_for_classroom(classroom_code):
 
 # --- Teacher functions ---
 def create_teacher(name, email, password):
-    #only Name and email are stored in Supabase
+    """Create a teacher account. Only name and email are stored in Supabase."""
     if not USE_SUPABASE or supabase is None:
         return None, "Supabase is not configured"
 
@@ -424,29 +387,6 @@ def create_teacher(name, email, password):
         return None, f"Supabase error checking existing teacher: {e}"
     if data and len(data) > 0:
         return None, "Email already exists"
-    
-def validate_teacher_data(data):
-    """Check required fields"""
-    required = ["user_id", "name", "email"]
-    missing = [field for field in required if not data.get(field)]
-    if missing:
-        return False, f"Missing required fields: {', '.join(missing)}"
-    return True, None
-
-def insert_teacher(data):
-    """Insert teacher row into Teacher-DB"""
-    insert_data = {
-        "teacher_uid": data["user_id"],
-        "name": data["name"],
-        "email": data["email"],
-        "bio": data.get("bio"),
-        "favorite_opening_move": data.get("favorite_opening_move"),
-    }
-    resp = supabase.table("Teacher-DB").insert(insert_data).execute()
-    inserted = resp.data if hasattr(resp, "data") else resp[0]
-    if not inserted:
-        return None
-    return inserted[0] if isinstance(inserted, list) else inserted
 
     # Direct insert into Teacher-DB (no Supabase Auth creation)
     # NOTE: If your DB enforces a foreign-key on `teacher_uid` referencing Auth users,
@@ -480,6 +420,32 @@ def insert_teacher(data):
         if 'foreign key' in str(e).lower() or 'violates foreign key constraint' in str(e).lower():
             msg += "\nHint: your `Teacher-DB` table enforces a foreign-key on `teacher_uid`. Either make `teacher_uid` nullable, remove the FK, or supply a valid `teacher_uid` that exists in the Auth users table."
         return None, msg
+
+def validate_teacher_data(data):
+    """Check required fields for teacher creation"""
+    required = ["user_id", "name", "email"]
+    missing = [field for field in required if not data.get(field)]
+    if missing:
+        return False, f"Missing required fields: {', '.join(missing)}"
+    return True, None
+
+def insert_teacher(data):
+    """Insert teacher row into Teacher-DB"""
+    if not USE_SUPABASE or supabase is None:
+        return None
+    
+    insert_data = {
+        "teacher_uid": data["user_id"],
+        "name": data["name"],
+        "email": data["email"],
+        "bio": data.get("bio"),
+        "favorite_opening_move": data.get("favorite_opening_move"),
+    }
+    resp = supabase.table("Teacher-DB").insert(insert_data).execute()
+    inserted = resp.data if hasattr(resp, "data") else resp[0]
+    if not inserted:
+        return None
+    return inserted[0] if isinstance(inserted, list) else inserted
 
 # --- Classroom functions ---
 def create_classroom(name, teacher_uid=None):
@@ -645,21 +611,44 @@ def join_classroom_route():
         return jsonify({"message": message, "classroom": classroom}), 200
     return jsonify({"error": message}), 404
 
+@app.route('/test', methods=['GET'])
+def test():
+    """Quick test endpoint"""
+    return jsonify({"status": "ok", "supabase_enabled": USE_SUPABASE}), 200
+
 @app.route('/get_classrooms', methods=['GET'])
 def get_classrooms_route():
     if not USE_SUPABASE or supabase is None:
         return jsonify({"error": "Supabase is not configured"}), 500
     
     try:
+        import sys
+        import traceback
+        
+        print("\n=== GET_CLASSROOMS DEBUG START ===", file=sys.stderr, flush=True)
+        print(f"USE_SUPABASE={USE_SUPABASE}, supabase={supabase}", file=sys.stderr, flush=True)
+        
+        # First just try to get all classrooms without filtering
+        print("Attempting to query Classroom-DB...", file=sys.stderr, flush=True)
+        resp = supabase.table('Classroom-DB').select('*').execute()
+        print(f"Got response: {resp}", file=sys.stderr, flush=True)
+        
+        # Safely extract data
+        data = resp.data if hasattr(resp, 'data') else (resp[0] if isinstance(resp, list) else resp)
+        
+        # Now filter by teacher_uid if provided
         teacher_uid = request.args.get('teacher_uid')
-        if teacher_uid:
-            resp = supabase.table('Classroom-DB').select('*').eq('teacher_uid', teacher_uid).execute()
-        else:
-            resp = supabase.table('Classroom-DB').select('*').execute()
-        data = resp.data if hasattr(resp, 'data') else resp[0]
+        if teacher_uid and data:
+            data = [c for c in data if c.get('teacher_uid') == teacher_uid]
+        
+        print("=== GET_CLASSROOMS DEBUG END (SUCCESS) ===\n", file=sys.stderr, flush=True)
         return jsonify({"classrooms": data if data else []})
     except Exception as e:
-        return jsonify({"error": f"Supabase error: {e}"}), 500
+        print(f"\n!!! ERROR in get_classrooms: {e}", file=sys.stderr, flush=True)
+        print(f"Exception type: {type(e).__name__}", file=sys.stderr, flush=True)
+        traceback.print_exc(file=sys.stderr)
+        print("!!! END ERROR !!!\n", file=sys.stderr, flush=True)
+        return jsonify({"error": f"Supabase error: {str(e)}"}), 500
 
 
 @app.route('/delete_classroom', methods=['POST', 'DELETE'])
@@ -751,11 +740,6 @@ def get_students_route():
     classroom_code = request.args.get('classroom_code')
     if not classroom_code:
         return jsonify({"error": "classroom_code is required"}), 400
-    # New relational flow:
-    # 1) Find classroom row in Classroom-DB using classroom_code as either classroom_id, join_code or id
-    # 2) Read the canonical classroom id from column 'classroom_id'
-    # 3) Query Classroom_student-DB where classroom_id matches to get student_uid list
-    # 4) Query Student-DB for each student_uid and return requested fields
 
     try:
         students = fetch_students_for_classroom(classroom_code)
@@ -781,7 +765,7 @@ def stream_students_route():
             while True:
                 students = fetch_students_for_classroom(code)
                 payload = json.dumps({"students": students})
-                # Always send the payload (heartbeat) so clients receive updates every second
+                # Send updates every 1 second
                 yield f"data: {payload}\n\n"
                 time.sleep(1)
         except GeneratorExit:
@@ -971,4 +955,4 @@ if __name__ == '__main__':
     print(f"Template folder: {app.template_folder}")
     print(f"Static folder: {app.static_folder}")
     print(f"Starting server on http://localhost:{PORT}")
-    app.run(debug=True, port=8000)
+    app.run(debug=True, use_reloader=False, port=8000)

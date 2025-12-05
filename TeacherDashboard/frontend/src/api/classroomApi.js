@@ -9,6 +9,7 @@ function pickColor() {
 export async function getClassrooms(teacherUid = null) {
   try {
     const url = teacherUid ? `${API_BASE_URL}/get_classrooms?teacher_uid=${encodeURIComponent(teacherUid)}` : `${API_BASE_URL}/get_classrooms`;
+    console.log("Fetching classrooms from URL:", url);
     const resp = await fetch(url);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const json = await resp.json();

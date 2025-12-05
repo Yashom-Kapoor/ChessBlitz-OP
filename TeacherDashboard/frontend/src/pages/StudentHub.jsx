@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { FaArrowLeft } from "react-icons/fa";
 import StudentOverviewModal from "../components/StudentOverviewModal";
+import { API_BASE_URL } from "../config";
 
 export default function StudentHub() {
   const { classroomId } = useParams();
@@ -13,7 +14,7 @@ export default function StudentHub() {
   const location = useLocation();
   const [classroomName, setClassroomName] = useState(location.state?.classroomName ?? "Classroom");
 
-  const apiUrl = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/$/, "");
+  const apiUrl = API_BASE_URL;
 
   useEffect(() => {
     // Fetch classroom info (by join_code or id)
@@ -142,8 +143,8 @@ export default function StudentHub() {
       es = new EventSource(esUrl);
     } catch (err) {
       console.error('EventSource not supported or failed to open', err);
-      // start aggressive polling fallback immediately
-      pollIntervalId = setInterval(fetchStudentsWithFallback, 10);
+      // start polling fallback (1 second interval)
+      pollIntervalId = setInterval(fetchStudentsWithFallback, 1000);
       return () => {
         mounted = false;
         if (pollIntervalId) clearInterval(pollIntervalId);
@@ -172,8 +173,8 @@ export default function StudentHub() {
       console.error('Student stream error', err, 'count', esErrorCount);
       if (esErrorCount >= MAX_ES_ERRORS) {
         try { es.close(); } catch (e) {}
-        // start aggressive polling as fallback
-        pollIntervalId = setInterval(fetchStudentsWithFallback, 10);
+        // start polling as fallback (1 second interval)
+        pollIntervalId = setInterval(fetchStudentsWithFallback, 1000);
       }
     };
 
