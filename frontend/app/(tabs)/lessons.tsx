@@ -2,7 +2,7 @@ import { GestureHandlerRootView, Pressable } from "react-native-gesture-handler"
 import React, { useEffect, useState } from 'react';
 import { ScrollView, View, ActivityIndicator, StyleSheet, ImageBackground, Text, TouchableWithoutFeedback } from 'react-native';
 import Lesson from '@/components/lessons/Lesson';
-import { useGlobalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useGlobalSearchParams, useLocalSearchParams, useRouter } from 'expo-router';
 import { useTheme } from '@/context/ThemeContext';
 import GlobalStyle from "@/context/GlobalStyle";
 import backgroundImages, { BackgroundContext } from "@/context/Backgrounds";
@@ -23,7 +23,8 @@ const LESSON_ICONS: Record<string, any> = {
 
 export default function LessonScreen() {
   const { theme } = useTheme();
-  const isTablet = useGlobalSearchParams().isTablet === 'true';
+  const global = useGlobalSearchParams()
+  const isTablet = global.isTablet === 'true';
 
   const [lessons, setLessons] = useState<LessonData[]>([]);
   const [loading, setLoading] = useState(true)
@@ -32,6 +33,7 @@ export default function LessonScreen() {
   const API_URL = "http://127.0.0.1:5000/lessons";
 
   const [lessonBubble, setLessonBubble] = useState<number>(-1);
+  const [completedLessons, setCompletedLessons] = useState<number>(0);
 
   useEffect(() => {
     const fetchLessons = async () => {
@@ -48,7 +50,16 @@ export default function LessonScreen() {
     fetchLessons();
   }, []);
 
-  const completedLessons = 3; // Placeholder for completed lessons logic
+  useFocusEffect(
+    React.useCallback(() => {
+      const completed = (global.lessonCompleted as any);
+      if (completed) {
+        setCompletedLessons(prev => Math.max(prev, parseInt(completed)));
+        // Clear the param
+        router.setParams({ lessonCompleted: undefined });
+      }
+    }, [global.lessonCompleted])
+  );
 
   const styles = GlobalStyle(theme, isTablet);
   const localStyles = StyleSheet.create({

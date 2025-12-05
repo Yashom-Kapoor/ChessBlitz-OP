@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Chessboard, { ChessboardRef } from 'react-native-chessboard';
 import { useTheme } from '@/context/ThemeContext';
+import { fetchPuzzle } from '@/api/GetPuzzle';
 
 // Define the props for ChessboardDemo
 interface ChessboardDemoProps {
@@ -11,6 +12,7 @@ interface ChessboardDemoProps {
     colors?: { black: string; white: string }; // Optional colors for the chessboard
     gestureEnabled?: boolean; // Optional gesture enabled flag
     isTablet?: boolean;
+    puzzleId?: string;
 }
 
 // Define the type of the ref object
@@ -30,7 +32,7 @@ const ChessboardDemo = forwardRef<ChessboardDemoRef, ChessboardDemoProps>((props
     useEffect(() => {
         const getPuzzle = async () => {
             try {
-                const data = await fetchRandomPuzzle(); // Fetch the puzzle JSON
+                const data = await (props.puzzleId ? fetchPuzzle(props.puzzleId) : fetchRandomPuzzle()); // Fetch the puzzle JSON
                 setPuzzle(data); // Set the puzzle data
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'An unknown error occurred'); // Set the error message
@@ -39,13 +41,13 @@ const ChessboardDemo = forwardRef<ChessboardDemoRef, ChessboardDemoProps>((props
             }
         };
         getPuzzle();
-    }, []);
+    }, [props.puzzleId]);
 
     // Expose the chessboardRef and getPuzzle function to the parent component
     useImperativeHandle(ref, () => ({
         getPuzzle: () => puzzle, // Function to return the puzzle state
         board: chessboardRef.current, // Reference to the Chessboard
-    }));
+    }), [puzzle, chessboardRef.current]);
 
     if (loading) {
         return (

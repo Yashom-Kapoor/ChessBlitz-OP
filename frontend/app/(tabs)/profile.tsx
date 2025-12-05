@@ -2,7 +2,7 @@ import GlassBlurView from '@/components/GlassBlurView';
 import backgroundImages, { BackgroundContext } from '@/context/Backgrounds';
 import GlobalStyle from '@/context/GlobalStyle';
 import { useTheme } from '@/context/ThemeContext';
-import { useGlobalSearchParams } from 'expo-router';
+import { useGlobalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Switch } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -42,6 +42,7 @@ export default function ProfileScreen() {
   const { theme } = useTheme();
   const isTablet = useGlobalSearchParams().isTablet === 'true';
   const styles = GlobalStyle(theme, isTablet);
+  const router = useRouter();
 
   const [userData, setUserData] = useState({
     name: 'Chess Master',
@@ -198,7 +199,7 @@ export default function ProfileScreen() {
           <InfoBox style={localStyles.generalInfoBox} theme={theme} isTablet={isTablet}>
             <Text
               style={[
-                styles.h4,
+                styles.h2,
                 { color: theme.primaryText, marginBottom: isTablet ? 20 : 15 },
               ]}
             >
@@ -316,6 +317,25 @@ export default function ProfileScreen() {
             </View>
           </InfoBox>
 
+
+          <InfoBox style={localStyles.generalInfoBox} theme={theme} isTablet={isTablet}>
+            <Text
+              style={[
+                styles.h2,
+                { color: theme.primaryText },
+              ]}
+            >
+              Options
+            </Text>
+
+            
+
+            <View style={localStyles.divider} />
+
+            <TouchableOpacity style={localStyles.infoContent} onPress={() => router.replace('/')}>
+              <Text style={{...styles.h4, ...localStyles.infoValue }}>Log Out</Text>
+            </TouchableOpacity>
+          </InfoBox>
 
           <View style={localStyles.bottomSpacing} />
         </ScrollView>
