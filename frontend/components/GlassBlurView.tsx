@@ -3,7 +3,7 @@ import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import { LinearGradient } from "expo-linear-gradient";
 import { StyleSheet } from "react-native";
 
-export default function GlassBlurView({ theme, isTablet, color, glass, interactive=false, borderRadius=(isTablet ? 30 : 20), outset=false, ...rest }: any) {
+export default function GlassBlurView({ theme, isTablet, color, glass, interactive=false, borderRadius=(isTablet ? 30 : 20), outset=false, opacity=0.8, ...rest }: any) {
 
     return isLiquidGlassAvailable() ? (
         <>
@@ -18,7 +18,7 @@ export default function GlassBlurView({ theme, isTablet, color, glass, interacti
                 ...StyleSheet.absoluteFillObject,
                 borderRadius: borderRadius,
                 backgroundColor: color,
-                opacity: 0.8,
+                opacity: opacity,
                 boxShadow: outset ? `0 -${isTablet ? 20 : 12}px 0 inset ${theme.buttonShadow}` : undefined
             }}
                 glassEffectStyle={glass}

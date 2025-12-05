@@ -45,6 +45,20 @@ def get_random_puzzle() -> Tuple[Dict[str, Any], int]:
     except:
         return jsonify({"error": "Server function error"}), 500
     
+@app.route("/puzzles/<puzzle_id>", methods=["GET"])
+def get_puzzle(puzzle_id: str) -> Tuple[Dict[str, Any], str]:
+    """Returns puzzle based on puzzle_id from Firebase realtime database of puzzles"""
+    try:
+        # User Input Error Handling
+        condpuzzle, errpuzzle = validate_puzzle_id(db, puzzle_id)
+        if not condpuzzle:
+            return jsonify({"error": errpuzzle}), 400
+
+        puzzle = fetch_puzzle(db, puzzle_id)
+        return jsonify(puzzle), 200
+    except:
+        return jsonify({"error": "Server function error"}), 500
+    
 @app.route("/puzzles/completed", methods=["POST"])
 def post_completed_puzzle() -> Tuple[Dict[str, Any], int]:
     """Record a completed puzzle with stats"""
@@ -446,7 +460,14 @@ lessons = [
         'desc': 'Understand different pawn structures and their implications.',
         'content': 'Pawn structures play a crucial role in determining the strategic plans for both sides...',
         'icon': 'default'
-    }
+    },
+    {
+        'id': 8,
+        'name': 'lesson 8',
+        'desc': 'Understand different pawn structures and their implications.',
+        'content': 'Pawn structures play a crucial role in determining the strategic plans for both sides...',
+        'icon': 'default'
+    },
 ]
 
 @app.route('/lessons', methods=['GET'])

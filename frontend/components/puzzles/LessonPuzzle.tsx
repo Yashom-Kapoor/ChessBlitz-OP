@@ -1,5 +1,5 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable, Image, ImageBackground, Platform } from 'react-native';
+import React, { useRef, useState, useEffect, useLayoutEffect } from 'react';
+import { View, Text, StyleSheet, Pressable, Image, ImageBackground, Platform, TouchableOpacity } from 'react-native';
 import { useGlobalSearchParams, useLocalSearchParams, useRouter } from 'expo-router';
 import ChessboardDemo from '@/components/puzzles/ChessboardDemo';
 import { IconSymbol } from '@/components/ui/IconSymbol';
@@ -18,10 +18,16 @@ import GlassBlurView from '@/components/GlassBlurView';
 import { postCompletedPuzzle } from '@/api/PostCompleted';
 
 interface LessonPuzzleProps {
-    NavBar: React.ComponentType<any>;
+    page: number;
+    pageForward: () => void;
+    pageBack: () => void;
+    puzzleId: string;
+    length: number;
+    pagePrevPuzzle: boolean;
+    pageNextPuzzle: boolean;
 }
 
-export default function LessonPuzzle({ NavBar }: LessonPuzzleProps) {
+export default function LessonPuzzle({ length, page, pageBack, pageForward, pagePrevPuzzle, pageNextPuzzle, puzzleId }: LessonPuzzleProps) {
     const { theme } = useTheme();
     const isTablet = useGlobalSearchParams().isTablet === 'true';
     const [hint, setHint] = useState<string | null>(null);
@@ -103,27 +109,6 @@ export default function LessonPuzzle({ NavBar }: LessonPuzzleProps) {
             alignItems: 'center',
             userSelect: 'none',
             pointerEvents: 'none',
-        },
-        ratingContainer: {
-            flex: 1,
-            padding: 15,
-            justifyContent: 'flex-start',
-            alignItems: 'center',
-            flexDirection: 'row',
-            backgroundColor: theme.primaryButton,
-            marginVertical: 10,
-            marginRight: 20,
-            borderRadius: isTablet ? 30 : 20,
-            borderStartStartRadius: 0,
-            borderBottomStartRadius: 0,
-            boxShadow: `${isTablet ? ' -14 14' : '-7 7'} 0 ${theme.buttonShadow}`,
-        },
-        timeElapsed: {
-            flex: 1,
-            padding: 25,
-            justifyContent: 'flex-end',
-            alignItems: 'center',
-            flexDirection: 'row',
         },
 
         clockIcon: {
@@ -327,6 +312,7 @@ export default function LessonPuzzle({ NavBar }: LessonPuzzleProps) {
                 ref={chessboardRef}
                 colors={{ black: theme.player2Square, white: theme.player1Square }}
                 isTablet={isTablet}
+                puzzleId={puzzleId}
                 onMove={({ state }) => {
                     setLastFEN(state.fen); // Update the last FEN
 
@@ -406,9 +392,30 @@ export default function LessonPuzzle({ NavBar }: LessonPuzzleProps) {
                 </Pressable>
             </Animated.View>
 
-            <NavBar />
+            <PuzzleBar raised onHint={handleGetHint} onUndo={handleUndo} onRedo={handleRedo} onReset={handleReset} onOptions={null} isTablet={isTablet} />
 
-            <PuzzleBar onHint={handleGetHint} onUndo={handleUndo} onRedo={handleRedo} onReset={handleReset} onOptions={null} isTablet={isTablet} />
+            <View style={{...styles.hStack, gap: isTablet ? 30 : 20, paddingHorizontal: isTablet ? 30 : 20, marginBottom: -125, marginTop: 15}}>
+            
+                <TouchableOpacity style={{flex: 1, opacity: page > 1 ? 1 : 0.4}} onPress={() => {
+                        pageBack();
+                    }}>
+                    <GlassBlurView theme={theme} isTablet={isTablet} color={theme.primaryButton} glass={'clear'} />
+                    <Text style={{...styles.h4, color: theme.primaryText, textAlign: 'center', padding: 15}}>
+                        Previous
+                    </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={{flex: 1, opacity: puzzleCompleted ? 1 : 0.4}} onPress={() => {
+                        if (puzzleCompleted) {
+                            pageForward();
+                        }
+                    }}>
+                    <GlassBlurView theme={theme} isTablet={isTablet} color={theme.secondaryButton} glass={'clear'} />
+                    <Text style={{...styles.h4, color: theme.secondaryText, textAlign: 'center', padding: 15}}>
+                        {page < (length - 1) / 2 ? 'Next' : 'Complete'}
+                    </Text>
+                </TouchableOpacity>
+            </View>
 
         </BackgroundContext>
     );

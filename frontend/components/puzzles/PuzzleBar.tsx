@@ -8,20 +8,21 @@ import CustomTabButton from "../CustomTabButton";
 import GlobalStyle from "@/context/GlobalStyle";
 import CustomPuzzleButton from "./CustomPuzzleButton";
 
-export default function PuzzleBar({ onHint, onUndo, onRedo, onReset, onOptions, isTablet }: any) {
+export default function PuzzleBar({ onHint, onUndo, onRedo, onReset, onOptions, isTablet, raised = false }: any) {
     const { theme } = useTheme();
     const styles = GlobalStyle(theme, isTablet);
 
     return (
         <View style={Platform.select({
             ios: {
-                position: 'absolute',
+                position: raised ? 'relative' : 'absolute',
                 width: '90%',
                 height: isTablet ? 80 : 65,
                 flexDirection: 'row',
                 justifyContent: 'space-evenly',
                 borderRadius: 50,
                 margin: 20,
+                marginTop: raised ? 5 : 20,
                 paddingHorizontal: isTablet ? 15 : 10,
                 paddingBottom: isTablet ? 10 : 5,
                 paddingTop: isTablet ? 10 : 5,
@@ -37,8 +38,8 @@ export default function PuzzleBar({ onHint, onUndo, onRedo, onReset, onOptions, 
                     backgroundColor: `${theme.background}DD`,
                     shadowColor: theme.dark ? '#00000080' : '#ffffff',
                     shadowOffset: { width: 0, height: 10 },
-                    shadowOpacity: 1,
-                    shadowRadius: 40,
+                    shadowOpacity: 0.2,
+                    shadowRadius: 30,
                 }}
                     glassEffectStyle='clear'
                 />

@@ -147,22 +147,23 @@ export default function PuzzlesScreen() {
         >
           {/* Top Demo Puzzle Button */}
           <TouchableOpacity
-            style={{ ...styles.flexBigButton }}
+            style={{ ...styles.flexBigButton, justifyContent: 'center' }}
             onPress={() => {
               router.push(`/puzzles/demo_puzzle?isTablet=${isTablet}`);
             }}
           >
+            <ImageBackground
+              source={require('@/assets/images/puzzle.png')}
+              style={StyleSheet.absoluteFill}
+            />
             <GlassBlurView
               theme={theme}
               isTablet={isTablet}
-              color={theme.secondaryButton}
+              color={theme.player1Square}
               glass="clear"
             />
-            <Text style={[styles.h1, { color: theme.secondaryText }]}>
-              Demo Puzzle:
-            </Text>
-            <Text style={[styles.h3, { color: theme.secondaryText }]}>
-              example title
+            <Text style={[styles.h1, { color: theme.secondaryText, width: '100%', textAlign: 'center' }]}>
+              Practice Puzzle
             </Text>
           </TouchableOpacity>
 
@@ -170,7 +171,7 @@ export default function PuzzlesScreen() {
           <Text
             style={[
               styles.subtitle,
-              { textAlign: 'center', marginTop: 10 },
+              { textAlign: 'center', marginTop: 10, width: '100%' },
             ]}
           >
             Puzzle Ratings

@@ -10,12 +10,28 @@ piece them (move them)
 
 ***PUZZLE***
 
-puzzle
+00L4x
 
 ***PAGE***
 
-another page with other shit like page 3 i think
+another lesson here's how to do this and everything
 
 ***PUZZLE***
 
-puzzle again lol
+00jPH
+
+***PUZZLE***
+
+00SLR
+
+***PAGE***
+
+last lesson!!!
+
+***PAGE***
+
+i promise
+
+***PUZZLE***
+
+00FHX
