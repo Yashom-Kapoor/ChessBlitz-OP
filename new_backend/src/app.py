@@ -31,31 +31,13 @@ CORS(app)
 # Get random puzzle
 def get_random_puzzle():
     try:
-        count_res = (
-            supabase
-            .table("Puzzle-DB")
-            .select("*", count="exact")
-            .limit(0)
-            .execute()
-        )
+        ids_res = supabase.table("Puzzles").select("puzzleid").execute()
+        ids = [p["puzzleid"] for p in ids_res.data]
+        chosen_id = random.choice(ids)
 
-        total = count_res.count
-
-        if total == 0:
-            return None
-
-        offset = random.randint(0, total - 1)
-
-        puzzle_res = (
-            supabase
-            .table("Puzzle-DB")
-            .select("*")
-            .range(offset, offset)
-            .execute()
-        )
-
+        puzzle_res = supabase.table("Puzzles").select("*").eq("puzzleid", chosen_id).execute()
         return puzzle_res.data[0]
-
+    
     except Exception as e:
         print(f"Error fetching random puzzle: {e}")
         return None
@@ -65,7 +47,7 @@ def get_puzzle_by_id(puzzle_id: int):
     try:
         response = (
             supabase
-            .table("Puzzle-DB")
+            .table("Puzzles")
             .select("*")
             .eq("PuzzleId", puzzle_id)
             .single()
@@ -293,7 +275,7 @@ def random_puzzle_route():
     return jsonify(puzzle), 200
 
 # Get puzzle by puzzle id
-@app.route("/puzzles/<puzzle_id:int")
+@app.route("/puzzles/<int:puzzle_id>")
 def get_puzzle_route(puzzle_id):
     puzzle = get_puzzle_by_id(puzzle_id)
 
@@ -324,9 +306,6 @@ def completed_puzzle_route():
         "message": "Puzzle attempt recorded",
         "data": result
     }), 201
-
-if __name__ == "__main__":
-    app.run(debug=True)
 
 # -------- HINTS (LLM SUBTEAM) --------
 
@@ -441,3 +420,6 @@ def route_get_students(classroom_id):
     students = get_students_in_classroom(classroom_id)
 
     return jsonify(students)
+
+if __name__ == "__main__":
+    app.run(debug=True)
