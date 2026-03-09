@@ -4,9 +4,11 @@ from dotenv import load_dotenv
 from supabase import Client, create_client
 import os
 import random
+import string
+import uuid
 import requests
 
-# === SETUP ===
+# ======================== SETUP ========================
 
 load_dotenv()
 
@@ -22,7 +24,9 @@ OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 app = Flask(__name__)
 CORS(app)
 
-# === FUNCTIONS ===
+# ======================== HELPER FUNCTIONS ========================
+
+# -------- PUZZLES --------
 
 # Get random puzzle
 def get_random_puzzle():
@@ -90,6 +94,8 @@ def upsert_puzzle_completion(puzzle_id: str, student_id: str, completed: bool):
 def get_student_progress(student_id: str):
     ...
 
+# -------- HINTS (LLM SUBTEAM) --------
+
 # Handle hints
 def generate_hint_with_openrouter(fen: str, move: str, player: str, model: str = "openai/gpt-4o-mini"):
     headers = {
@@ -130,48 +136,138 @@ def generate_hint_with_openrouter(fen: str, move: str, player: str, model: str =
     data = response.json()
     return data["choices"][0]["message"]["content"]
 
-# Find user by userid
-def get_user_by_id(user_id: str):
-    ...
-    
-# Create new user
-def create_user(email: str, role: str):
-    ...
+# -------- TEACHER PROFILE --------
 
-# Get user role (student, teacher)
-def get_user_role(user_id: str):
-    ...
+# Get teacher profile by uid
+def get_teacher_profile(teacher_uid):
 
+    res = supabase.table("Users") \
+        .select("*") \
+        .eq("id", teacher_uid) \
+        .single() \
+        .execute()
+
+    return res.data
+
+# Update teacher bio by uid
+def update_teacher_profile(teacher_uid, bio):
+
+    supabase.table("Users") \
+        .update({"bio": bio}) \
+        .eq("id", teacher_uid) \
+        .execute()
+
+    return True
+
+# -------- CLASSROOM MANAGEMENT --------
+
+# Generate a new classroom code
+def generate_classroom_code():
+
+    while True:
+
+        code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+
+        exists = supabase.table("Classroom-DB") \
+            .select("join_code") \
+            .eq("join_code", code) \
+            .execute()
+
+        if len(exists.data) == 0:
+            return code
+        
 # Create new classroom
-def create_classroom(name: str, teacher_id: str):
-    ...
+def create_classroom(name, teacher_uid):
+
+    code = generate_classroom_code()
+
+    classroom = {
+        "name": name,
+        "teacher_uid": teacher_uid,
+        "join_code": code
+    }
+
+    supabase.table("Classroom-DB").insert(classroom).execute()
+
+    return classroom
+
+# Get classrooms by teacher uid
+def get_teacher_classrooms(teacher_uid):
+
+    res = supabase.table("Classroom-DB") \
+        .select("*") \
+        .eq("teacher_uid", teacher_uid) \
+        .execute()
+
+    return res.data
 
 # Get classroom by classroom id
-def get_classroom_by_id(classroom_id: str):
-    ...
+def get_classroom(classroom_id):
 
-# Get all classrooms for a teacher
-def get_classrooms_for_teacher(teacher_id: str):
-    ...
+    res = supabase.table("Classroom-DB") \
+        .select("*") \
+        .eq("classroom_id", classroom_id) \
+        .single() \
+        .execute()
 
-# Add student to classroom
-def add_student_to_classroom(classroom_id: str, student_id: str):
-    ...
+    return res.data
 
-# Remove student from classroom
-def remove_student_from_classroom(classroom_id: str, student_id: str):
-    ...
+# Delete classroom by classroom id
+def delete_classroom(classroom_id):
 
-# Get all students in a classroom
-def get_students_in_classroom(classroom_id: str):
-    ...
+    supabase.table("Classroom-DB") \
+        .delete() \
+        .eq("classroom_id", classroom_id) \
+        .execute()
 
-# Get classroom by student
-def get_classrooms_for_student(student_id: str):
-    ...
+    return True
 
+# -------- STUDENT CLASSROOM MEMBERSHIP --------
 
-# === ROUTES ===
+# Enroll a student in a classroom
+def join_classroom(student_uid, join_code):
+
+    classroom = supabase.table("Classroom-DB") \
+        .select("*") \
+        .eq("join_code", join_code) \
+        .single() \
+        .execute()
+
+    if classroom.data is None:
+        return None
+
+    classroom_id = classroom.data["classroom_id"]
+
+    supabase.table("Users") \
+        .update({"classroom": classroom_id}) \
+        .eq("id", student_uid) \
+        .execute()
+
+    return classroom_id
+
+# Unenroll student from classroom
+def leave_classroom(student_uid):
+
+    supabase.table("Users") \
+        .update({"classroom": None}) \
+        .eq("id", student_uid) \
+        .execute()
+
+    return True
+
+# Student roster
+def get_students_in_classroom(classroom_id):
+
+    res = supabase.table("Users") \
+        .select("id,name,username,email") \
+        .eq("classroom", classroom_id) \
+        .execute()
+
+    return res.data
+
+# ======================== FLASK ROUTES ========================
+
+# -------- PUZZLES --------
 
 # Get random puzzle
 @app.route("/puzzles/random", methods=["GET"])
@@ -219,6 +315,8 @@ def completed_puzzle_route():
 if __name__ == "__main__":
     app.run(debug=True)
 
+# -------- HINTS (LLM SUBTEAM) --------
+
 # Handle hints
 @app.route("/puzzles/<puzzle_id>/hints/<int:move_number>", methods=["GET"])
 def gethint(puzzle_id, move_number):
@@ -244,3 +342,89 @@ def gethint(puzzle_id, move_number):
     except Exception as e:
         return jsonify({"error": "Something went wrong"}), 500
 
+# -------- TEACHER PROFILE --------
+
+# Return teacher profile
+@app.route("/teachers/<teacher_uid>", methods=["GET"])
+def route_get_teacher_profile(teacher_uid):
+
+    teacher = get_teacher_profile(teacher_uid)
+
+    return jsonify(teacher)
+
+# Update teacher bio
+@app.route("/teachers/<teacher_uid>", methods=["PATCH"])
+def route_update_teacher_profile(teacher_uid):
+
+    data = request.json
+
+    bio = data["bio"]
+
+    update_teacher_profile(teacher_uid, bio)
+
+    return jsonify({"status": "updated"})
+
+# -------- CLASSROOM MANAGEMENT --------
+
+# Create a classroom
+@app.route("/classrooms", methods=["POST"])
+def route_create_classroom():
+
+    data = request.json
+
+    name = data["name"]
+    teacher_uid = data["teacher_uid"]
+
+    classroom = create_classroom(name, teacher_uid)
+
+    return jsonify(classroom)
+
+# Get all classrooms owned by a teacher
+@app.route("/classrooms/<teacher_uid>", methods=["GET"])
+def route_get_classrooms(teacher_uid):
+
+    classrooms = get_teacher_classrooms(teacher_uid)
+
+    return jsonify(classrooms)
+
+# Get a single classroom's info
+@app.route("/classrooms/<classroom_id>", methods=["GET"])
+def route_get_classroom(classroom_id):
+
+    classroom = get_classroom(classroom_id)
+
+    return jsonify(classroom)
+
+# Delete a classroom
+@app.route("/classrooms/<classroom_id>", methods=["DELETE"])
+def route_delete_classroom(classroom_id):
+
+    delete_classroom(classroom_id)
+
+    return jsonify({"status": "deleted"})
+
+# -------- STUDENT CLASSROOM MEMBERSHIP --------
+
+# Join a classroom
+@app.route("/classrooms/join", methods=["POST"])
+def route_join_classroom():
+
+    data = request.json
+
+    student_uid = data["student_uid"]
+    join_code = data["join_code"]
+
+    classroom_id = join_classroom(student_uid, join_code)
+
+    if classroom_id is None:
+        return jsonify({"error": "Invalid join code"}), 400
+
+    return jsonify({"classroom_id": classroom_id})
+
+# Get students in a classroom
+@app.route("/classrooms/<classroom_id>/students", methods=["GET"])
+def route_get_students(classroom_id):
+
+    students = get_students_in_classroom(classroom_id)
+
+    return jsonify(students)
