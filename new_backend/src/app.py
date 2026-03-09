@@ -31,21 +31,34 @@ CORS(app)
 # Get random puzzle
 def get_random_puzzle():
     try:
-        response = (
+        count_res = (
             supabase
             .table("Puzzle-DB")
-            .select("*")
+            .select("*", count="exact")
+            .limit(0)
             .execute()
         )
 
-        if not response.data:
+        total = count_res.count
+
+        if total == 0:
             return None
 
-        return random.choice(response.data)
+        offset = random.randint(0, total - 1)
+
+        puzzle_res = (
+            supabase
+            .table("Puzzle-DB")
+            .select("*")
+            .range(offset, offset)
+            .execute()
+        )
+
+        return puzzle_res.data[0]
 
     except Exception as e:
         print(f"Error fetching random puzzle: {e}")
-        return None    
+        return None
 
 # Get puzzle by puzzle id
 def get_puzzle_by_id(puzzle_id: int):
