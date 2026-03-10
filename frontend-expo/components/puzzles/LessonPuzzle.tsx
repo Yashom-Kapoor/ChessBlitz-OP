@@ -16,6 +16,7 @@ import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import GlassBlurView from '@/components/GlassBlurView';
 import { postCompletedPuzzle } from '@/api/PostCompleted';
+import { supabase } from '@/api/SupabaseClient';
 
 interface LessonPuzzleProps {
     page: number;
@@ -142,7 +143,7 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
                 setIsHintExpandable(false);
                 setExpanded(false);
                 setLoadingHint(true); // Start loading
-                const fetchedHint = await fetchHint(chessboardRef.current?.getPuzzle().ID, 2 * moveNumber);
+                const fetchedHint = await fetchHint(chessboardRef.current?.getPuzzle().puzzleid, 2 * moveNumber);
                 setHint(fetchedHint);
                 setHintsUsed(hintsUsed + 1); // Increment hints used
                 setError(null);
@@ -174,10 +175,10 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
         if (chessboardRef.current) {
             const puzzle = chessboardRef.current.getPuzzle();
             if (puzzle) {
-                setMoves(puzzle.Moves.split(' ')); // Set the moves from the puzzle
-                setLastFEN(puzzle.FEN); // Set the last FEN
-                chess.load(puzzle.FEN); // Load the FEN into the chess instance
-                setTurn(getTurnFromFEN(puzzle.FEN)); // Get the turn from the FEN
+                setMoves(puzzle.moves.split(' ')); // Set the moves from the puzzle
+                setLastFEN(puzzle.fen); // Set the last FEN
+                chess.load(puzzle.fen); // Load the FEN into the chess instance
+                setTurn(getTurnFromFEN(puzzle.fen)); // Get the turn from the FEN
             }
         }
     };
@@ -203,8 +204,8 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
         if (chessboardRef.current) {
             const puzzle = chessboardRef.current.getPuzzle();
             if (puzzle) {
-                chess.load(puzzle.FEN);
-                setLastFEN(puzzle.FEN); // Set the last FEN
+                chess.load(puzzle.fen);
+                setLastFEN(puzzle.fen); // Set the last FEN
                 chess.move({ from: moves[0].substring(0, 2), to: moves[0].substring(2, 4), promotion: moves[0].substring(4) }); // Make the first move
                 setTimeout(async () => {
                     await chessboardRef.current?.board.move({ from: moves[0].substring(0, 2), to: moves[0].substring(2, 4), promotion: moves[0].substring(4) });
@@ -220,17 +221,17 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
 
     const handleReset = () => {
         if (chessboardRef.current) {
-            chess.load(chessboardRef.current.getPuzzle().FEN); // Reset the chess board to starting position
-            chessboardRef.current.board.resetBoard(chessboardRef.current.getPuzzle().FEN); // Call the reset method on the chessboard
+            chess.load(chessboardRef.current.getPuzzle().fen); // Reset the chess board to starting position
+            chessboardRef.current.board.resetBoard(chessboardRef.current.getPuzzle().fen); // Call the reset method on the chessboard
             setMoveNumber(1); // Reset move number
             setPuzzleCompleted(false);
             setRedoUnlocked(1);
             setHint(null); // Reset hint
             setIsHintExpandable(false);
             setExpanded(false);
-            setLastFEN(chessboardRef.current.getPuzzle().FEN); // Reset last FEN
+            setLastFEN(chessboardRef.current.getPuzzle().fen); // Reset last FEN
             setElapsedTime(0); // Reset elapsed time
-            setTurn(getTurnFromFEN(chessboardRef.current.getPuzzle().FEN)); // Reset turn
+            setTurn(getTurnFromFEN(chessboardRef.current.getPuzzle().fen)); // Reset turn
 
             handleFirstMove(); // Make the first move
         }
@@ -247,15 +248,15 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
             setIsHintExpandable(false);
 
             if (moveNumber <= 1) {
-                chess.load(chessboardRef.current.getPuzzle().FEN); // Reset the chess board to starting position
-                chessboardRef.current.board.resetBoard(chessboardRef.current.getPuzzle().FEN); // Call the reset method on the chessboard
+                chess.load(chessboardRef.current.getPuzzle().fen); // Reset the chess board to starting position
+                chessboardRef.current.board.resetBoard(chessboardRef.current.getPuzzle().fen); // Call the reset method on the chessboard
                 setMoveNumber(1); // Reset move number
-                setLastFEN(chessboardRef.current.getPuzzle().FEN); // Reset last FEN
+                setLastFEN(chessboardRef.current.getPuzzle().fen); // Reset last FEN
 
                 handleFirstMove(); // Make the first move
             } else {
                 chessboardRef.current.board.resetBoard(chess.fen()); // Call the reset method on the chessboard
-                setTurn(getTurnFromFEN(chessboardRef.current.getPuzzle().FEN)); // Reset turn
+                setTurn(getTurnFromFEN(chessboardRef.current.getPuzzle().fen)); // Reset turn
                 setUndosUsed(undosUsed + 1); // Counts undo
             }
 
@@ -280,13 +281,23 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
         if (puzzleCompleted) {
             const submitCompletion = async () => {
                 try {
+                    const {
+                        data: { user },
+                    } = await supabase.auth.getUser();
+
+                    const currentPuzzleId = chessboardRef.current?.getPuzzle()?.puzzleid;
+
+                    if (!user?.id || !currentPuzzleId) {
+                        return;
+                    }
+
                     await postCompletedPuzzle({
-                        userId: 'user123', 
-                        puzzleId: chessboardRef.current?.getPuzzle()?.ID || '',
+                        studentid: user.id,
+                        puzzleid: String(currentPuzzleId),
                         timeElapsed: elapsedTime,
-                        hintsUsed: hintsUsed, 
-                        undosUsed: undosUsed, 
-                        redosUsed: redosUsed, 
+                        hintsUsed: hintsUsed,
+                        undosUsed: undosUsed,
+                        redosUsed: redosUsed,
                         completed: true,
                     });
                 } catch (error) {

@@ -265,7 +265,7 @@ def get_students_in_classroom(classroom_id):
 # -------- PUZZLES --------
 
 # Get random puzzle
-@app.route("/puzzles/random", methods=["GET"])
+@app.route("/puzzles/random/", methods=["GET"])
 def random_puzzle_route():
     puzzle = get_random_puzzle()
 
@@ -421,5 +421,9 @@ def route_get_students(classroom_id):
 
     return jsonify(students)
 
-if __name__ == "__main__":
+def main():
+    #app.run(debug=False, host='0.0.0.0', port=int(os.getenv("PORT", 5000)))
     app.run(debug=True)
+
+if __name__ == "__main__":
+    main()

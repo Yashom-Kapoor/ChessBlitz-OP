@@ -69,7 +69,7 @@ const ChessboardDemo = forwardRef<ChessboardDemoRef, ChessboardDemoProps>((props
             <Chessboard
                 colors={props.colors || { black: '#739552', white: '#ebecd0' }} // Default colors if not provided
                 gestureEnabled={props.gestureEnabled} // Manage gestures
-                fen={puzzle?.FEN} // Pass the fetched FEN to the chessboard
+                fen={puzzle?.fen} // Pass the fetched FEN to the chessboard
                 ref={chessboardRef}
                 onMove={props.onMove} // Pass the onMove callback
             />
