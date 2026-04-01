@@ -31,9 +31,9 @@ export default function NativePagesBar({}) {
                 <Icon sf={{ default: 'trophy', selected: 'trophy.fill' }}
                     selectedColor={isIOS ? DynamicColorIOS({ dark: '#FFF37E', light: '#ffa90a' }) : (theme.dark ? '#FFF37E' : '#ffa90a')} />
             </NativeTabs.Trigger>
-            <NativeTabs.Trigger name="themes">
-                <Label>Themes</Label>
-                <Icon sf={{ default: 'paintbrush', selected: 'paintbrush.fill' }}
+            <NativeTabs.Trigger name="shop">
+                <Label>Shop</Label>
+                <Icon sf={{ default: 'cart', selected: 'cart.fill' }}
                     selectedColor={isIOS ? DynamicColorIOS({ dark: '#6bddcd', light: '#0aa3a5' }) : (theme.dark ? '#6bddcd' : '#0aa3a5')} />
             </NativeTabs.Trigger>
             <NativeTabs.Trigger name="profile">

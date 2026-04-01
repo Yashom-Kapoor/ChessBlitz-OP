@@ -96,7 +96,7 @@ function ThemedRoot({ isTablet }: { isTablet: boolean }) {
         <Stack.Screen
           name="auth/sign_up"
           options={() => ({
-            title: 'Sign Up',
+            title: '',
             animation: 'ios_from_right',
             headerShown: true,
             headerBackVisible: true,
@@ -106,7 +106,7 @@ function ThemedRoot({ isTablet }: { isTablet: boolean }) {
         <Stack.Screen
           name="auth/log_in"
           options={() => ({
-            title: 'Log In',
+            title: '',
             animation: 'ios_from_right',
             headerShown: true,
             headerBackVisible: true,
@@ -124,7 +124,7 @@ function ThemedRoot({ isTablet }: { isTablet: boolean }) {
               lessons: 'Lessons',
               ranking: 'Ranking',
               profile: 'Profile',
-              themes: 'Themes',
+              shop: 'Shop',
             };
             return {
               title: titleMap[focused] ?? 'App',
