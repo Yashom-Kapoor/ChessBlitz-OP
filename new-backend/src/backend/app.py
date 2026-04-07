@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from dotenv import load_dotenv
 from supabase import Client, create_client
+import chess
 import os
 import random
 import string
@@ -431,9 +432,15 @@ def gethint(puzzle_id, move_number):
         if move_number <= 0 or move_number > len(moves):
             return jsonify({"error": "Invalid move number"}), 400
 
-        move = moves[move_number - 1]
-        fen = puzzle["fen"]  # assuming you're not recalculating move-by-move yet
-        player = "white" if " w " in fen else "black"
+        # Recalculate the board position right before the requested move.
+        board = chess.Board(puzzle["fen"])
+        for uci_move in moves[:move_number - 1]:
+            board.push(chess.Move.from_uci(uci_move))
+
+        uci_move = moves[move_number - 1]
+        move = board.san(chess.Move.from_uci(uci_move))  # Convert to algebraic notation
+        fen = board.fen()
+        player = "white" if board.turn == chess.WHITE else "black"
 
         hint = generate_hint_with_openrouter(fen, move, player)
 
