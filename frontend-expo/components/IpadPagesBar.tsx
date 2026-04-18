@@ -102,12 +102,12 @@ export default function IpadPagesBar({ }) {
                 }}
             />
             <Tabs.Screen
-                name="themes"
+                name="shop"
                 options={{
-                    title: 'Themes',
-                    tabBarIcon: ({ color, focused }) => <IconSymbol size={30} name={focused ? "paintbrush.fill" : "paintbrush"} color={color} />,
+                    title: 'Shop',
+                    tabBarIcon: ({ color, focused }) => <IconSymbol size={30} name={focused ? "cart.fill" : "cart"} color={color} />,
                     tabBarActiveTintColor: theme.dark ? '#6bddcd' : '#0aa3a5',
-                    tabBarButton: (props) => <CustomTabButton {...props} routeName="themes" />,
+                    tabBarButton: (props) => <CustomTabButton {...props} routeName="shop" />,
                 }}
             />
             <Tabs.Screen

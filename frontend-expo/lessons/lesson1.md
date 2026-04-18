@@ -10,7 +10,7 @@ piece them (move them)
 
 ***PUZZLE***
 
-00L4x
+00008
 
 ***PAGE***
 

@@ -466,7 +466,7 @@ export default function ProfileScreen() {
           
           {/* Log Out Button */}
           <View style={localStyles.logoutContainer}>
-            <TouchableOpacity style={localStyles.logoutButton} onPress={() => console.log('Logging out')}>
+            <TouchableOpacity style={localStyles.logoutButton} onPress={() => router.replace('/')}>
               <Text style={localStyles.logoutText}>Log Out</Text>
             </TouchableOpacity>
           </View>

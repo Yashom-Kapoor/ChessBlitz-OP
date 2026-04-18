@@ -13,11 +13,10 @@ export function CheckerPreview({ lightColor, darkColor }: { lightColor: string; 
 
 const styles = StyleSheet.create({
   container: {
-    width: 40,
-    height: 40,
+    width: 75,
+    height: 75,
     flexDirection: "row",
     flexWrap: "wrap",
-    marginLeft: "auto",
     borderRadius: 4,
     overflow: "hidden",
   },
