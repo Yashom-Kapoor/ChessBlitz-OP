@@ -255,12 +255,32 @@ def leave_classroom(student_uid):
 def get_students_in_classroom(classroom_id):
 
     res = supabase.table("Users") \
-        .select("id,name,username,email") \
+        .select("user_id,name,username,email") \
         .eq("classroom", classroom_id) \
         .execute()
 
     return res.data
 
+# -------- LEADERBOARD (RANKINGS) --------
+# Get Rankings by Elo
+def get_rankings_by_elo(classroom_id):
+    res = supabase.table("Users") \
+        .select("user_id,name,username,rating") \
+        .eq("classroom", classroom_id) \
+        .order("rating", desc=True) \
+        .execute()
+
+    return res.data
+
+# Get Rankings by # Puzzles completed
+def get_rankings_by_puzzles_complete(classroom_id):
+    res = supabase.table("Users") \
+        .select("user_id,name,username,puzzles_completed") \
+        .eq("classroom", classroom_id) \
+        .order("puzzles_completed", desc=True) \
+        .execute()
+
+    return res.data
 # ======================== FLASK ROUTES ========================
 
 # -------- PUZZLES --------
@@ -534,6 +554,22 @@ def route_get_students(classroom_id):
 
     students = get_students_in_classroom(classroom_id)
 
+    return jsonify(students)
+
+# -------- LEADERBOARD MANAGEMENT --------
+# Get students in a classroom
+@app.route("/leaderboards/<classroom_id>/<sorting_method>", methods=["GET"])
+def route_get_students_with_ordering(classroom_id, sorting_method:str):
+    if sorting_method:
+        if sorting_method.lower() == "elo":
+            students = get_rankings_by_elo(classroom_id)
+        elif sorting_method.lower() == "puzzles_completed":
+            students = get_rankings_by_puzzles_complete(classroom_id)
+        else:
+            students = get_rankings_by_elo(classroom_id)
+    else:
+        students = get_rankings_by_elo(classroom_id)
+   
     return jsonify(students)
 
 def main():

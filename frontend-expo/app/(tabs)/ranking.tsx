@@ -10,7 +10,8 @@ type RankingData = {
   rank: number;
   name: string;
   icon: string;
-  elo: number;
+  rating: number;
+  puzzles_completed: number;
   streak: number;
   isYou:boolean;
 };
@@ -19,10 +20,12 @@ const CreateProfile = ({
   rank = 1337, 
   name ="PLACEHOLDER", 
   icon="", 
-  elo=0, 
   streak=0, 
-  isYou=false}):RankingData => {
-  return {rank: rank, name: name, icon: icon, elo: elo, streak: streak, isYou: isYou}
+  isYou=false,
+  rating=0,
+  puzzles_completed=0,
+}):RankingData => {
+  return {rank: rank, name: name, icon: icon, rating: rating, streak: streak, puzzles_completed: puzzles_completed, isYou: isYou}
 }
 const placeholderNames = ["Alice", "Bob", "Charlie", "Diana", "EVAN LANCASTER"]
 
@@ -35,17 +38,17 @@ export default function RankingsScreen() {
   const [boardScope, setBoardScope] = useState("Global"); //"Global"/"Friends" | Determines tbe scope of the people the leaderboard will display
   const [category, setCategory] = useState("Elo"); //"Elo"/"Streak"/"Time" | Determines how the leaderboard is sorted
 
-  const API_URL = "http://127.0.0.1:5000/rankings";
+  const API_URL = "http://127.0.0.1:5000/leaderboards/35/elo";
   useEffect(() => {
     const fetchRankings = async () => {
       try {
-        // const response = await fetch(API_URL);
-        // const data = await response.json();
+        const response = await fetch(API_URL);
+        const data = await response.json();
 
-        
-        // setRankings(placeholderNames.map((n, i) => (
-        //   CreateProfile({rank: i+1, name: n, isYou: n === "EVAN LANCASTER"})
-        // ))); //Sets placeholder names
+        setRankings(data.map(({username, user_id, name, rating}:{username:string, user_id:number, name:string, rating:number}, i:number) => (
+          CreateProfile({rank: i+1, name: username, rating: rating, isYou: username === "evanLan"})
+        )));
+
       } catch (error) {
         setError(true);
       } finally {
