@@ -159,14 +159,11 @@ export default function PuzzlesScreen() {
             <GlassBlurView
               theme={theme}
               isTablet={isTablet}
-              color={theme.player1Square}
+              color={theme.dark ? theme.player1Square : theme.player2Square}
               glass="clear"
             />
-            <Text style={[styles.h1, { color: theme.secondaryText, width: '100%', textAlign: 'center' }]}>
-              Practice Puzzle{' '}
-              <Text style={{ fontFamily: undefined }}> 
-                😊 🚀 ❤️ 
-              </Text>
+            <Text style={[styles.h1, { color: theme.dark ? theme.player2Square : theme.player1Square, width: '100%', textAlign: 'center' }]}>
+              Practice Puzzle
             </Text>
           </TouchableOpacity>
 

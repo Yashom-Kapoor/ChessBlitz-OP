@@ -2,7 +2,7 @@ import { API_URL } from "@/constants/urls";
 
 export async function fetchPuzzle(puzzleId: string): Promise<any> {
   try {
-    const response = await fetch(`${API_URL}/puzzles/${puzzleId}`);
+    const response = await fetch(`${API_URL}/puzzles/${puzzleId}/`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }

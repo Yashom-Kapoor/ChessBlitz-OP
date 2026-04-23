@@ -9,27 +9,46 @@ import backgroundImages, { BackgroundContext } from "@/context/Backgrounds";
 type RankingData = {
   rank: number;
   name: string;
-  icon?: string;
+  icon: string;
+  rating: number;
+  puzzles_completed: number;
+  streak: number;
+  isYou:boolean;
 };
+//Creates a new player profile to display with given/default properties
+const CreateProfile = ({ 
+  rank = 1337, 
+  name ="PLACEHOLDER", 
+  icon="", 
+  streak=0, 
+  isYou=false,
+  rating=0,
+  puzzles_completed=0,
+}):RankingData => {
+  return {rank: rank, name: name, icon: icon, rating: rating, streak: streak, puzzles_completed: puzzles_completed, isYou: isYou}
+}
+const placeholderNames = ["Alice", "Bob", "Charlie", "Diana", "EVAN LANCASTER"]
+
 export default function RankingsScreen() {
   const { theme } = useTheme();
   const isTablet = useGlobalSearchParams().isTablet === 'true';
   const [rankings, setRankings] = useState<RankingData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const API_URL = "http://127.0.0.1:5000/rankings";
+  const [boardScope, setBoardScope] = useState("Global"); //"Global"/"Friends" | Determines tbe scope of the people the leaderboard will display
+  const [category, setCategory] = useState("Elo"); //"Elo"/"Streak"/"Time" | Determines how the leaderboard is sorted
+
+  const API_URL = "http://127.0.0.1:5000/leaderboards/35/elo";
   useEffect(() => {
     const fetchRankings = async () => {
       try {
-        // const response = await fetch(API_URL);
-        // const data = await response.json();
-        setRankings([
-          { rank: 1, name: "Alice", icon: "" },
-          { rank: 2, name: "Bob", icon: "" },
-          { rank: 3, name: "Charlie", icon: "" },
-          { rank: 4, name: "Diana", icon: "" },
-          { rank: 5, name: "Ethan", icon: "" },
-        ]);
+        const response = await fetch(API_URL);
+        const data = await response.json();
+
+        setRankings(data.map(({username, user_id, name, rating}:{username:string, user_id:number, name:string, rating:number}, i:number) => (
+          CreateProfile({rank: i+1, name: username, rating: rating, isYou: username === "evanLan"})
+        )));
+
       } catch (error) {
         setError(true);
       } finally {
@@ -68,10 +87,11 @@ export default function RankingsScreen() {
               key={r.rank}
               rank={r.rank}
               name={r.name}
+              isYou={r.isYou}
               icon={
                 r.icon
                   ? { uri: r.icon }
-                  : require('@/assets/images/icon.png')
+                  : require('@/assets/images/TUNG TUNG.png') //PLACEHOLDER IMAGE
               }
             />
           ))}

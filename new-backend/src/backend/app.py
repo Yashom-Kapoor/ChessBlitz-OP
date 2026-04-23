@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from dotenv import load_dotenv
 from supabase import Client, create_client
+import chess
 import os
 import random
 import string
@@ -49,7 +50,7 @@ def get_puzzle_by_id(puzzle_id: int):
             supabase
             .table("Puzzles")
             .select("*")
-            .eq("PuzzleId", puzzle_id)
+            .eq("puzzleid", puzzle_id)
             .single()
             .execute()
         )
@@ -254,12 +255,32 @@ def leave_classroom(student_uid):
 def get_students_in_classroom(classroom_id):
 
     res = supabase.table("Users") \
-        .select("id,name,username,email") \
+        .select("user_id,name,username,email") \
         .eq("classroom", classroom_id) \
         .execute()
 
     return res.data
 
+# -------- LEADERBOARD (RANKINGS) --------
+# Get Rankings by Elo
+def get_rankings_by_elo(classroom_id):
+    res = supabase.table("Users") \
+        .select("user_id,name,username,rating") \
+        .eq("classroom", classroom_id) \
+        .order("rating", desc=True) \
+        .execute()
+
+    return res.data
+
+# Get Rankings by # Puzzles completed
+def get_rankings_by_puzzles_complete(classroom_id):
+    res = supabase.table("Users") \
+        .select("user_id,name,username,puzzles_completed") \
+        .eq("classroom", classroom_id) \
+        .order("puzzles_completed", desc=True) \
+        .execute()
+
+    return res.data
 # ======================== FLASK ROUTES ========================
 
 # -------- PUZZLES --------
@@ -275,7 +296,7 @@ def random_puzzle_route():
     return jsonify(puzzle), 200
 
 # Get puzzle by puzzle id
-@app.route("/puzzles/<int:puzzle_id>")
+@app.route("/puzzles/<puzzle_id>/", methods=["GET"])
 def get_puzzle_route(puzzle_id):
     puzzle = get_puzzle_by_id(puzzle_id)
 
@@ -307,6 +328,114 @@ def completed_puzzle_route():
         "data": result
     }), 201
 
+# -------- LESSONS (CONTENT SUBTEAM) -------- THIS WHOLE BLACK IS OLD AND TEMPORARY, JUST FOR TESTING PURPOSES.
+    
+lessons = [
+    {
+        'id': 1,
+        'name': 'Introduction to Chess',
+        'desc': 'Learn the basics of chess, including piece movements and rules.',
+        'content': 'Chess is a two-player strategy board game played on a checkered board...',
+        'icon': 'default'
+    },
+    {
+        'id': 2,
+        'name': 'Opening Principles',
+        'desc': 'Understand the fundamental principles of chess openings.',
+        'content': 'In the opening phase of chess, it is important to control the center...',
+        'icon': 'default'
+    },
+    {
+        'id': 3,
+        'name': 'Basic Tactics',
+        'desc': 'Learn essential chess tactics like forks, pins, and skewers.',
+        'content': 'Tactics are short-term tactical patterns that can be used to gain an advantage in a game of chess.',
+        'icon': 'default'
+    },
+    {
+        'id': 4,
+        'name': 'Endgame Strategies',
+        'desc': 'Master key endgame concepts and techniques.',
+        'content': 'The endgame is the final phase of a chess game where there are few pieces left on the board...',
+        'icon': 'default'
+    },
+    {
+        'id': 5,
+        'name': 'Advanced Tactics',
+        'desc': 'Explore advanced tactical motifs and combinations.',
+        'content': 'Advanced tactics involve more complex patterns and combinations that can lead to decisive advantages...',
+        'icon': 'default'
+    },
+    {
+        'id': 6,
+        'name': 'Positional Play',
+        'desc': 'Learn how to improve your position and control key squares.',
+        'content': 'Positional play focuses on long-term strategic advantages rather than immediate tactical gains...',
+        'icon': 'default'
+    },
+    {
+        'id': 7,
+        'name': 'Pawn Structures',
+        'desc': 'Understand different pawn structures and their implications.',
+        'content': 'Pawn structures play a crucial role in determining the strategic plans for both sides...',
+        'icon': 'default'
+    },
+    {
+        'id': 8,
+        'name': 'lesson 8',
+        'desc': 'Understand different pawn structures and their implications.',
+        'content': 'Pawn structures play a crucial role in determining the strategic plans for both sides...',
+        'icon': 'default'
+    },
+]
+
+# Get all lessons
+@app.route('/lessons', methods=['GET'])
+def get_lessons():
+    return jsonify(lessons)
+
+# Get a specific lesson by name
+@app.route('/lessons/<string:lesson_name>', methods=['GET'])
+def get_lesson(lesson_name):
+    lesson = next((l for l in lessons if l['name'] == lesson_name), None)
+    if lesson:
+        return jsonify(lesson)
+    return jsonify({'error': 'Lesson not found'}), 404
+
+# Create a new lesson            
+@app.route('/lessons', methods=['POST'])
+def create_lesson():
+    data = request.get_json()
+    new_lesson = {
+        'id': lessons[-1]['id'] + 1 if lessons else 1,
+        'name': data.get('name'),
+        'desc': data.get('desc'),
+        'content': data.get('content'),
+        'icon': data.get('icon')
+    }
+    lessons.append(new_lesson)
+    return jsonify(new_lesson), 201
+
+# Update a lesson
+@app.route('/lessons/<string:lesson_name>', methods=['PUT'])
+def update_lesson(lesson_name):
+    data = request.get_json()
+    lesson = next((l for l in lessons if l['name'] == lesson_name), None)
+    if lesson:
+        lesson['name'] = data.get('name', lesson['name'])
+        lesson['desc'] = data.get('desc', lesson['desc'])
+        lesson['content'] = data.get('content', lesson['content'])
+        lesson['icon'] = data.get('icon', lesson['icon'])
+        return jsonify(lesson)
+    return jsonify({'error': 'Lesson not found'}), 404
+
+# Delete a lesson             
+@app.route('/lessons/<string:lesson_name>', methods=['DELETE'])
+def delete_lesson(lesson_name):
+    global lessons
+    lessons = [l for l in lessons if l['name'] != lesson_name]
+    return jsonify({'message': 'Lesson deleted'}), 200
+
 # -------- HINTS (LLM SUBTEAM) --------
 
 # Handle hints
@@ -323,9 +452,15 @@ def gethint(puzzle_id, move_number):
         if move_number <= 0 or move_number > len(moves):
             return jsonify({"error": "Invalid move number"}), 400
 
-        move = moves[move_number - 1]
-        fen = puzzle["fen"]  # assuming you're not recalculating move-by-move yet
-        player = "white" if " w " in fen else "black"
+        # Recalculate the board position right before the requested move.
+        board = chess.Board(puzzle["fen"])
+        for uci_move in moves[:move_number - 1]:
+            board.push(chess.Move.from_uci(uci_move))
+
+        uci_move = moves[move_number - 1]
+        move = board.san(chess.Move.from_uci(uci_move))  # Convert to algebraic notation
+        fen = board.fen()
+        player = "white" if board.turn == chess.WHITE else "black"
 
         hint = generate_hint_with_openrouter(fen, move, player)
 
@@ -419,6 +554,22 @@ def route_get_students(classroom_id):
 
     students = get_students_in_classroom(classroom_id)
 
+    return jsonify(students)
+
+# -------- LEADERBOARD MANAGEMENT --------
+# Get students in a classroom
+@app.route("/leaderboards/<classroom_id>/<sorting_method>", methods=["GET"])
+def route_get_students_with_ordering(classroom_id, sorting_method:str):
+    if sorting_method:
+        if sorting_method.lower() == "elo":
+            students = get_rankings_by_elo(classroom_id)
+        elif sorting_method.lower() == "puzzles_completed":
+            students = get_rankings_by_puzzles_complete(classroom_id)
+        else:
+            students = get_rankings_by_elo(classroom_id)
+    else:
+        students = get_rankings_by_elo(classroom_id)
+   
     return jsonify(students)
 
 def main():
