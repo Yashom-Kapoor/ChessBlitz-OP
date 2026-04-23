@@ -163,7 +163,10 @@ export default function PuzzlesScreen() {
               glass="clear"
             />
             <Text style={[styles.h1, { color: theme.secondaryText, width: '100%', textAlign: 'center' }]}>
-              Practice Puzzle
+              Practice Puzzle{' '}
+              <Text style={{ fontFamily: undefined }}> 
+                😊 🚀 ❤️ 
+              </Text>
             </Text>
           </TouchableOpacity>
 
