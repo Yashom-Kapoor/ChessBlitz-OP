@@ -41,7 +41,7 @@ def new_user_JWT(token_JWT: str):
 # -------- PUZZLES --------
 
 # Get random puzzle
-def get_random_puzzle():
+def get_random_puzzle(supabase):
     try:
         ids_res = supabase.table("Puzzles").select("puzzleid").execute()
         ids = [p["puzzleid"] for p in ids_res.data]
@@ -55,7 +55,7 @@ def get_random_puzzle():
         return None
 
 # Get puzzle by puzzle id
-def get_puzzle_by_id(puzzle_id: int):
+def get_puzzle_by_id(puzzle_id: int, supabase):
     try:
         response = (
             supabase
@@ -73,7 +73,7 @@ def get_puzzle_by_id(puzzle_id: int):
         return None
 
 # Mark puzzle as completed
-def record_puzzle_completion(puzzle_id: str, student_id: str, completed: bool):
+def record_puzzle_completion(puzzle_id: str, student_id: str, completed: bool, supabase):
     try:
         response = (
             supabase
@@ -92,13 +92,13 @@ def record_puzzle_completion(puzzle_id: str, student_id: str, completed: bool):
         print(f"Error recording puzzle attempt: {e}")
         return None
 
-def get_puzzle_attempt(puzzle_id: str, student_id: str):
+def get_puzzle_attempt(puzzle_id: str, student_id: str, supabase):
     ...
 
-def upsert_puzzle_completion(puzzle_id: str, student_id: str, completed: bool):
+def upsert_puzzle_completion(puzzle_id: str, student_id: str, completed: bool, supabase):
     ...
 
-def get_student_progress(student_id: str):
+def get_student_progress(student_id: str, supabase):
     ...
 
 # -------- HINTS (LLM SUBTEAM) --------
@@ -146,7 +146,7 @@ def generate_hint_with_openrouter(fen: str, move: str, player: str, model: str =
 # -------- TEACHER PROFILE --------
 
 # Get teacher profile by uid
-def get_teacher_profile(teacher_uid):
+def get_teacher_profile(teacher_uid, supabase):
 
     res = supabase.table("Users") \
         .select("*") \
@@ -157,7 +157,7 @@ def get_teacher_profile(teacher_uid):
     return res.data
 
 # Update teacher bio by uid
-def update_teacher_profile(teacher_uid, bio):
+def update_teacher_profile(teacher_uid, bio, supabase):
 
     supabase.table("Users") \
         .update({"bio": bio}) \
@@ -169,7 +169,7 @@ def update_teacher_profile(teacher_uid, bio):
 # -------- CLASSROOM MANAGEMENT --------
 
 # Generate a new classroom code
-def generate_classroom_code():
+def generate_classroom_code(supabase):
 
     while True:
 
@@ -184,7 +184,7 @@ def generate_classroom_code():
             return code
         
 # Create new classroom
-def create_classroom(name, teacher_uid):
+def create_classroom(name, teacher_uid, supabase):
 
     code = generate_classroom_code()
 
@@ -199,7 +199,7 @@ def create_classroom(name, teacher_uid):
     return classroom
 
 # Get classrooms by teacher uid
-def get_teacher_classrooms(teacher_uid):
+def get_teacher_classrooms(teacher_uid, supabase):
 
     res = supabase.table("Classroom-DB") \
         .select("*") \
@@ -209,7 +209,7 @@ def get_teacher_classrooms(teacher_uid):
     return res.data
 
 # Get classroom by classroom id
-def get_classroom(classroom_id):
+def get_classroom(classroom_id, supabase):
 
     res = supabase.table("Classroom-DB") \
         .select("*") \
@@ -220,7 +220,7 @@ def get_classroom(classroom_id):
     return res.data
 
 # Delete classroom by classroom id
-def delete_classroom(classroom_id):
+def delete_classroom(classroom_id, supabase):
 
     supabase.table("Classroom-DB") \
         .delete() \
@@ -232,7 +232,7 @@ def delete_classroom(classroom_id):
 # -------- STUDENT CLASSROOM MEMBERSHIP --------
 
 # Enroll a student in a classroom
-def join_classroom(student_uid, join_code):
+def join_classroom(student_uid, join_code, supabase):
 
     classroom = supabase.table("Classroom-DB") \
         .select("*") \
@@ -253,7 +253,7 @@ def join_classroom(student_uid, join_code):
     return classroom_id
 
 # Unenroll student from classroom
-def leave_classroom(student_uid):
+def leave_classroom(student_uid, supabase):
 
     supabase.table("Users") \
         .update({"classroom": None}) \
@@ -263,7 +263,7 @@ def leave_classroom(student_uid):
     return True
 
 # Student roster
-def get_students_in_classroom(classroom_id):
+def get_students_in_classroom(classroom_id,supabase):
 
     res = supabase.table("Users") \
         .select("user_id,name,username,email") \
@@ -274,7 +274,7 @@ def get_students_in_classroom(classroom_id):
 
 # -------- LEADERBOARD (RANKINGS) --------
 # Get Rankings by Elo
-def get_rankings_by_elo(classroom_id):
+def get_rankings_by_elo(classroom_id, supabase):
     res = supabase.table("Users") \
         .select("user_id,name,username,rating") \
         .eq("classroom", classroom_id) \
@@ -284,7 +284,7 @@ def get_rankings_by_elo(classroom_id):
     return res.data
 
 # Get Rankings by # Puzzles completed
-def get_rankings_by_puzzles_complete(classroom_id):
+def get_rankings_by_puzzles_complete(classroom_id, supabase):
     res = supabase.table("Users") \
         .select("user_id,name,username,puzzles_completed") \
         .eq("classroom", classroom_id) \
@@ -299,7 +299,9 @@ def get_rankings_by_puzzles_complete(classroom_id):
 # Get random puzzle
 @app.route("/puzzles/random/", methods=["GET"])
 def random_puzzle_route():
-    puzzle = get_random_puzzle()
+    token = extract_header_JWT(request)
+    supabase = new_user_JWT(token)
+    puzzle = get_random_puzzle(supabase)
 
     if not puzzle:
         return jsonify({"error": "No puzzles found"}), 404
@@ -309,7 +311,9 @@ def random_puzzle_route():
 # Get puzzle by puzzle id
 @app.route("/puzzles/<puzzle_id>/", methods=["GET"])
 def get_puzzle_route(puzzle_id):
-    puzzle = get_puzzle_by_id(puzzle_id)
+    token = extract_header_JWT(request)
+    supabase = new_user_JWT(token)
+    puzzle = get_puzzle_by_id(puzzle_id, supabase)
 
     if puzzle:
         return jsonify(puzzle), 200
@@ -319,6 +323,8 @@ def get_puzzle_route(puzzle_id):
 # Mark puzzle as completed
 @app.route("/puzzles/completed", methods=["POST"])
 def completed_puzzle_route():
+    token = extract_header_JWT(request)
+    supabase = new_user_JWT(token)
     data = request.get_json()
 
     puzzle_id = data.get("puzzleid")
@@ -329,7 +335,7 @@ def completed_puzzle_route():
     if not puzzle_id or not student_id or not isinstance(completed, bool):
         return jsonify({"error": "Missing or invalid parameters"}), 400
 
-    result = record_puzzle_completion(puzzle_id, student_id, completed)
+    result = record_puzzle_completion(puzzle_id, student_id, completed, supabase)
 
     if not result:
         return jsonify({"error": "Failed to record attempt"}), 500
@@ -452,8 +458,10 @@ def delete_lesson(lesson_name):
 # Handle hints
 @app.route("/puzzles/<puzzle_id>/hints/<int:move_number>", methods=["GET"])
 def gethint(puzzle_id, move_number):
+    token = extract_header_JWT(request)
+    supabase = new_user_JWT(token)
     try:
-        puzzle = get_puzzle_by_id(puzzle_id)
+        puzzle = get_puzzle_by_id(puzzle_id, supabase)
 
         if not puzzle:
             return jsonify({"error": "Puzzle not found"}), 404
@@ -485,20 +493,22 @@ def gethint(puzzle_id, move_number):
 # Return teacher profile
 @app.route("/teachers/<teacher_uid>", methods=["GET"])
 def route_get_teacher_profile(teacher_uid):
-
-    teacher = get_teacher_profile(teacher_uid)
+    token = extract_header_JWT(request)
+    supabase = new_user_JWT(token)
+    teacher = get_teacher_profile(teacher_uid, supabase)
 
     return jsonify(teacher)
 
 # Update teacher bio
 @app.route("/teachers/<teacher_uid>", methods=["PATCH"])
 def route_update_teacher_profile(teacher_uid):
-
+    token = extract_header_JWT(request)
+    supabase = new_user_JWT(token)
     data = request.json
 
     bio = data["bio"]
 
-    update_teacher_profile(teacher_uid, bio)
+    update_teacher_profile(teacher_uid, bio, supabase)
 
     return jsonify({"status": "updated"})
 
@@ -507,37 +517,41 @@ def route_update_teacher_profile(teacher_uid):
 # Create a classroom
 @app.route("/classrooms", methods=["POST"])
 def route_create_classroom():
-
+    token = extract_header_JWT(request)
+    supabase = new_user_JWT(token)
     data = request.json
 
     name = data["name"]
     teacher_uid = data["teacher_uid"]
 
-    classroom = create_classroom(name, teacher_uid)
+    classroom = create_classroom(name, teacher_uid, supabase)
 
     return jsonify(classroom)
 
 # Get all classrooms owned by a teacher
 @app.route("/classrooms/<teacher_uid>", methods=["GET"])
 def route_get_classrooms(teacher_uid):
-
-    classrooms = get_teacher_classrooms(teacher_uid)
+    token = extract_header_JWT(request)
+    supabase = new_user_JWT(token)
+    classrooms = get_teacher_classrooms(teacher_uid, supabase)
 
     return jsonify(classrooms)
 
 # Get a single classroom's info
 @app.route("/classrooms/<classroom_id>", methods=["GET"])
 def route_get_classroom(classroom_id):
-
-    classroom = get_classroom(classroom_id)
+    token = extract_header_JWT(request)
+    supabase = new_user_JWT(token)
+    classroom = get_classroom(classroom_id, supabase)
 
     return jsonify(classroom)
 
 # Delete a classroom
 @app.route("/classrooms/<classroom_id>", methods=["DELETE"])
 def route_delete_classroom(classroom_id):
-
-    delete_classroom(classroom_id)
+    token = extract_header_JWT(request)
+    supabase = new_user_JWT(token)
+    delete_classroom(classroom_id, supabase)
 
     return jsonify({"status": "deleted"})
 
@@ -546,13 +560,14 @@ def route_delete_classroom(classroom_id):
 # Join a classroom
 @app.route("/classrooms/join", methods=["POST"])
 def route_join_classroom():
-
+    token = extract_header_JWT(request)
+    supabase = new_user_JWT(token)
     data = request.json
 
     student_uid = data["student_uid"]
     join_code = data["join_code"]
 
-    classroom_id = join_classroom(student_uid, join_code)
+    classroom_id = join_classroom(student_uid, join_code, supabase)
 
     if classroom_id is None:
         return jsonify({"error": "Invalid join code"}), 400
@@ -562,8 +577,9 @@ def route_join_classroom():
 # Get students in a classroom
 @app.route("/classrooms/<classroom_id>/students", methods=["GET"])
 def route_get_students(classroom_id):
-
-    students = get_students_in_classroom(classroom_id)
+    token = extract_header_JWT(request)
+    supabase = new_user_JWT(token)
+    students = get_students_in_classroom(classroom_id, supabase)
 
     return jsonify(students)
 
@@ -571,15 +587,17 @@ def route_get_students(classroom_id):
 # Get students in a classroom
 @app.route("/leaderboards/<classroom_id>/<sorting_method>", methods=["GET"])
 def route_get_students_with_ordering(classroom_id, sorting_method:str):
+    token = extract_header_JWT(request)
+    supabase = new_user_JWT(token)
     if sorting_method:
         if sorting_method.lower() == "elo":
-            students = get_rankings_by_elo(classroom_id)
+            students = get_rankings_by_elo(classroom_id, supabase)
         elif sorting_method.lower() == "puzzles_completed":
-            students = get_rankings_by_puzzles_complete(classroom_id)
+            students = get_rankings_by_puzzles_complete(classroom_id, supabase)
         else:
-            students = get_rankings_by_elo(classroom_id)
+            students = get_rankings_by_elo(classroom_id, supabase)
     else:
-        students = get_rankings_by_elo(classroom_id)
+        students = get_rankings_by_elo(classroom_id, supabase)
    
     return jsonify(students)
 
