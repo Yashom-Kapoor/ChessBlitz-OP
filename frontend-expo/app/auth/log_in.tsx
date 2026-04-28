@@ -50,11 +50,11 @@ export default function LogInScreen() {
 
       const userId = data.user.id;
 
-      // Optionally fetch student profile from Student-DB
+      // fetch student profile from Users
       const { data: student, error: studentError } = await supabase
-        .from("Student-DB")
+        .from("Users")
         .select("*")
-        .eq("uid", userId)
+        .eq("user_id", userId)
         .single();
 
       if (studentError) {
