@@ -41,7 +41,7 @@ export default function SignUpScreen() {
 
     setLoading(true);
     try {
-        // 1️⃣ Sign up in Supabase Auth
+        // Sign up in Supabase Auth
         const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email.trim(),
         password,
@@ -61,17 +61,16 @@ export default function SignUpScreen() {
 
         const userId = authData.user.id;
 
-        // 2️⃣ Insert row in Student-DB
+        // Insert row in Users
         const { data: student, error: studentError } = await supabase
-        .from("Student-DB")
+        .from("Users")
         .insert([{
-            uid: userId, // match auth user ID
+            user_id: userId, // match auth user ID
             username: username.trim(),
             name: `${firstName.trim()} ${lastName.trim()}`,
             email: email.trim(),
-            ratings: 0,
-            total_puzzles_completed: 0,
-            daily_puzzle: false,
+            rating: 0,
+            role: "student"
         }])
         .select()
         .single();
