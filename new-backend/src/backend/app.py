@@ -24,6 +24,17 @@ OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 app = Flask(__name__)
 CORS(app)
+# ======================== AUTHORIZATION ========================
+# Extract JWT from header
+def extract_header_JWT(request):
+    auth = request.headers.get("Authorization")
+    token_JWT = auth.split(" ")[1] if auth else None
+    return token_JWT
+# Make a new supabase with JWT
+def new_user_JWT(token_JWT: str):
+    supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+    supabase.postgrest.auth(jwt)
+    return supabase
 
 # ======================== HELPER FUNCTIONS ========================
 
@@ -578,3 +589,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
