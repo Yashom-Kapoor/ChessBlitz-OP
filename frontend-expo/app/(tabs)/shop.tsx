@@ -17,6 +17,7 @@ export default function ShopScreen() {
   const { width: screenWidth } = useWindowDimensions();
 
   const [shopPage, setShopPage] = useState(0);
+  const [selectedThemeName, setSelectedThemeName] = useState(theme.name);
   const scrollViewRef = useRef<ScrollView>(null);
 
   const gridColumns = isTablet ? 3 : 2;
@@ -25,6 +26,8 @@ export default function ShopScreen() {
   const tileWidth = (screenWidth - gridHorizontalPadding - tileGap * (gridColumns - 1)) / gridColumns;
 
   const styles = GlobalStyle(theme, isTablet);
+  const themePrices = [1000, 1000, 1000, 2000, 2000, 3000, 1000, 2000, 3000, 3000];
+
   const localStyles = StyleSheet.create({
     root: {
       flex: 1,
@@ -33,23 +36,6 @@ export default function ShopScreen() {
     scrollContent: {
       paddingHorizontal: 12,
       paddingBottom: 85,
-    },
-    themeGrid: {
-      paddingVertical: 15,
-      flexDirection: "row",
-      flexWrap: "wrap",
-      justifyContent: "flex-start",
-      columnGap: tileGap,
-      rowGap: tileGap,
-    },
-    themeTile: {
-      width: tileWidth,
-      borderRadius: 12,
-      padding: isTablet ? 14 : 12,
-      paddingBottom: isTablet ? 18 : 16,
-      alignItems: "center",
-      justifyContent: "space-between",
-      minHeight: isTablet ? 170 : 145,
     },
     themeTitle: {
       textAlign: "center",
@@ -60,20 +46,83 @@ export default function ShopScreen() {
     },
     switcherContainer: {
       flexDirection: "row",
-      justifyContent: "space-around",
-      padding: 10,
-      gap: 5,
-      marginTop: 120,
+      justifyContent: "center",
+      paddingHorizontal: 24,
+      gap: tileGap,
+      marginTop: 40,
     },
     switcherButton: {
       flex: 1,
-      padding: 10,
-      borderRadius: 5,
+      paddingVertical: 12,
+      borderRadius: 30, // pill shape
+      borderWidth: 2,
+      borderColor: "#3A3D4D",
+      alignItems: "center",
+      backgroundColor: "#D9D9D9",
     },
     switcherText: {
       textAlign: 'center',
       paddingTop: 3,
     },
+    selectedThemeTile: {
+    borderWidth: 2,
+    borderColor: "#4DA6FF",
+    shadowColor: "#4DA6FF",
+    shadowOpacity: 0.9,
+    shadowRadius: 7,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 12,
+    },
+    header: {
+    marginTop: 60,
+    paddingHorizontal: 28,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+    },
+    headerTitle: {
+    textAlign: "center",
+    },
+    currencyText: {
+    position: "absolute",
+    right: 20,
+    color: "white",
+    fontSize: 22,
+    fontWeight: "900",
+    },
+    themeGrid: {
+    paddingVertical: 22,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    rowGap: 24,
+    },
+    themeTile: {
+    width: tileWidth - 5,
+    borderRadius: 16,
+    padding: isTablet ? 14 : 12,
+    paddingBottom: 14,
+    alignItems: "center",
+    justifyContent: "space-between",
+    minHeight: isTablet ? 190 : 170,
+    },
+    priceText: {
+    color: "white",
+    fontSize: 22,
+    fontWeight: "900",
+    textAlign: "center",
+    textShadowColor: "rgba(0,0,0,0.35)",
+    textShadowOffset: { width: 2, height: 3 },
+    textShadowRadius: 1,
+    },
+    priceRow: {
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 10,
+    },
+
   });
 
   const handleShopPageChange = (page: number) => {
@@ -85,11 +134,13 @@ export default function ShopScreen() {
   return (
     <GestureHandlerRootView style={localStyles.root}>
       <BackgroundContext theme={theme}>
+        <View style={localStyles.header}>
+          <Text style={localStyles.currencyText}>6700 ?</Text></View>
         <View style={localStyles.switcherContainer}>
           <Pressable
             style={[
               localStyles.switcherButton,
-              { backgroundColor: shopPage === 0 ? theme.secondaryButton : theme.background },
+              { backgroundColor: shopPage === 0 ? "#E5E5E5" : "transparent", borderColor: shopPage === 0 ? "#E5E5E5" : "#454A64", },
             ]}
             onPress={() => handleShopPageChange(0)}
           >
@@ -124,14 +175,17 @@ export default function ShopScreen() {
           {shopPage == 0 ? (
             <View style={localStyles.themeGrid}>
               {[...Object.values(Themes), ...Object.values(ArtThemes)].map((t, index) => {
+                const isSelected = selectedThemeName === t.name;
                 const isArtTheme = Object.prototype.hasOwnProperty.call(ArtThemes, t.name);
                 const artThemeBackground = backgroundImages[t.name];
 
                 return (
                   <TouchableOpacity
                     key={index}
-                    style={[localStyles.themeTile, { backgroundColor: t.secondaryButton, alignItems: 'center', justifyContent: 'center' }]}
-                    onPress={() => setTheme(t.name)}
+                    style={[localStyles.themeTile,
+                    { backgroundColor: t.secondaryButton, alignItems: 'center', justifyContent: 'center' },
+                      isSelected && localStyles.selectedThemeTile,]}
+                    onPress={() => {setTheme(t.name); setSelectedThemeName(t.name);}}
                   >
                     {isArtTheme && artThemeBackground && (
                       <ImageBackground source={artThemeBackground} style={{...localStyles.artTileBackground, opacity: 0.3}} imageStyle={{ borderRadius: 12 }} />
@@ -141,6 +195,8 @@ export default function ShopScreen() {
                     </Text>
                     {/* CheckerPreview shows the chessboard color scheme */}
                     <CheckerPreview lightColor={t.player1Square} darkColor={t.player2Square} />
+                    <View style={localStyles.priceRow}>
+                      <Text style={localStyles.priceText}>{themePrices[index] ?? 1000} ? </Text></View>
                   </TouchableOpacity>
                 );
               })}
