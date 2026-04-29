@@ -1,4 +1,5 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, g
+from functools import wraps
 from flask_cors import CORS
 from dotenv import load_dotenv
 from supabase import Client, create_client
@@ -31,11 +32,30 @@ def extract_header_JWT(request):
     auth = request.headers.get("Authorization")
     token_JWT = auth.split(" ")[1] if auth else None
     return token_JWT
-# Make a new supabase with JWT
+
+# Make a new supabase client scoped to the user's JWT (for RLS)
 def new_user_JWT(token_JWT: str):
-    supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-    supabase.postgrest.auth(token_JWT)
-    return supabase
+    client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    client.postgrest.auth(token_JWT)
+    return client
+
+# Decorator: verify JWT, attach user_id to g, return 401 if invalid/missing
+def require_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = extract_header_JWT(request)
+        if not token:
+            print("[auth] FAIL: no token in header")
+            return jsonify({"error": "Missing authorization token"}), 401
+        try:
+            user_response = supabase.auth.get_user(token)
+            g.user_id = user_response.user.id
+            print(f"[auth] OK: user_id={g.user_id}")
+        except Exception as e:
+            print(f"[auth] FAIL: token present but verification failed — {e}")
+            return jsonify({"error": "Invalid or expired token"}), 401
+        return f(*args, **kwargs)
+    return decorated
 
 # ======================== HELPER FUNCTIONS ========================
 
@@ -305,6 +325,7 @@ def get_shop_data(student_id):
 
 # Get random puzzle
 @app.route("/puzzles/random/", methods=["GET"])
+@require_auth
 def random_puzzle_route():
     token = extract_header_JWT(request)
     supabase = new_user_JWT(token)
@@ -317,6 +338,7 @@ def random_puzzle_route():
 
 # Get puzzle by puzzle id
 @app.route("/puzzles/<puzzle_id>/", methods=["GET"])
+@require_auth
 def get_puzzle_route(puzzle_id):
     token = extract_header_JWT(request)
     supabase = new_user_JWT(token)
@@ -329,6 +351,7 @@ def get_puzzle_route(puzzle_id):
     
 # Mark puzzle as completed
 @app.route("/puzzles/completed", methods=["POST"])
+@require_auth
 def completed_puzzle_route():
     token = extract_header_JWT(request)
     supabase = new_user_JWT(token)
@@ -464,6 +487,7 @@ def delete_lesson(lesson_name):
 
 # Handle hints
 @app.route("/puzzles/<puzzle_id>/hints/<int:move_number>", methods=["GET"])
+@require_auth
 def gethint(puzzle_id, move_number):
     token = extract_header_JWT(request)
     supabase = new_user_JWT(token)
@@ -499,6 +523,7 @@ def gethint(puzzle_id, move_number):
 
 # Return teacher profile
 @app.route("/teachers/<teacher_uid>", methods=["GET"])
+@require_auth
 def route_get_teacher_profile(teacher_uid):
     token = extract_header_JWT(request)
     supabase = new_user_JWT(token)
@@ -508,6 +533,7 @@ def route_get_teacher_profile(teacher_uid):
 
 # Update teacher bio
 @app.route("/teachers/<teacher_uid>", methods=["PATCH"])
+@require_auth
 def route_update_teacher_profile(teacher_uid):
     token = extract_header_JWT(request)
     supabase = new_user_JWT(token)
@@ -541,6 +567,7 @@ def route_get_me():
 
 # Create a classroom
 @app.route("/classrooms", methods=["POST"])
+@require_auth
 def route_create_classroom():
     token = extract_header_JWT(request)
     supabase = new_user_JWT(token)
@@ -555,6 +582,7 @@ def route_create_classroom():
 
 # Get all classrooms owned by a teacher
 @app.route("/classrooms/<teacher_uid>", methods=["GET"])
+@require_auth
 def route_get_classrooms(teacher_uid):
     token = extract_header_JWT(request)
     supabase = new_user_JWT(token)
@@ -564,6 +592,7 @@ def route_get_classrooms(teacher_uid):
 
 # Get a single classroom's info
 @app.route("/classrooms/<classroom_id>", methods=["GET"])
+@require_auth
 def route_get_classroom(classroom_id):
     token = extract_header_JWT(request)
     supabase = new_user_JWT(token)
@@ -573,6 +602,7 @@ def route_get_classroom(classroom_id):
 
 # Delete a classroom
 @app.route("/classrooms/<classroom_id>", methods=["DELETE"])
+@require_auth
 def route_delete_classroom(classroom_id):
     token = extract_header_JWT(request)
     supabase = new_user_JWT(token)
@@ -584,6 +614,7 @@ def route_delete_classroom(classroom_id):
 
 # Join a classroom
 @app.route("/classrooms/join", methods=["POST"])
+@require_auth
 def route_join_classroom():
     token = extract_header_JWT(request)
     supabase = new_user_JWT(token)
@@ -601,6 +632,7 @@ def route_join_classroom():
 
 # Get students in a classroom
 @app.route("/classrooms/<classroom_id>/students", methods=["GET"])
+@require_auth
 def route_get_students(classroom_id):
     token = extract_header_JWT(request)
     supabase = new_user_JWT(token)
@@ -611,6 +643,7 @@ def route_get_students(classroom_id):
 # -------- LEADERBOARD MANAGEMENT --------
 # Get students in a classroom
 @app.route("/leaderboards/<classroom_id>/<sorting_method>", methods=["GET"])
+@require_auth
 def route_get_students_with_ordering(classroom_id, sorting_method:str):
     token = extract_header_JWT(request)
     supabase = new_user_JWT(token)
