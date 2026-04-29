@@ -292,6 +292,12 @@ def get_rankings_by_puzzles_complete(classroom_id, supabase):
         .execute()
 
     return res.data
+
+# -------- SHOP MANAGEMENT --------
+def get_shop_data(student_id):
+    resp = supabase.table('Shop').select('*').eq('student_id', student_id).execute()
+    return resp.data
+
 # ======================== FLASK ROUTES ========================
 
 # -------- PUZZLES --------
@@ -600,6 +606,12 @@ def route_get_students_with_ordering(classroom_id, sorting_method:str):
         students = get_rankings_by_elo(classroom_id, supabase)
    
     return jsonify(students)
+
+# -------- SHOP MANAGEMENT --------
+@app.route("/get_shop_data/<student_id>", methods=["GET"])
+def get_shop_data_route(student_id):
+    data = get_shop_data(student_id)
+    return jsonify(data), 200
 
 def main():
     #app.run(debug=False, host='0.0.0.0', port=int(os.getenv("PORT", 5000)))
