@@ -1,8 +1,9 @@
 import { API_URL } from "@/constants/urls";
+import { fetchWithAuth } from "./fetchWithAuth";
 
 export async function fetchHint(puzzleId: string, moveNumber: number): Promise<string> {
     try {
-        const response = await fetch(`${API_URL}/puzzles/${puzzleId}/hints/${moveNumber}`);
+        const response = await fetchWithAuth(`${API_URL}/puzzles/${puzzleId}/hints/${moveNumber}`);
         if (!response.ok) {
             // Handle HTTP errors
             const errorData = await response.json();

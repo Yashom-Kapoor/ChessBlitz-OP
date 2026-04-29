@@ -8,6 +8,7 @@ import random
 import string
 import uuid
 import requests
+import chess
 
 # ======================== SETUP ========================
 
@@ -33,7 +34,7 @@ def extract_header_JWT(request):
 # Make a new supabase with JWT
 def new_user_JWT(token_JWT: str):
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-    supabase.postgrest.auth(jwt)
+    supabase.postgrest.auth(token_JWT)
     return supabase
 
 # ======================== HELPER FUNCTIONS ========================
@@ -113,14 +114,14 @@ def generate_hint_with_openrouter(fen: str, move: str, player: str, model: str =
     payload = {
         "model": model,
         "temperature": 0.7,
-        "max_tokens": 300,
+        "max_tokens": 30,
         "messages": [
             {
                 "role": "system",
                 "content": (
                     "You are a chess tutor. Do not give the best move explicitly. "
-                    "Guide the student toward discovering it themselves. "
-                    "Be brief (max two lines)."
+                    "Guide the student toward discovering it themselves with a single hint."
+                    "Be brief (max TWENTY WORDS)"
                 ),
             },
             {
@@ -520,6 +521,24 @@ def route_update_teacher_profile(teacher_uid):
 
 # -------- CLASSROOM MANAGEMENT --------
 
+@app.route("/users/me",methods=["GET"])
+def route_get_me():
+    token = extract_header_JWT(request)
+    if not token:
+        return jsonify({"error": "Missing token"}), 401
+    try:
+        user_response = supabase.auth.get_user(token)
+        user_id = user_response.user.id
+    except Exception:
+        return jsonify({"error": "Invalid token"}), 401
+    
+    result = supabase.table("Users").select("*").eq("user_id", user_id).single().execute()
+    if not result.data:
+        return jsonify({"error": "User not found"}), 404
+    
+    user = result.data
+    return jsonify({"id": user["user_id"], "name": user["name"], "email": user["email"]})
+
 # Create a classroom
 @app.route("/classrooms", methods=["POST"])
 def route_create_classroom():
@@ -615,7 +634,7 @@ def get_shop_data_route(student_id):
 
 def main():
     #app.run(debug=False, host='0.0.0.0', port=int(os.getenv("PORT", 5000)))
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0')
 
 if __name__ == "__main__":
     main()

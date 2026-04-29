@@ -1,8 +1,9 @@
 import { API_URL } from "@/constants/urls";
+import { fetchWithAuth } from "./fetchWithAuth";
 
 export async function fetchRandomPuzzle(): Promise<any> {
   try {
-    const response = await fetch(`${API_URL}/puzzles/random/`);
+    const response = await fetchWithAuth(`${API_URL}/puzzles/random/`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
