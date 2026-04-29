@@ -42,8 +42,8 @@ export default {
       typedRoutes: true,
     },
     extra: {
-      supabaseUrl: process.env.EXPO_SUPABASE_URL,
-      supabaseKey: process.env.EXPO_SUPABASE_KEY,
+      supabaseUrl: process.env.SUPABASE_URL,
+      supabaseKey: process.env.SUPABASE_KEY,
     },
   },
 };

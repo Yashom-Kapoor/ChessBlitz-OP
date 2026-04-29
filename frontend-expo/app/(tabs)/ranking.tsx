@@ -1,5 +1,6 @@
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import React, { useEffect, useState } from 'react';
+import { supabase } from '@/api/SupabaseClient';
 import { ScrollView, View, ActivityIndicator, StyleSheet, Text } from 'react-native';
 import RankingItem from '@/components/rankings/Rank';
 import { useGlobalSearchParams } from 'expo-router';
@@ -42,7 +43,10 @@ export default function RankingsScreen() {
   useEffect(() => {
     const fetchRankings = async () => {
       try {
-        const response = await fetch(API_URL);
+        const { data: { session } } = await supabase.auth.getSession();
+        const response = await fetch(API_URL, {
+          headers: { Authorization: `Bearer ${session?.access_token}` },
+        });
         const data = await response.json();
 
         setRankings(data.map(({username, user_id, name, rating}:{username:string, user_id:number, name:string, rating:number}, i:number) => (

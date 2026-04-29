@@ -1,8 +1,12 @@
 import { API_URL } from "@/constants/urls";
+import { supabase } from "@/api/SupabaseClient";
 
 export async function fetchHint(puzzleId: string, moveNumber: number): Promise<string> {
     try {
-        const response = await fetch(`${API_URL}/puzzles/${puzzleId}/hints/${moveNumber}`);
+        const { data: { session } } = await supabase.auth.getSession();
+        const response = await fetch(`${API_URL}/puzzles/${puzzleId}/hints/${moveNumber}`, {
+            headers: { Authorization: `Bearer ${session?.access_token}` },
+        });
         if (!response.ok) {
             // Handle HTTP errors
             const errorData = await response.json();

@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Image, StyleSheet, Platform, Pressable, View, ImageBackground, Text, TouchableOpacity } from 'react-native';
+import { Image, StyleSheet, ImageBackground, Text, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { configureReanimatedLogger, ReanimatedLogLevel } from 'react-native-reanimated';
 import GlobalStyle from '@/context/GlobalStyle';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import backgroundImages from '@/context/Backgrounds';
-import { BlurView } from 'expo-blur';
 import { Themes } from '@/constants/Themes';
 import { getDeviceTypeAsync, DeviceType } from 'expo-device';
 import GlassBlurView from '@/components/GlassBlurView';
+import { supabase } from '@/api/SupabaseClient';
 
 // This is the default configuration
 configureReanimatedLogger({
@@ -82,12 +82,17 @@ export default function HomeScreen() {
       <SafeAreaProvider style={localStyles.landingContainer}>
         <TouchableOpacity // Continue without account button
           style={localStyles.continueButton}
-          onPress={() => router.push({
-            pathname: `/(tabs)/puzzles`,
-            params: {
-              isTablet: String(isTablet)
+          onPress={async () => {
+            const { error } = await supabase.auth.signInAnonymously();
+            if (error) {
+              console.error('[guest login] signInAnonymously failed:', error.message);
+              return;
             }
-          })}
+            router.push({
+              pathname: `/(tabs)/puzzles`,
+              params: { isTablet: String(isTablet) }
+            });
+          }}
         >
           <Text style={[styles.link, { color: theme.primaryText, textAlign: 'right' }]}>
             Continue without an account

@@ -1,13 +1,19 @@
 import { API_URL } from "@/constants/urls";
+import { supabase } from "@/api/SupabaseClient";
 
 export async function fetchPuzzle(puzzleId: string): Promise<any> {
   try {
-    const response = await fetch(`${API_URL}/puzzles/${puzzleId}/`);
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch(`${API_URL}/puzzles/${puzzleId}/`, {
+      headers: {
+        Authorization: `Bearer ${session?.access_token}`,
+      },
+    });
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const data = await response.json();
-    return data; // Return the JSON object for the puzzle
+    return data;
   } catch (err) {
     throw new Error(err instanceof Error ? err.message : 'An unknown error occurred');
   }
