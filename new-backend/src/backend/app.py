@@ -547,24 +547,6 @@ def route_update_teacher_profile(teacher_uid):
 
 # -------- CLASSROOM MANAGEMENT --------
 
-@app.route("/users/me",methods=["GET"])
-def route_get_me():
-    token = extract_header_JWT(request)
-    if not token:
-        return jsonify({"error": "Missing token"}), 401
-    try:
-        user_response = supabase.auth.get_user(token)
-        user_id = user_response.user.id
-    except Exception:
-        return jsonify({"error": "Invalid token"}), 401
-    
-    result = supabase.table("Users").select("*").eq("user_id", user_id).single().execute()
-    if not result.data:
-        return jsonify({"error": "User not found"}), 404
-    
-    user = result.data
-    return jsonify({"id": user["user_id"], "name": user["name"], "email": user["email"]})
-
 # Create a classroom
 @app.route("/classrooms", methods=["POST"])
 @require_auth
@@ -667,7 +649,7 @@ def get_shop_data_route(student_id):
 
 def main():
     #app.run(debug=False, host='0.0.0.0', port=int(os.getenv("PORT", 5000)))
-    app.run(debug=True, host='0.0.0.0')
+    app.run(debug=True)
 
 if __name__ == "__main__":
     main()

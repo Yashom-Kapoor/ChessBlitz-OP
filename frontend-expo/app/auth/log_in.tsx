@@ -8,7 +8,6 @@ import { useEffect, useState } from "react";
 import { Alert, Image, ImageBackground, StyleSheet, Text, TextInput, TouchableOpacity } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { supabase } from "@/api/SupabaseClient";
-import { saveJwt } from "@/api/Auth";
 
 export default function LogInScreen() {
   const router = useRouter();
@@ -48,7 +47,6 @@ export default function LogInScreen() {
         setLoading(false);
         return;
       }
-      await saveJwt(data.session.access_token);
       const userId = data.user.id;
 
       // fetch student profile from Users
