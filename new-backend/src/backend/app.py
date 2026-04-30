@@ -21,7 +21,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Load OpenRouter
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+OPENROUTER_API_KEY = os.getenv("OPEN_ROUTER_KEY")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 app = Flask(__name__)
@@ -71,6 +71,20 @@ def require_auth(f):
 
 # ======================== HELPER FUNCTIONS ========================
 
+# -------- USER MANAGEMENT --------
+def get_user_info(supabase):
+    res = supabase.table("Users") \
+        .select("name,email,username,rating,puzzles_completed,classroom,created_at") \
+        .maybe_single() \
+        .execute()
+    return res.data
+
+def update_user_info(supabase, token, update_info):
+    user = supabase.auth.get_user(token)
+    user_id = user.user.id 
+    res = supabase.table("Users").update(update_info).eq("user_id", user_id).execute()
+    return res.data
+
 # -------- PUZZLES --------
 
 # Get random puzzle
@@ -88,7 +102,7 @@ def get_random_puzzle(supabase):
         return None
 
 # Get puzzle by puzzle id
-def get_puzzle_by_id(puzzle_id: int, supabase):
+def get_puzzle_by_id(puzzle_id: int):
     try:
         response = (
             supabase
@@ -106,7 +120,7 @@ def get_puzzle_by_id(puzzle_id: int, supabase):
         return None
 
 # Mark puzzle as completed
-def record_puzzle_completion(puzzle_id: str, student_id: str, completed: bool, supabase):
+def record_puzzle_completion(puzzle_id: str, student_id: str, completed: bool, time: int, rating_gain: int, supabase):
     try:
         response = (
             supabase
@@ -114,7 +128,9 @@ def record_puzzle_completion(puzzle_id: str, student_id: str, completed: bool, s
             .insert({
                 "puzzleid": puzzle_id,
                 "studentid": student_id,
-                "completed": completed
+                "completed": completed,
+                "time_elapsed": time,
+                "rating_gain": rating_gain
             })
             .execute()
         )
@@ -124,6 +140,16 @@ def record_puzzle_completion(puzzle_id: str, student_id: str, completed: bool, s
     except Exception as e:
         print(f"Error recording puzzle attempt: {e}")
         return None
+
+def update_elo(rating_a, rating_b, score_a, k=32):
+    """
+    rating_a: player rating
+    rating_b: opponent rating
+    score_a: 1 (win), 0.5 (draw), 0 (loss)
+    """
+    expected_score = 1 / (1 + 10 ** ((rating_b - rating_a) / 400))
+    new_rating_a = rating_a + k * (score_a - expected_score)
+    return new_rating_a
 
 def get_puzzle_attempt(puzzle_id: str, student_id: str, supabase):
     ...
@@ -169,7 +195,7 @@ def generate_hint_with_openrouter(fen: str, move: str, player: str, model: str =
     }
 
     response = requests.post(OPENROUTER_URL, headers=headers, json=payload)
-
+    print(response)
     if response.status_code != 200:
         return "No explanation available."
 
@@ -335,6 +361,17 @@ def get_shop_prices(supabase):
     res = supabase.table('Shop-Items').select('*').execute()
     return res.data
 
+def get_item_price(supabase, item):
+    res = supabase.table('Shop-Items').select('*').eq("item_name", item).execute()
+    return res.data
+
+def update_currency(supabase, token, currency_gain):
+    res = supabase.table('Shop').select('*').single().execute()
+    curr = res.data["currency"]
+    user_response = supabase.auth.get_user(token)
+    user_id = user_response.user.id
+    supabase.table('Shop').update({"currency": curr + currency_gain}).eq("student_id", user_id).execute()
+
 # ======================== FLASK ROUTES ========================
 
 # -------- USER MANAGEMENT --------
@@ -343,18 +380,14 @@ def get_shop_prices(supabase):
 @require_auth
 def get_user():
     token = get_bearer_token(request)
+    supabase = get_supabase_with_auth(token)
 
-    supabase_authed = get_supabase_with_auth(token)
-
-    response = supabase_authed.table("Users") \
-        .select("name,email,username,rating,puzzles_completed,classroom,created_at") \
-        .maybe_single() \
-        .execute()
+    response = get_user_info(supabase)
     
-    if response.data is None:
+    if response is None:
         return jsonify({"error": "User not found"}), 404
 
-    return jsonify(response.data), 200    
+    return jsonify(response), 200    
 
 # -------- PUZZLES --------
 
@@ -383,7 +416,7 @@ def random_puzzle_route():
 def get_puzzle_route(puzzle_id):
     token = get_bearer_token(request)
     supabase = get_supabase_with_auth(token)
-    puzzle = get_puzzle_by_id(puzzle_id, supabase)
+    puzzle = get_puzzle_by_id(puzzle_id)
 
     if puzzle:
         return jsonify(puzzle), 200
@@ -401,12 +434,25 @@ def completed_puzzle_route():
     puzzle_id = data.get("puzzleid")
     student_id = data.get("studentid")
     completed = data.get("completed")
+    time_elapsed = data.get("time_elapsed")
+    info = get_user_info(supabase)
+    student_rating = info["rating"]
+    puzzles_completed = info["puzzles_completed"]
+    puzzle_rating = get_puzzle_by_id(puzzle_id)["Rating"]
+    rating_gain = round(update_elo(student_rating, puzzle_rating, int(completed)))
+    
+    # Edit as needed
+    currency_gain = 1000
 
     # Basic validation
     if not puzzle_id or not student_id or not isinstance(completed, bool):
         return jsonify({"error": "Missing or invalid parameters"}), 400
 
-    result = record_puzzle_completion(puzzle_id, student_id, completed, supabase)
+    result = record_puzzle_completion(puzzle_id, student_id, completed, time_elapsed, rating_gain, supabase)
+
+    update_user_info(supabase, token, update_info={ "rating": student_rating + rating_gain, "puzzles_completed": puzzles_completed + 1 })
+
+    update_currency(supabase, token, currency_gain)
 
     if not result:
         return jsonify({"error": "Failed to record attempt"}), 500
@@ -528,23 +574,20 @@ def delete_lesson(lesson_name):
 
 # Handle hints
 @app.route("/puzzles/<puzzle_id>/hints/<int:move_number>", methods=["GET"])
-@require_auth
 def gethint(puzzle_id, move_number):
-    token = get_bearer_token(request)
-    supabase = get_supabase_with_auth(token)
     try:
-        puzzle = get_puzzle_by_id(puzzle_id, supabase)
+        puzzle = get_puzzle_by_id(puzzle_id)
 
         if not puzzle:
             return jsonify({"error": "Puzzle not found"}), 404
 
-        moves = puzzle["moves"].split(" ")
+        moves = puzzle["Moves"].split(" ")
 
         if move_number <= 0 or move_number > len(moves):
             return jsonify({"error": "Invalid move number"}), 400
 
         # Recalculate the board position right before the requested move.
-        board = chess.Board(puzzle["fen"])
+        board = chess.Board(puzzle["FEN"])
         for uci_move in moves[:move_number - 1]:
             board.push(chess.Move.from_uci(uci_move))
 
@@ -715,6 +758,20 @@ def get_prices():
     print(items_to_dict)
     return jsonify(items_to_dict), 200
 
+@app.route("/shop/<item:str>", methods=["PUT"])
+def buy_item(item):
+    token = get_bearer_token(request)
+    supabase = get_supabase_with_auth(token)
+
+    data = get_item_price(supabase, item)
+
+    items_to_dict = {
+        item["item_name"]: item["currency_cost"]
+        for item in data
+    }
+
+    print(items_to_dict)
+    return jsonify(items_to_dict), 200
 
 # ======================== RUN FLASK ========================
 

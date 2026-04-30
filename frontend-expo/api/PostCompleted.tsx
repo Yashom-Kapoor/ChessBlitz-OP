@@ -17,7 +17,7 @@ export async function postCompletedPuzzle(data: CompletedPuzzleData): Promise<un
             studentid: data.studentid,
             puzzleid: data.puzzleid,
             completed: data.completed,
-            ...(data.timeElapsed !== undefined ? { timeElapsed: data.timeElapsed } : {}),
+            ...(data.timeElapsed !== undefined ? { time_elapsed: data.timeElapsed } : {}),
             ...(data.hintsUsed !== undefined ? { hintsUsed: data.hintsUsed } : {}),
             ...(data.undosUsed !== undefined ? { undosUsed: data.undosUsed } : {}),
             ...(data.redosUsed !== undefined ? { redosUsed: data.redosUsed } : {}),

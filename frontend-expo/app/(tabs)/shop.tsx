@@ -1,4 +1,5 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import { GestureHandlerRootView, Pressable, ScrollView } from "react-native-gesture-handler";
 import { ImageBackground, StyleSheet, View, Text, TouchableOpacity, useWindowDimensions } from "react-native";
 import { CheckerPreview } from "@/components/CheckerPreview";
@@ -136,8 +137,16 @@ export default function ShopScreen() {
 
   useEffect(() => {
       loadShop();
-      loadPrices()
+      loadPrices();
     }, []);
+
+
+  useFocusEffect(
+    useCallback(() => {
+      loadShop();
+      loadPrices();
+    }, [])
+  );
   
   const loadShop = async () => {
     const data = await getShopData();
@@ -219,7 +228,18 @@ export default function ShopScreen() {
                     style={[localStyles.themeTile,
                     { backgroundColor: t.secondaryButton, alignItems: 'center', justifyContent: 'center' },
                       isSelected && localStyles.selectedThemeTile,]}
-                    onPress={() => {setTheme(t.name); setSelectedThemeName(t.name);}}
+                    onPress={() => {
+                      const key = themeKey(t.name);
+                      const unlocked = boardStatus?.[key];
+
+                      if (!unlocked) {
+                        alert("This theme is locked");
+                        return;
+                      }
+
+                      setTheme(t.name);
+                      setSelectedThemeName(t.name);
+                    }}
                   >
                     {isArtTheme && artThemeBackground && (
                       <ImageBackground source={artThemeBackground} style={{...localStyles.artTileBackground, opacity: 0.3}} imageStyle={{ borderRadius: 12 }} />

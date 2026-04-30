@@ -3,11 +3,12 @@ import backgroundImages, { BackgroundContext } from '@/context/Backgrounds';
 import GlobalStyle from '@/context/GlobalStyle';
 import { useTheme } from '@/context/ThemeContext';
 import { useGlobalSearchParams, useRouter } from 'expo-router';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Switch } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { getCurrentUser } from "@/api/User";
 import { supabase } from '@/api/SupabaseClient';
+import { useFocusEffect } from "@react-navigation/native";
 
 const InfoBox = ({
   children,
@@ -65,6 +66,12 @@ export default function ProfileScreen() {
   useEffect(() => {
     loadUser();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadUser();
+    }, [])
+  );
 
   const loadUser = async () => {
     const data = await getCurrentUser();
