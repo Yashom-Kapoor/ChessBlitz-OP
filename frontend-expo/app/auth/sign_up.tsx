@@ -81,9 +81,6 @@ export default function SignUpScreen() {
         return;
         }
 
-        // 3️⃣ Optionally store locally (doesnt work on native)
-        // localStorage.setItem("student", JSON.stringify(student));
-
         Alert.alert('Success', 'Signed up successfully!');
         router.push(`/(tabs)/lessons?isTablet=${isTablet}`);
     } catch (err: unknown) {

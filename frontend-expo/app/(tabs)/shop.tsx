@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { GestureHandlerRootView, Pressable, ScrollView } from "react-native-gesture-handler";
 import { ImageBackground, StyleSheet, View, Text, TouchableOpacity, useWindowDimensions } from "react-native";
 import { CheckerPreview } from "@/components/CheckerPreview";
@@ -9,6 +9,7 @@ import { BlurView } from "expo-blur";
 import { useGlobalSearchParams } from "expo-router";
 import GlobalStyle from "@/context/GlobalStyle";
 import camelToTitle from "@/utils/CamelToTitle";
+import { getShopData, getShopPrices } from "@/api/GetShopData";
 
 // Main screen component that displays all themes
 export default function ShopScreen() {
@@ -26,7 +27,9 @@ export default function ShopScreen() {
   const tileWidth = (screenWidth - gridHorizontalPadding - tileGap * (gridColumns - 1)) / gridColumns;
 
   const styles = GlobalStyle(theme, isTablet);
-  const themePrices = [1000, 1000, 1000, 2000, 2000, 3000, 1000, 2000, 3000, 3000];
+  const [themePrices, setThemePrices] = useState<Record<string, number>>({});
+  const [currency, setCurrency] = useState(0);
+  const [boardStatus, setBoardStatus] = useState<Record<string, boolean>>({});
 
   const localStyles = StyleSheet.create({
     root: {
@@ -131,11 +134,42 @@ export default function ShopScreen() {
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   }
 
+  useEffect(() => {
+      loadShop();
+      loadPrices()
+    }, []);
+  
+  const loadShop = async () => {
+    const data = await getShopData();
+    setCurrency(data.currency);
+    setBoardStatus(data);
+  };
+
+  const loadPrices = async () => {
+    const data = await getShopPrices();
+    setThemePrices(data);
+  };
+
+  const themeKey = (str: string) => {
+    return `${str
+      .replace(/([A-Z])/g, "_$1")
+      .toLowerCase()
+      .replace(/^_/, "")}_board`
+  }
+
+  const checkPrice = (name: string) => {
+    const key = themeKey(name);
+    if (!key) return "Coming Soon";
+    const unlocked = boardStatus?.[key];
+    return unlocked ? "Unlocked" : (themePrices?.[key] ?? "Coming Soon");
+  }
+
+
   return (
     <GestureHandlerRootView style={localStyles.root}>
       <BackgroundContext theme={theme}>
         <View style={localStyles.header}>
-          <Text style={localStyles.currencyText}>6700 ?</Text></View>
+          <Text style={localStyles.currencyText}>{ currency }</Text></View>
         <View style={localStyles.switcherContainer}>
           <Pressable
             style={[
@@ -196,7 +230,7 @@ export default function ShopScreen() {
                     {/* CheckerPreview shows the chessboard color scheme */}
                     <CheckerPreview lightColor={t.player1Square} darkColor={t.player2Square} />
                     <View style={localStyles.priceRow}>
-                      <Text style={localStyles.priceText}>{themePrices[index] ?? 1000} ? </Text></View>
+                      <Text style={localStyles.priceText}>{checkPrice(t.name)}</Text></View>
                   </TouchableOpacity>
                 );
               })}

@@ -1,8 +1,13 @@
-// src/supabaseClient.js
 import { createClient } from "@supabase/supabase-js";
 import Constants from "expo-constants";
 
-// Grab the variables from app.config.js's "extra"
-const { supabaseUrl, supabaseKey } = Constants.expoConfig.extra;
+const extra = Constants.expoConfig?.extra;
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+if (!extra?.supabaseUrl || !extra?.supabaseKey) {
+  throw new Error("Missing Supabase config in Expo extra");
+}
+
+export const supabase = createClient(
+  extra.supabaseUrl,
+  extra.supabaseKey
+);

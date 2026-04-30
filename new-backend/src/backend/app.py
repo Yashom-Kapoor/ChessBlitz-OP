@@ -27,23 +27,35 @@ OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 app = Flask(__name__)
 CORS(app)
 # ======================== AUTHORIZATION ========================
-# Extract JWT from header
-def extract_header_JWT(request):
-    auth = request.headers.get("Authorization")
-    token_JWT = auth.split(" ")[1] if auth else None
-    return token_JWT
 
-# Make a new supabase client scoped to the user's JWT (for RLS)
-def new_user_JWT(token_JWT: str):
-    client = create_client(SUPABASE_URL, SUPABASE_KEY)
-    client.postgrest.auth(token_JWT)
+# Extract JWT from header
+def get_bearer_token(request):
+    auth_header = request.headers.get("Authorization")
+
+    if not auth_header:
+        return None
+
+    parts = auth_header.split(" ")
+
+    if len(parts) != 2 or parts[0] != "Bearer":
+        return None
+
+    return parts[1]
+
+def get_supabase_with_auth(jwt: str):
+    client = create_client(
+        supabase_url=SUPABASE_URL,
+        supabase_key=SUPABASE_KEY,
+    )
+    client.postgrest.auth(jwt)
     return client
+
 
 # Decorator: verify JWT, attach user_id to g, return 401 if invalid/missing
 def require_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        token = extract_header_JWT(request)
+        token = get_bearer_token(request)
         if not token:
             print("[auth] FAIL: no token in header")
             return jsonify({"error": "Missing authorization token"}), 401
@@ -64,11 +76,11 @@ def require_auth(f):
 # Get random puzzle
 def get_random_puzzle(supabase):
     try:
-        ids_res = supabase.table("Puzzles").select("puzzleid").execute()
-        ids = [p["puzzleid"] for p in ids_res.data]
+        ids_res = supabase.table("Puzzles").select("PuzzleId").execute()
+        ids = [p["PuzzleId"] for p in ids_res.data]
         chosen_id = random.choice(ids)
 
-        puzzle_res = supabase.table("Puzzles").select("*").eq("puzzleid", chosen_id).execute()
+        puzzle_res = supabase.table("Puzzles").select("*").eq("PuzzleId", chosen_id).execute()
         return puzzle_res.data[0]
     
     except Exception as e:
@@ -82,7 +94,7 @@ def get_puzzle_by_id(puzzle_id: int, supabase):
             supabase
             .table("Puzzles")
             .select("*")
-            .eq("puzzleid", puzzle_id)
+            .eq("PuzzleId", puzzle_id)
             .single()
             .execute()
         )
@@ -315,11 +327,34 @@ def get_rankings_by_puzzles_complete(classroom_id, supabase):
     return res.data
 
 # -------- SHOP MANAGEMENT --------
-def get_shop_data(student_id):
-    resp = supabase.table('Shop').select('*').eq('student_id', student_id).execute()
-    return resp.data
+def get_shop_data(supabase):
+    res = supabase.table('Shop').select('*').single().execute()
+    return res.data
+
+def get_shop_prices(supabase):
+    res = supabase.table('Shop-Items').select('*').execute()
+    return res.data
 
 # ======================== FLASK ROUTES ========================
+
+# -------- USER MANAGEMENT --------
+# Get user information
+@app.route("/users/me", methods=["GET"])
+@require_auth
+def get_user():
+    token = get_bearer_token(request)
+
+    supabase_authed = get_supabase_with_auth(token)
+
+    response = supabase_authed.table("Users") \
+        .select("name,email,username,rating,puzzles_completed,classroom,created_at") \
+        .maybe_single() \
+        .execute()
+    
+    if response.data is None:
+        return jsonify({"error": "User not found"}), 404
+
+    return jsonify(response.data), 200    
 
 # -------- PUZZLES --------
 
@@ -327,21 +362,27 @@ def get_shop_data(student_id):
 @app.route("/puzzles/random/", methods=["GET"])
 @require_auth
 def random_puzzle_route():
-    token = extract_header_JWT(request)
-    supabase = new_user_JWT(token)
+    token = get_bearer_token(request)
+    supabase = get_supabase_with_auth(token)
     puzzle = get_random_puzzle(supabase)
 
     if not puzzle:
         return jsonify({"error": "No puzzles found"}), 404
 
-    return jsonify(puzzle), 200
+    return jsonify({
+        "puzzleid": puzzle["PuzzleId"],
+        "fen": puzzle["FEN"],
+        "moves": puzzle["Moves"],
+        "rating": puzzle["Rating"],
+        "themes": puzzle["Themes"]
+    }), 200
 
 # Get puzzle by puzzle id
 @app.route("/puzzles/<puzzle_id>/", methods=["GET"])
 @require_auth
 def get_puzzle_route(puzzle_id):
-    token = extract_header_JWT(request)
-    supabase = new_user_JWT(token)
+    token = get_bearer_token(request)
+    supabase = get_supabase_with_auth(token)
     puzzle = get_puzzle_by_id(puzzle_id, supabase)
 
     if puzzle:
@@ -353,8 +394,8 @@ def get_puzzle_route(puzzle_id):
 @app.route("/puzzles/completed", methods=["POST"])
 @require_auth
 def completed_puzzle_route():
-    token = extract_header_JWT(request)
-    supabase = new_user_JWT(token)
+    token = get_bearer_token(request)
+    supabase = get_supabase_with_auth(token)
     data = request.get_json()
 
     puzzle_id = data.get("puzzleid")
@@ -489,8 +530,8 @@ def delete_lesson(lesson_name):
 @app.route("/puzzles/<puzzle_id>/hints/<int:move_number>", methods=["GET"])
 @require_auth
 def gethint(puzzle_id, move_number):
-    token = extract_header_JWT(request)
-    supabase = new_user_JWT(token)
+    token = get_bearer_token(request)
+    supabase = get_supabase_with_auth(token)
     try:
         puzzle = get_puzzle_by_id(puzzle_id, supabase)
 
@@ -525,8 +566,9 @@ def gethint(puzzle_id, move_number):
 @app.route("/teachers/<teacher_uid>", methods=["GET"])
 @require_auth
 def route_get_teacher_profile(teacher_uid):
-    token = extract_header_JWT(request)
-    supabase = new_user_JWT(token)
+    token = get_bearer_token(request)
+    supabase = get_supabase_with_auth(token)
+
     teacher = get_teacher_profile(teacher_uid, supabase)
 
     return jsonify(teacher)
@@ -535,8 +577,9 @@ def route_get_teacher_profile(teacher_uid):
 @app.route("/teachers/<teacher_uid>", methods=["PATCH"])
 @require_auth
 def route_update_teacher_profile(teacher_uid):
-    token = extract_header_JWT(request)
-    supabase = new_user_JWT(token)
+    token = get_bearer_token(request)
+    supabase = get_supabase_with_auth(token)
+
     data = request.json
 
     bio = data["bio"]
@@ -551,8 +594,9 @@ def route_update_teacher_profile(teacher_uid):
 @app.route("/classrooms", methods=["POST"])
 @require_auth
 def route_create_classroom():
-    token = extract_header_JWT(request)
-    supabase = new_user_JWT(token)
+    token = get_bearer_token(request)
+    supabase = get_supabase_with_auth(token)
+
     data = request.json
 
     name = data["name"]
@@ -566,8 +610,9 @@ def route_create_classroom():
 @app.route("/classrooms/<teacher_uid>", methods=["GET"])
 @require_auth
 def route_get_classrooms(teacher_uid):
-    token = extract_header_JWT(request)
-    supabase = new_user_JWT(token)
+    token = get_bearer_token(request)
+    supabase = get_supabase_with_auth(token)
+
     classrooms = get_teacher_classrooms(teacher_uid, supabase)
 
     return jsonify(classrooms)
@@ -576,8 +621,9 @@ def route_get_classrooms(teacher_uid):
 @app.route("/classrooms/<classroom_id>", methods=["GET"])
 @require_auth
 def route_get_classroom(classroom_id):
-    token = extract_header_JWT(request)
-    supabase = new_user_JWT(token)
+    token = get_bearer_token(request)
+    supabase = get_supabase_with_auth(token)
+
     classroom = get_classroom(classroom_id, supabase)
 
     return jsonify(classroom)
@@ -586,8 +632,9 @@ def route_get_classroom(classroom_id):
 @app.route("/classrooms/<classroom_id>", methods=["DELETE"])
 @require_auth
 def route_delete_classroom(classroom_id):
-    token = extract_header_JWT(request)
-    supabase = new_user_JWT(token)
+    token = get_bearer_token(request)
+    supabase = get_supabase_with_auth(token)
+
     delete_classroom(classroom_id, supabase)
 
     return jsonify({"status": "deleted"})
@@ -598,8 +645,9 @@ def route_delete_classroom(classroom_id):
 @app.route("/classrooms/join", methods=["POST"])
 @require_auth
 def route_join_classroom():
-    token = extract_header_JWT(request)
-    supabase = new_user_JWT(token)
+    token = get_bearer_token(request)
+    supabase = get_supabase_with_auth(token)
+
     data = request.json
 
     student_uid = data["student_uid"]
@@ -616,8 +664,9 @@ def route_join_classroom():
 @app.route("/classrooms/<classroom_id>/students", methods=["GET"])
 @require_auth
 def route_get_students(classroom_id):
-    token = extract_header_JWT(request)
-    supabase = new_user_JWT(token)
+    token = get_bearer_token(request)
+    supabase = get_supabase_with_auth(token)
+
     students = get_students_in_classroom(classroom_id, supabase)
 
     return jsonify(students)
@@ -627,8 +676,9 @@ def route_get_students(classroom_id):
 @app.route("/leaderboards/<classroom_id>/<sorting_method>", methods=["GET"])
 @require_auth
 def route_get_students_with_ordering(classroom_id, sorting_method:str):
-    token = extract_header_JWT(request)
-    supabase = new_user_JWT(token)
+    token = get_bearer_token(request)
+    supabase = get_supabase_with_auth(token)
+
     if sorting_method:
         if sorting_method.lower() == "elo":
             students = get_rankings_by_elo(classroom_id, supabase)
@@ -642,10 +692,31 @@ def route_get_students_with_ordering(classroom_id, sorting_method:str):
     return jsonify(students)
 
 # -------- SHOP MANAGEMENT --------
-@app.route("/get_shop_data/<student_id>", methods=["GET"])
-def get_shop_data_route(student_id):
-    data = get_shop_data(student_id)
+@app.route("/shop/me", methods=["GET"])
+def get_shop_data_route():
+    token = get_bearer_token(request)
+    supabase = get_supabase_with_auth(token)
+
+    data = get_shop_data(supabase)
     return jsonify(data), 200
+
+@app.route("/shop/prices", methods=["GET"])
+def get_prices():
+    token = get_bearer_token(request)
+    supabase = get_supabase_with_auth(token)
+
+    data = get_shop_prices(supabase)
+
+    items_to_dict = {
+        item["item_name"]: item["currency_cost"]
+        for item in data
+    }
+
+    print(items_to_dict)
+    return jsonify(items_to_dict), 200
+
+
+# ======================== RUN FLASK ========================
 
 def main():
     #app.run(debug=False, host='0.0.0.0', port=int(os.getenv("PORT", 5000)))

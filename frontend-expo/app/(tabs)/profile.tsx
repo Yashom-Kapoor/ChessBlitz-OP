@@ -3,9 +3,11 @@ import backgroundImages, { BackgroundContext } from '@/context/Backgrounds';
 import GlobalStyle from '@/context/GlobalStyle';
 import { useTheme } from '@/context/ThemeContext';
 import { useGlobalSearchParams, useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Switch } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { getCurrentUser } from "@/api/User";
+import { supabase } from '@/api/SupabaseClient';
 
 const InfoBox = ({
   children,
@@ -45,13 +47,46 @@ export default function ProfileScreen() {
   const router = useRouter();
 
   const [userData, setUserData] = useState({
-    name: 'Chess Master',
-    email: 'chessmaster@example.com',
-    password: '••••••••',
-    joinDate: 'June 2024',
-    totalPuzzlesSolved: 1247,
-    overallRating: 1842,
+    name: 'Loading...',
+    email: 'Loading...',
+    joinDate: 'Loading...',
+    totalPuzzlesSolved: "Loading...",
+    overallRating: "Loading...",
   });
+
+  const formatFullDate = (timestamp: string) => {
+    return new Date(timestamp).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  useEffect(() => {
+    loadUser();
+  }, []);
+
+  const loadUser = async () => {
+    const data = await getCurrentUser();
+    setUserData({
+      name: data.name,
+      email: data.email,
+      joinDate: formatFullDate(data.created_at),
+      totalPuzzlesSolved: data.puzzles_completed,
+      overallRating: data.rating,
+    });
+  };
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      console.log("Logout error:", error.message);
+      return;
+    }
+
+    router.replace("/");
+  };
 
   const [isEditing, setIsEditing] = useState(false);
 
@@ -281,7 +316,9 @@ export default function ProfileScreen() {
           {/* Header Section */}
           <View style={localStyles.header}>
             <View style={localStyles.avatarContainer}>
-              <Text style={localStyles.avatarText}>CM</Text>
+              <Text style={localStyles.avatarText}>{
+              userData.name.trim().split(" ").filter(Boolean).map(part => part[0].toUpperCase()).join("").slice(0, 2)
+              }</Text>
             </View>
             <TouchableOpacity
               style={localStyles.editButton}
@@ -339,23 +376,6 @@ export default function ProfileScreen() {
                   />
                 ) : (
                   <Text style={[styles.h5, localStyles.infoValue]}>{userData.email}</Text>
-                )}
-              </View>
-            </View>
-
-            <View style={localStyles.infoRow}>
-              <Text style={localStyles.icon}>🔒</Text>
-              <View style={localStyles.infoContent}>
-                <Text style={[styles.h6, { color: `${theme.primaryText}60` }]}>Password</Text>
-                {isEditing ? (
-                  <TextInput
-                    style={[styles.h5, localStyles.input]}
-                    value={userData.password}
-                    secureTextEntry
-                    placeholder="Enter new password"
-                  />
-                ) : (
-                  <Text style={[styles.h5, localStyles.infoValue]}>{userData.password}</Text>
                 )}
               </View>
             </View>
@@ -466,7 +486,7 @@ export default function ProfileScreen() {
           
           {/* Log Out Button */}
           <View style={localStyles.logoutContainer}>
-            <TouchableOpacity style={localStyles.logoutButton} onPress={() => router.replace('/')}>
+            <TouchableOpacity style={localStyles.logoutButton} onPress={handleLogout}>
               <Text style={localStyles.logoutText}>Log Out</Text>
             </TouchableOpacity>
           </View>
