@@ -453,7 +453,8 @@ def completed_puzzle_route():
     student_rating = info["rating"]
     puzzles_completed = info["puzzles_completed"]
     puzzle_rating = get_puzzle_by_id(puzzle_id)["Rating"]
-    rating_gain = round(update_elo(student_rating, puzzle_rating, int(completed)))
+    new_rating = round(update_elo(student_rating, puzzle_rating, int(completed)))
+    rating_gain = new_rating - student_rating
     
     # Edit as needed
     currency_gain = 1000
@@ -464,7 +465,7 @@ def completed_puzzle_route():
 
     result = record_puzzle_completion(puzzle_id, student_id, completed, time_elapsed, rating_gain, supabase)
 
-    update_user_info(supabase, token, update_info={ "rating": student_rating + rating_gain, "puzzles_completed": puzzles_completed + 1 })
+    update_user_info(supabase, token, update_info={ "rating": new_rating, "puzzles_completed": puzzles_completed + 1 })
 
     update_currency(supabase, token, currency_gain)
 
