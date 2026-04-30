@@ -361,9 +361,9 @@ def get_shop_prices(supabase):
     res = supabase.table('Shop-Items').select('*').execute()
     return res.data
 
-def get_item_price(supabase, item):
-    res = supabase.table('Shop-Items').select('*').eq("item_name", item).execute()
-    return res.data
+# def get_item_price(supabase, item):
+#     res = supabase.table('Shop-Items').select('*').eq("item_name", item).execute()
+#     return res.data
 
 def update_currency(supabase, token, currency_gain):
     res = supabase.table('Shop').select('*').single().execute()
@@ -758,20 +758,20 @@ def get_prices():
     print(items_to_dict)
     return jsonify(items_to_dict), 200
 
-@app.route("/shop/<item:str>", methods=["PUT"])
-def buy_item(item):
-    token = get_bearer_token(request)
-    supabase = get_supabase_with_auth(token)
+# @app.route("/shop/<item:str>", methods=["PUT"])
+# def buy_item(item):
+#     token = get_bearer_token(request)
+#     supabase = get_supabase_with_auth(token)
 
-    data = get_item_price(supabase, item)
+#     data = get_item_price(supabase, item)
 
-    items_to_dict = {
-        item["item_name"]: item["currency_cost"]
-        for item in data
-    }
+#     items_to_dict = {
+#         item["item_name"]: item["currency_cost"]
+#         for item in data
+#     }
 
-    print(items_to_dict)
-    return jsonify(items_to_dict), 200
+#     print(items_to_dict)
+#     return jsonify(items_to_dict), 200
 
 # ======================== RUN FLASK ========================
 
