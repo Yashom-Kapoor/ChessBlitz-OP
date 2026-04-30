@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { GestureHandlerRootView, Pressable, ScrollView } from "react-native-gesture-handler";
 import { ImageBackground, StyleSheet, View, Text, TouchableOpacity, useWindowDimensions } from "react-native";
 import { CheckerPreview } from "@/components/CheckerPreview";
@@ -7,7 +7,7 @@ import { useShop } from "@/context/ShopContext";
 import { Themes, ArtThemes } from "@/constants/Themes";
 import backgroundImages, { BackgroundContext } from "@/context/Backgrounds";
 import { BlurView } from "expo-blur";
-import { useGlobalSearchParams } from "expo-router";
+import { useFocusEffect, useGlobalSearchParams } from "expo-router";
 import GlobalStyle from "@/context/GlobalStyle";
 import camelToTitle from "@/utils/CamelToTitle";
 import { getShopData, getShopPrices, buyItem } from "@/api/HandleShop";
@@ -15,7 +15,6 @@ import { getShopData, getShopPrices, buyItem } from "@/api/HandleShop";
 // Main screen component that displays all themes
 export default function ShopScreen() {
   const { theme, setTheme } = useTheme();
-  const { currency, themePrices, boardStatus } = useShop();
   const isTablet = useGlobalSearchParams().isTablet === 'true';
   const { width: screenWidth } = useWindowDimensions();
 
@@ -29,6 +28,9 @@ export default function ShopScreen() {
   const tileWidth = (screenWidth - gridHorizontalPadding - tileGap * (gridColumns - 1)) / gridColumns;
 
   const styles = GlobalStyle(theme, isTablet);
+  const [themePrices, setThemePrices] = useState<Record<string, number>>({});
+  const [currency, setCurrency] = useState(0);
+  const [boardStatus, setBoardStatus] = useState<Record<string, boolean>>({});
 
   const localStyles = StyleSheet.create({
     root: {

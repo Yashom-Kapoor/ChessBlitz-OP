@@ -5,7 +5,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useUser } from '@/context/UserContext';
 import { useGlobalSearchParams, useRouter } from 'expo-router';
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Switch, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Switch, RefreshControl, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { supabase } from '@/api/SupabaseClient';
 
@@ -46,6 +46,61 @@ export default function ProfileScreen() {
   const styles = GlobalStyle(theme, isTablet);
   const router = useRouter();
   const { userData, loadUser, updateUserData } = useUser();
+
+  const refreshColor = theme.primaryText;
+  const refreshOffset = 20;
+  const [tintColor, setTintColor] = useState<string | undefined>(
+    Platform.select({
+      ios: undefined,
+      android: refreshColor,
+    }),
+  );
+  const [progressViewOffset, setProgressViewOffset] = useState(
+    Platform.select({
+      ios: 0,
+      android: refreshOffset,
+    }) ?? refreshOffset,
+  );
+
+  useEffect(() => {
+    if (Platform.OS !== 'ios') {
+      setTintColor(refreshColor);
+      return;
+    }
+
+    let raf2: number | undefined;
+
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => setTintColor(refreshColor));
+    });
+
+    return () => {
+      cancelAnimationFrame(raf1);
+      if (raf2 !== undefined) {
+        cancelAnimationFrame(raf2);
+      }
+    };
+  }, [refreshColor]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'ios') {
+      setProgressViewOffset(refreshOffset);
+      return;
+    }
+
+    let raf2: number | undefined;
+
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => setProgressViewOffset(refreshOffset));
+    });
+
+    return () => {
+      cancelAnimationFrame(raf1);
+      if (raf2 !== undefined) {
+        cancelAnimationFrame(raf2);
+      }
+    };
+  }, [refreshOffset]);
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -305,7 +360,8 @@ export default function ProfileScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor={`${theme.primaryText}80`}
+              tintColor={tintColor}
+              progressViewOffset={progressViewOffset}
             />
           }
         >
