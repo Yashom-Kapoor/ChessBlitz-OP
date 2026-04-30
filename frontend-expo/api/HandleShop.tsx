@@ -36,3 +36,26 @@ export async function getShopPrices() {
 
   return res.json();
 }
+
+export async function buyItem(item: string){
+  const session = (await supabase.auth.getSession()).data.session;
+
+  if (!session) throw new Error("No session");
+
+  const res = await fetch(`${API_URL}/shop/${item}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    console.error(text);
+    return false;
+  }
+
+  return true;
+
+}

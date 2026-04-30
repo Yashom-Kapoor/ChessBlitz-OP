@@ -10,7 +10,7 @@ import { BlurView } from "expo-blur";
 import { useGlobalSearchParams } from "expo-router";
 import GlobalStyle from "@/context/GlobalStyle";
 import camelToTitle from "@/utils/CamelToTitle";
-import { getShopData, getShopPrices } from "@/api/GetShopData";
+import { getShopData, getShopPrices, buyItem } from "@/api/HandleShop";
 
 // Main screen component that displays all themes
 export default function ShopScreen() {
@@ -140,7 +140,6 @@ export default function ShopScreen() {
       loadPrices();
     }, []);
 
-
   useFocusEffect(
     useCallback(() => {
       loadShop();
@@ -168,11 +167,42 @@ export default function ShopScreen() {
 
   const checkPrice = (name: string) => {
     const key = themeKey(name);
-    if (!key) return "Coming Soon";
+    if (!key) return { status: "coming_soon" };
+
     const unlocked = boardStatus?.[key];
-    return unlocked ? "Unlocked" : (themePrices?.[key] ?? "Coming Soon");
+    if (unlocked) return { status: "unlocked" };
+
+    const price = themePrices?.[key];
+    if (price !== undefined) return { status: "locked", price };
+
+    return { status: "coming_soon" };
   }
 
+  const handleSwitchTheme = async (name: string) => {
+    const key = themeKey(name);
+
+    const item = checkPrice(name)
+    if (item.status === "locked") {
+      if (currency >= (item.price ?? Infinity)) {
+        const success = await buyItem(key);
+        if (!success) {
+          return;
+        }
+        loadShop();
+      }
+      else {
+        alert("This theme is locked");
+        return;
+      }
+    }
+    if (item.status === "coming_soon") {
+      alert("This theme is locked");
+      return;
+    }
+
+    setTheme(name);
+    setSelectedThemeName(name as any);
+  }
 
   return (
     <GestureHandlerRootView style={localStyles.root}>
@@ -221,6 +251,7 @@ export default function ShopScreen() {
                 const isSelected = selectedThemeName === t.name;
                 const isArtTheme = Object.prototype.hasOwnProperty.call(ArtThemes, t.name);
                 const artThemeBackground = backgroundImages[t.name];
+                const val = checkPrice(t.name); 
 
                 return (
                   <TouchableOpacity
@@ -228,18 +259,7 @@ export default function ShopScreen() {
                     style={[localStyles.themeTile,
                     { backgroundColor: t.secondaryButton, alignItems: 'center', justifyContent: 'center' },
                       isSelected && localStyles.selectedThemeTile,]}
-                    onPress={() => {
-                      const key = themeKey(t.name);
-                      const unlocked = boardStatus?.[key];
-
-                      if (!unlocked) {
-                        alert("This theme is locked");
-                        return;
-                      }
-
-                      setTheme(t.name);
-                      setSelectedThemeName(t.name);
-                    }}
+                    onPress={(() => handleSwitchTheme(t.name))}
                   >
                     {isArtTheme && artThemeBackground && (
                       <ImageBackground source={artThemeBackground} style={{...localStyles.artTileBackground, opacity: 0.3}} imageStyle={{ borderRadius: 12 }} />
@@ -250,7 +270,14 @@ export default function ShopScreen() {
                     {/* CheckerPreview shows the chessboard color scheme */}
                     <CheckerPreview lightColor={t.player1Square} darkColor={t.player2Square} />
                     <View style={localStyles.priceRow}>
-                      <Text style={localStyles.priceText}>{checkPrice(t.name)}</Text></View>
+                      <Text style={localStyles.priceText}>
+                        {val.status === "unlocked"
+                            ? "Unlocked"
+                            : val.status === "locked"
+                            ? val.price
+                            : "Coming Soon"
+                        }
+                    </Text></View>
                   </TouchableOpacity>
                 );
               })}

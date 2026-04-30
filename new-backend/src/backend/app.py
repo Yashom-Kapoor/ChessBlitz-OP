@@ -361,16 +361,30 @@ def get_shop_prices(supabase):
     res = supabase.table('Shop-Items').select('*').execute()
     return res.data
 
-# def get_item_price(supabase, item):
-#     res = supabase.table('Shop-Items').select('*').eq("item_name", item).execute()
-#     return res.data
+def get_item_price(supabase, item):
+    res = supabase.table('Shop-Items').select('*').eq("item_name", item).single().execute()
+    return res.data
 
 def update_currency(supabase, token, currency_gain):
     res = supabase.table('Shop').select('*').single().execute()
     curr = res.data["currency"]
     user_response = supabase.auth.get_user(token)
     user_id = user_response.user.id
-    supabase.table('Shop').update({"currency": curr + currency_gain}).eq("student_id", user_id).execute()
+    if curr + currency_gain >= 0:
+        supabase.table('Shop').update({"currency": curr + currency_gain}).eq("student_id", user_id).execute()
+        return True
+    else:
+        return False
+
+def unlock_item(supabase, token, item):
+    data = supabase.table('Shop').select("*").single().execute()
+    data = data.data
+    if data[item]:
+        return False
+    user_response = supabase.auth.get_user(token)
+    user_id = user_response.user.id
+    supabase.table('Shop').update({item: True}).eq("student_id", user_id).execute()
+    return True
 
 # ======================== FLASK ROUTES ========================
 
@@ -758,20 +772,27 @@ def get_prices():
     print(items_to_dict)
     return jsonify(items_to_dict), 200
 
-# @app.route("/shop/<item:str>", methods=["PUT"])
-# def buy_item(item):
-#     token = get_bearer_token(request)
-#     supabase = get_supabase_with_auth(token)
+@app.route("/shop/<item>", methods=["PUT"])
+def buy_item(item):
+    token = get_bearer_token(request)
+    supabase = get_supabase_with_auth(token)
 
-#     data = get_item_price(supabase, item)
+    data = get_item_price(supabase, item)
+    if data is None:
+        return jsonify({"error": "Item not found"}), 404
+    
+    price = data["currency_cost"]
 
-#     items_to_dict = {
-#         item["item_name"]: item["currency_cost"]
-#         for item in data
-#     }
+    if price is None:
+        return jsonify({"error": "Item not found"}), 404
 
-#     print(items_to_dict)
-#     return jsonify(items_to_dict), 200
+    if not update_currency(supabase, token, -1 * price):
+        return jsonify({"error": "Not enough currency"}), 400
+    
+    if not unlock_item(supabase, token, item):
+        return jsonify({"error": "Item already unlocked"}), 400
+
+    return jsonify({"message": "Success!"}), 200
 
 # ======================== RUN FLASK ========================
 
