@@ -4,6 +4,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
+import { UserProvider } from '@/context/UserContext';
+import { ShopProvider } from '@/context/ShopContext';
 import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import GlobalStyle from '@/context/GlobalStyle';
@@ -41,7 +43,11 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider>
-      <ThemedRoot isTablet={isTablet} />
+      <UserProvider>
+        <ShopProvider>
+          <ThemedRoot isTablet={isTablet} />
+        </ShopProvider>
+      </UserProvider>
     </ThemeProvider>
   );
 }
@@ -128,7 +134,7 @@ function ThemedRoot({ isTablet }: { isTablet: boolean }) {
             };
             return {
               title: titleMap[focused] ?? 'App',
-              headerShown: true,
+              headerShown: false,
               headerBackVisible: false,
             };
           }}

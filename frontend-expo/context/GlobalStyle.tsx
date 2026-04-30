@@ -20,6 +20,13 @@ export default function GlobalStyle(
             paddingBottom: 60,
             minHeight: '90%',
         },
+        gapContainer: {
+            padding: isTablet ? 30 : 20,
+            gap: isTablet ? 30 : 20,
+            marginTop: 100,
+            paddingBottom: 60,
+            minHeight: '90%',
+        },
         hStack: {
             width: '100%',
             flexDirection: 'row',

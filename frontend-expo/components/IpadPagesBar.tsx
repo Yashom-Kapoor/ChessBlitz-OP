@@ -5,7 +5,6 @@ import { Tabs } from "expo-router";
 import { Platform, StyleSheet } from "react-native";
 import { IconSymbol } from "./ui/IconSymbol";
 import CustomTabButton from "./CustomTabButton";
-import { LinearGradient } from "expo-linear-gradient";
 
 export default function IpadPagesBar({ }) {
     const { theme } = useTheme();
@@ -25,6 +24,7 @@ export default function IpadPagesBar({ }) {
                         flexDirection: 'row',
                         justifyContent: 'space-evenly',
                         borderRadius: 50,
+                        overflow: 'hidden',
                         margin: 20,
                         paddingHorizontal: 15,
                         paddingBottom: 10,
@@ -49,6 +49,8 @@ export default function IpadPagesBar({ }) {
                 },
                 tabBarItemStyle: {
                     paddingBottom: 0,
+                    borderRadius: 40,
+                    marginHorizontal: 2,
                 },
                 tabBarBackground: () => isLiquidGlassAvailable() ?
                     (

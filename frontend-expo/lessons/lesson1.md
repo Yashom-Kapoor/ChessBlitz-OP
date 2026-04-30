@@ -8,9 +8,12 @@ START LESSON 1
 
 piece them (move them)
 
+more info about bla bla bla bla 
+
+
 ***PUZZLE***
 
-00008
+00rHa
 
 ***PAGE***
 
@@ -18,11 +21,11 @@ another lesson here's how to do this and everything
 
 ***PUZZLE***
 
-00jPH
+00qb9
 
 ***PUZZLE***
 
-00SLR
+01sxB
 
 ***PAGE***
 
@@ -34,4 +37,4 @@ i promise
 
 ***PUZZLE***
 
-00FHX
+01JzG

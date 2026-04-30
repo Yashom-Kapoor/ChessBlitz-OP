@@ -7,6 +7,7 @@ import { useGlobalSearchParams } from 'expo-router';
 import { useTheme } from '@/context/ThemeContext';
 import GlobalStyle from "@/context/GlobalStyle";
 import backgroundImages, { BackgroundContext } from "@/context/Backgrounds";
+import { API_URL } from "@/constants/urls";
 type RankingData = {
   rank: number;
   name: string;
@@ -80,7 +81,7 @@ export default function RankingsScreen() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: theme.background }}>
       <BackgroundContext theme={theme}>
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <ScrollView contentContainerStyle={styles.gapContainer}>
           {error && (
             <Text style={{ ...styles.b, color: theme.primaryText }}>
               Error loading rankings :(((((

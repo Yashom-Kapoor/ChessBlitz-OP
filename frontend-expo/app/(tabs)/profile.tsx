@@ -2,13 +2,12 @@ import GlassBlurView from '@/components/GlassBlurView';
 import backgroundImages, { BackgroundContext } from '@/context/Backgrounds';
 import GlobalStyle from '@/context/GlobalStyle';
 import { useTheme } from '@/context/ThemeContext';
+import { useUser } from '@/context/UserContext';
 import { useGlobalSearchParams, useRouter } from 'expo-router';
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Switch } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Switch, RefreshControl } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { getCurrentUser } from "@/api/User";
 import { supabase } from '@/api/SupabaseClient';
-import { useFocusEffect } from "@react-navigation/native";
 
 const InfoBox = ({
   children,
@@ -46,43 +45,24 @@ export default function ProfileScreen() {
   const isTablet = useGlobalSearchParams().isTablet === 'true';
   const styles = GlobalStyle(theme, isTablet);
   const router = useRouter();
+  const { userData, loadUser, updateUserData } = useUser();
 
-  const [userData, setUserData] = useState({
-    name: 'Loading...',
-    email: 'Loading...',
-    joinDate: 'Loading...',
-    totalPuzzlesSolved: "Loading...",
-    overallRating: "Loading...",
-  });
-
-  const formatFullDate = (timestamp: string) => {
-    return new Date(timestamp).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadUser();
-  }, []);
+  }, [loadUser]);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadUser();
-    }, [])
-  );
-
-  const loadUser = async () => {
-    const data = await getCurrentUser();
-    setUserData({
-      name: data.name,
-      email: data.email,
-      joinDate: formatFullDate(data.created_at),
-      totalPuzzlesSolved: data.puzzles_completed,
-      overallRating: data.rating,
-    });
-  };
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await loadUser();
+    } catch (error) {
+      console.log('Error refreshing user:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadUser]);
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
@@ -319,7 +299,16 @@ export default function ProfileScreen() {
   return (
     <GestureHandlerRootView style={styles.contentContainer}>
       <BackgroundContext theme={theme}>
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContainer}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={`${theme.primaryText}80`}
+            />
+          }
+        >
           {/* Header Section */}
           <View style={localStyles.header}>
             <View style={localStyles.avatarContainer}>
@@ -362,7 +351,7 @@ export default function ProfileScreen() {
                   <TextInput
                     style={[styles.h5, localStyles.input]}
                     value={userData.name}
-                    onChangeText={(text) => setUserData({ ...userData, name: text })}
+                    onChangeText={(text) => updateUserData({ name: text })}
                   />
                 ) : (
                   <Text style={[styles.h5, localStyles.infoValue]}>{userData.name}</Text>
@@ -378,7 +367,7 @@ export default function ProfileScreen() {
                   <TextInput
                     style={[styles.h5, localStyles.input]}
                     value={userData.email}
-                    onChangeText={(text) => setUserData({ ...userData, email: text })}
+                    onChangeText={(text) => updateUserData({ email: text })}
                     keyboardType="email-address"
                   />
                 ) : (

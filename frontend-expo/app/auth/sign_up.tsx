@@ -82,7 +82,7 @@ export default function SignUpScreen() {
         }
 
         Alert.alert('Success', 'Signed up successfully!');
-        router.push(`/(tabs)/lessons?isTablet=${isTablet}`);
+        router.push(`/(tabs)/puzzles?isTablet=${isTablet}`);
     } catch (err: unknown) {
         if (err instanceof Error) {
             Alert.alert('Error', err.message);

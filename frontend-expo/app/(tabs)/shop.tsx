@@ -1,9 +1,9 @@
-import React, { useRef, useState, useEffect, useCallback } from "react";
-import { useFocusEffect } from "@react-navigation/native";
+import React, { useRef, useState } from "react";
 import { GestureHandlerRootView, Pressable, ScrollView } from "react-native-gesture-handler";
 import { ImageBackground, StyleSheet, View, Text, TouchableOpacity, useWindowDimensions } from "react-native";
 import { CheckerPreview } from "@/components/CheckerPreview";
 import { useTheme } from "@/context/ThemeContext";
+import { useShop } from "@/context/ShopContext";
 import { Themes, ArtThemes } from "@/constants/Themes";
 import backgroundImages, { BackgroundContext } from "@/context/Backgrounds";
 import { BlurView } from "expo-blur";
@@ -15,6 +15,7 @@ import { getShopData, getShopPrices, buyItem } from "@/api/HandleShop";
 // Main screen component that displays all themes
 export default function ShopScreen() {
   const { theme, setTheme } = useTheme();
+  const { currency, themePrices, boardStatus } = useShop();
   const isTablet = useGlobalSearchParams().isTablet === 'true';
   const { width: screenWidth } = useWindowDimensions();
 
@@ -28,9 +29,6 @@ export default function ShopScreen() {
   const tileWidth = (screenWidth - gridHorizontalPadding - tileGap * (gridColumns - 1)) / gridColumns;
 
   const styles = GlobalStyle(theme, isTablet);
-  const [themePrices, setThemePrices] = useState<Record<string, number>>({});
-  const [currency, setCurrency] = useState(0);
-  const [boardStatus, setBoardStatus] = useState<Record<string, boolean>>({});
 
   const localStyles = StyleSheet.create({
     root: {
@@ -91,7 +89,6 @@ export default function ShopScreen() {
     currencyText: {
     position: "absolute",
     right: 20,
-    color: "white",
     fontSize: 22,
     fontWeight: "900",
     },
@@ -208,12 +205,12 @@ export default function ShopScreen() {
     <GestureHandlerRootView style={localStyles.root}>
       <BackgroundContext theme={theme}>
         <View style={localStyles.header}>
-          <Text style={localStyles.currencyText}>{ currency }</Text></View>
+          <Text style={{...localStyles.currencyText, color: theme.primaryText}}>{ currency }</Text></View>
         <View style={localStyles.switcherContainer}>
           <Pressable
             style={[
               localStyles.switcherButton,
-              { backgroundColor: shopPage === 0 ? "#E5E5E5" : "transparent", borderColor: shopPage === 0 ? "#E5E5E5" : "#454A64", },
+              { backgroundColor: shopPage === 0 ? theme.secondaryButton : theme.background, borderColor: shopPage === 0 ? theme.secondaryText : theme.primaryText },
             ]}
             onPress={() => handleShopPageChange(0)}
           >
@@ -229,7 +226,7 @@ export default function ShopScreen() {
           <Pressable
             style={[
               localStyles.switcherButton,
-              { backgroundColor: shopPage === 1 ? theme.secondaryButton : theme.background },
+              { backgroundColor: shopPage === 1 ? theme.secondaryButton : theme.background, borderColor: shopPage === 1 ? theme.secondaryText : theme.primaryText },
             ]}
             onPress={() => handleShopPageChange(1)}
           >

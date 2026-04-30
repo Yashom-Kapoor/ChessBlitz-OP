@@ -30,6 +30,7 @@ type PieceSvgComponent = React.ComponentType<SvgProps>;
 // Define the props for ChessboardDemo
 interface ChessboardDemoProps {
     onMove?: (info: any) => void; // Optional onMove callback
+    onPuzzleLoaded?: (puzzle: any) => void;
     colors?: { black: string; white: string }; // Optional colors for the chessboard
     gestureEnabled?: boolean; // Optional gesture enabled flag
     boardSize?: number;
@@ -57,24 +58,44 @@ const ChessboardDemo = forwardRef<ChessboardDemoRef, ChessboardDemoProps>((props
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        let isActive = true;
+
+        setLoading(true);
+        setError(null);
+        setPuzzle(undefined);
+
         const getPuzzle = async () => {
             try {
                 const data = await (props.puzzleId ? fetchPuzzle(props.puzzleId) : fetchRandomPuzzle()); // Fetch the puzzle JSON
+
+                if (!isActive) {
+                    return;
+                }
+
                 setPuzzle(data); // Set the puzzle data
+                props.onPuzzleLoaded?.(data);
             } catch (err) {
-                setError(err instanceof Error ? err.message : 'An unknown error occurred'); // Set the error message
+                if (isActive) {
+                    setError(err instanceof Error ? err.message : 'An unknown error occurred'); // Set the error message
+                }
             } finally {
-                setLoading(false); // Stop loading
+                if (isActive) {
+                    setLoading(false); // Stop loading
+                }
             }
         };
         getPuzzle();
+
+        return () => {
+            isActive = false;
+        };
     }, [props.puzzleId]);
 
     // Expose the chessboardRef and getPuzzle function to the parent component
     useImperativeHandle(ref, () => ({
         getPuzzle: () => puzzle, // Function to return the puzzle state
         board: chessboardRef.current, // Reference to the Chessboard
-    }), [puzzle, chessboardRef.current]);
+    }), [puzzle]);
 
     const defaultRenderPiece = (piece: string): React.ReactElement | null => {
         const pieceComponents: Record<PieceType, PieceSvgComponent> = {
