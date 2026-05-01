@@ -770,7 +770,6 @@ def get_prices():
         for item in data
     }
 
-    print(items_to_dict)
     return jsonify(items_to_dict), 200
 
 @app.route("/shop/<item>", methods=["PUT"])
