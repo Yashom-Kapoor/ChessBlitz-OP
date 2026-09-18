@@ -7,6 +7,7 @@ import GlassBlurView from '../GlassBlurView';
 interface RankingProps {
     rank: number;
     name: string;
+    rating: number;
     icon?: any;
     isYou:boolean;
 }
@@ -23,7 +24,7 @@ const GetColorFromRanking = (ranking:number):string => { //Returns the crown col
     return '#7e5a05';
 }
 
-export default function RankingItem({ rank, name, icon, isYou}: RankingProps) {
+export default function RankingItem({ rank, name, rating, icon, isYou}: RankingProps) {
     const { theme } = useTheme();
     const isTablet = useGlobalSearchParams().isTablet === 'true';
     const styles = GlobalStyle(theme, isTablet);
@@ -49,6 +50,11 @@ export default function RankingItem({ rank, name, icon, isYou}: RankingProps) {
             flex: 1,
             flexDirection: 'column',
             gap: 4,
+        },
+        rightContainer: {
+            alignItems: 'flex-end',
+            justifyContent: 'center',
+            marginLeft: 12,
         },
         rankNumber: {
             fontSize: isTablet ? 34 : 26,
@@ -89,6 +95,11 @@ export default function RankingItem({ rank, name, icon, isYou}: RankingProps) {
             {icon && <Image source={icon} style={rankingStyles.icon} />}
             <View style={rankingStyles.textContainer}>
                 <Text style={[styles.h3, { color: isYou ? "#fd3254" : theme.primaryText}]}>{name + (isYou ? " (You)": "")}</Text>
+            </View>
+
+            <View style={rankingStyles.rightContainer}>
+                <Text style={[styles.h4, { color: theme.primaryText }]}>{rating}</Text>
+                <Text style={[styles.h6, { color: `${theme.primaryText}80` }]}>Rating</Text>
             </View>
         </View>
     );

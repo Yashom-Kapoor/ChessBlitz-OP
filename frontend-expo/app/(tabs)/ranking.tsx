@@ -50,8 +50,13 @@ export default function RankingsScreen() {
         });
         const data = await response.json();
 
-        setRankings(data.map(({username, user_id, name, rating}:{username:string, user_id:number, name:string, rating:number}, i:number) => (
-          CreateProfile({rank: i+1, name: username, rating: rating, isYou: username === "evanLan"})
+        setRankings([...data].reverse().map(({name, student_id, overall, rating}:{name:string, student_id:string, overall:number, rating:number}, i:number) => (
+          CreateProfile({
+            rank: i + 1,
+            name: name,
+            rating: overall ?? rating,
+            isYou: false,
+          })
         )));
 
       } catch (error) {
@@ -89,9 +94,10 @@ export default function RankingsScreen() {
           )}
           {!error && rankings.map((r) => (
             <RankingItem
-              key={r.rank}
+              key={`${r.rank}-${r.name}`}
               rank={r.rank}
               name={r.name}
+              rating={r.rating}
               isYou={r.isYou}
               icon={
                 r.icon

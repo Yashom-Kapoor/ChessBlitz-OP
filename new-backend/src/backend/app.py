@@ -332,25 +332,33 @@ def get_students_in_classroom(classroom_id,supabase):
     return res.data
 
 # -------- LEADERBOARD (RANKINGS) --------
-# Get Rankings by Elo
-def get_rankings_by_elo(classroom_id, supabase):
-    res = supabase.table("Users") \
-        .select("user_id,name,username,rating") \
-        .eq("classroom", classroom_id) \
-        .order("rating", desc=True) \
+def get_rankings_by_overall(supabase):
+    ratings_res = supabase.table("Ratings") \
+        .select("student_id,name,overall") \
+        .order("overall", desc=False) \
         .execute()
 
-    return res.data
+    rating_rows = ratings_res.data or []
 
-# Get Rankings by # Puzzles completed
-def get_rankings_by_puzzles_complete(classroom_id, supabase):
-    res = supabase.table("Users") \
-        .select("user_id,name,username,puzzles_completed") \
-        .eq("classroom", classroom_id) \
-        .order("puzzles_completed", desc=True) \
-        .execute()
+    return [
+        {
+            "student_id": row.get("student_id"),
+            "name": row.get("name") or "Unknown Student",
+            "username": "",
+            "overall": row.get("overall"),
+            "rating": row.get("overall"),
+            "puzzles_completed": 0,
+        }
+        for row in rating_rows
+    ]
 
-    return res.data
+
+def get_rankings_by_elo(supabase):
+    return get_rankings_by_overall(supabase)
+
+
+def get_rankings_by_puzzles_complete(supabase):
+    return get_rankings_by_overall(supabase)
 
 # -------- SHOP MANAGEMENT --------
 def get_shop_data(supabase):
@@ -739,13 +747,13 @@ def route_get_students_with_ordering(classroom_id, sorting_method:str):
 
     if sorting_method:
         if sorting_method.lower() == "elo":
-            students = get_rankings_by_elo(classroom_id, supabase)
+            students = get_rankings_by_elo(supabase)
         elif sorting_method.lower() == "puzzles_completed":
-            students = get_rankings_by_puzzles_complete(classroom_id, supabase)
+            students = get_rankings_by_puzzles_complete(supabase)
         else:
-            students = get_rankings_by_elo(classroom_id, supabase)
+            students = get_rankings_by_elo(supabase)
     else:
-        students = get_rankings_by_elo(classroom_id, supabase)
+        students = get_rankings_by_elo(supabase)
    
     return jsonify(students)
 
