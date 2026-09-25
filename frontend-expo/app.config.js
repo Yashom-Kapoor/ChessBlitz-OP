@@ -1,5 +1,3 @@
-import 'dotenv/config';
-
 export default {
   expo: {
     name: "chessblitz-frontend",
@@ -37,6 +35,8 @@ export default {
         },
       ],
       "expo-font",
+      "expo-status-bar",
+      "expo-web-browser"
     ],
     experiments: {
       typedRoutes: true,

@@ -14,13 +14,11 @@ export default function TabLayout() {
   const { loadUser } = useUser();
   const { loadShop, loadPrices } = useShop();
 
-  useFocusEffect(
-    useCallback(() => {
-      loadUser();
-      loadShop();
-      loadPrices();
-    }, [loadUser, loadShop, loadPrices])
-  );
+  useEffect(() => {
+    loadUser();
+    loadShop();
+    loadPrices();
+  }, [loadUser, loadShop, loadPrices]);
 
   return (isTablet) ? (
     <IpadPagesBar />
