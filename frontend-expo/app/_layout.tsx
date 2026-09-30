@@ -6,7 +6,7 @@ import { useEffect } from 'react';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { UserProvider } from '@/context/UserContext';
 import { ShopProvider } from '@/context/ShopContext';
-import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
+import { getFocusedRouteNameFromRoute } from "expo-router/react-navigation";
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import GlobalStyle from '@/context/GlobalStyle';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -87,7 +87,7 @@ function ThemedRoot({ isTablet }: { isTablet: boolean }) {
             </Text>,
           headerBackground: () =>
             <LinearGradient style={{
-              ...StyleSheet.absoluteFillObject
+              ...StyleSheet.absoluteFill
             }} colors={[theme.dark ? '#00000030' : '#ffffff30', 'transparent']} />
         }}
       >

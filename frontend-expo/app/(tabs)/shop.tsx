@@ -10,7 +10,7 @@ import { BlurView } from "expo-blur";
 import { useFocusEffect, useGlobalSearchParams } from "expo-router";
 import GlobalStyle from "@/context/GlobalStyle";
 import camelToTitle from "@/utils/CamelToTitle";
-import { getShopData, getShopPrices, buyItem } from "@/api/HandleShop";
+import { buyItem } from "@/api/HandleShop";
 
 // Main screen component that displays all themes
 export default function ShopScreen() {
@@ -28,9 +28,7 @@ export default function ShopScreen() {
   const tileWidth = (screenWidth - gridHorizontalPadding - tileGap * (gridColumns - 1)) / gridColumns;
 
   const styles = GlobalStyle(theme, isTablet);
-  const [themePrices, setThemePrices] = useState<Record<string, number>>({});
-  const [currency, setCurrency] = useState(0);
-  const [boardStatus, setBoardStatus] = useState<Record<string, boolean>>({});
+  const { currency, themePrices, boardStatus, loadShop, loadPrices } = useShop();
 
   const localStyles = StyleSheet.create({
     root: {
@@ -46,7 +44,7 @@ export default function ShopScreen() {
       marginBottom: 8,
     },
     artTileBackground: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
     },
     switcherContainer: {
       flexDirection: "row",
@@ -134,28 +132,12 @@ export default function ShopScreen() {
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   }
 
-  useEffect(() => {
-      loadShop();
-      loadPrices();
-    }, []);
-
   useFocusEffect(
     useCallback(() => {
       loadShop();
       loadPrices();
-    }, [])
+    }, [loadShop, loadPrices])
   );
-  
-  const loadShop = async () => {
-    const data = await getShopData();
-    setCurrency(data.currency);
-    setBoardStatus(data);
-  };
-
-  const loadPrices = async () => {
-    const data = await getShopPrices();
-    setThemePrices(data);
-  };
 
   const themeKey = (str: string) => {
     return `${str
