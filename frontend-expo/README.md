@@ -1,50 +1,106 @@
-# Welcome to your Expo app 👋
+# ChessBlitz — mobile app
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+React Native + [Expo SDK 57](https://docs.expo.dev), using
+[Expo Router](https://docs.expo.dev/router/introduction) for navigation.
 
-## Get started
+See the [root README](../README.md) for architecture, the API reference, and troubleshooting.
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-    npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Setup
 
 ```bash
-npm run reset-project
+npm install
+cp .env.example .env    # then fill in the real values
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+**First run** builds the native project — expect 5–15 minutes:
 
-## Learn more
+```bash
+npx expo run:ios
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+**Every run after that** — start the dev server and press `i`:
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```bash
+npx expo start
+```
 
-## Join the community
+The backend needs to be running too, or every screen will fail to load data. See
+[`new-backend/`](../new-backend/README.md).
 
-Join our community of developers creating universal apps.
+### When do I need to rebuild?
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+| You changed | What to run |
+|---|---|
+| Any `.tsx` / `.ts` file | Nothing — it hot-reloads on save |
+| A native dep (`expo-*`, `react-native-*`) | `npx expo run:ios` |
+| `app.config.js` | `npx expo prebuild --platform ios --clean`, then rebuild |
+
+## Project layout
+
+With Expo Router, **the file tree is the navigation tree** — a file at `app/auth/log_in.tsx`
+is the route `/auth/log_in`.
+
+```
+app/                      # Screens (= routes)
+├── _layout.tsx           #   root: providers, Stack, shared header styling
+├── index.tsx             #   landing
+├── auth/                 #   log_in, sign_up
+├── (tabs)/               #   the 5 tabs — parens group files without adding a URL segment
+│   ├── _layout.tsx       #     chooses phone vs tablet tab bar
+│   └── puzzles|lessons|ranking|shop|profile.tsx
+├── puzzles/demo_puzzle.tsx
+└── lessons/[lesson].tsx  #   square brackets = URL parameter
+
+api/          # One file per backend area — ALL fetch calls live here
+context/      # React Context: User, Shop, Theme, GlobalStyle
+components/   # Reusable UI (+ puzzles/, lessons/, rankings/, ui/ subfolders)
+constants/    # urls.tsx (API base), Themes
+lessons/      # Lesson content as markdown
+ios/          # Generated native project — do not hand-edit
+```
+
+## Conventions
+
+**Never `fetch()` directly from a screen.** Add a function to `api/` instead. They all follow one
+shape:
+
+```ts
+export async function getShopData() {
+  const session = (await supabase.auth.getSession()).data.session;
+  if (!session) throw new Error("No session");
+
+  const res = await fetch(`${API_URL}/shop/me`, {
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  });
+  if (!res.ok) {
+    throw new Error(`GET /shop/me failed (${res.status}): ${await res.text()}`);
+  }
+  return res.json();
+}
+```
+
+Include the status and body in the error. `"Failed to fetch"` tells you nothing at 2am.
+
+**Server data belongs in a Context.** `ShopContext` and `UserContext` already load and
+error-handle. A screen keeping its own copy will drift out of sync and can crash on an unhandled
+rejection.
+
+**Use the theme system.** `useTheme()` for colors, `GlobalStyle` for text styles. Hard-coded hex
+values break the 20+ board themes users can buy.
+
+**Glass/blur surfaces** go through `GlassBlurView`, which falls back gracefully when Liquid Glass
+isn't available. If you need `position: absolute` covering a parent, use `StyleSheet.absoluteFill`
+— `absoluteFillObject` was removed in React Native 0.86.
+
+## Before you push
+
+```bash
+npx tsc --noEmit
+```
+
+Useful when something looks broken in ways that aren't your fault:
+
+```bash
+npx expo-doctor          # checks dependency versions against the SDK
+npx expo start --clear   # clears the Metro cache
+```

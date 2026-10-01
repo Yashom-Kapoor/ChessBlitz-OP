@@ -68,6 +68,9 @@ pytest_cache/
 # ================================
 .env
 .env.*
+# ...but DO track the templates, so new devs know which vars they need.
+!.env.example
+!.env.sample
 secrets.yml
 config.yaml
 chessblitzbackend
