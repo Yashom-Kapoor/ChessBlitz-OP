@@ -96,7 +96,7 @@ export default function PuzzlesScreen() {
       paddingHorizontal: isTablet ? 28 : 20,
     },
     stickyTitleGradient: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
     },
     stickyTitleText: {
       color: theme.primaryText,

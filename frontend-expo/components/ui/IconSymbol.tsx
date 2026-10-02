@@ -11,7 +11,7 @@ const MAPPING = {
   // See SF Symbols in the SF Symbols app on MacOS.
 } as Partial<
   Record<
-    import('expo-symbols').SymbolViewProps['name'],
+    import('expo-symbols').SFSymbol,
     React.ComponentProps<typeof MaterialIcons>['name']
   >
 >;

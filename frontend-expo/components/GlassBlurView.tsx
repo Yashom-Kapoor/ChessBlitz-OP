@@ -8,14 +8,14 @@ export default function GlassBlurView({ theme, isTablet, color, glass, interacti
     return isLiquidGlassAvailable() ? (
         <>
             <BlurView intensity={10} style={{
-                ...StyleSheet.absoluteFillObject,
+                ...StyleSheet.absoluteFill,
                 backgroundColor: `${color}60`,
                 borderRadius: borderRadius,
                 overflow: 'hidden',
                 pointerEvents: 'none',
             }} />
             <GlassView style={{
-                ...StyleSheet.absoluteFillObject,
+                ...StyleSheet.absoluteFill,
                 borderRadius: borderRadius,
                 backgroundColor: color,
                 opacity: opacity,
@@ -27,7 +27,7 @@ export default function GlassBlurView({ theme, isTablet, color, glass, interacti
         </>
     ) : (
         <BlurView intensity={10} style={{
-            ...StyleSheet.absoluteFillObject,
+            ...StyleSheet.absoluteFill,
             backgroundColor: `${color}DD`,
             borderRadius: borderRadius,
             overflow: 'hidden',

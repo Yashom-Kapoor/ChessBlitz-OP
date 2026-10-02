@@ -33,7 +33,7 @@ export default function PuzzleBar({ onHint, onUndo, onRedo, onReset, onOptions, 
         })}>
             {isLiquidGlassAvailable() ? (
                 <GlassView style={{
-                    ...StyleSheet.absoluteFillObject,
+                    ...StyleSheet.absoluteFill,
                     borderRadius: 50,
                     backgroundColor: `${theme.background}DD`,
                     shadowColor: theme.dark ? '#00000080' : '#ffffff',
@@ -45,7 +45,7 @@ export default function PuzzleBar({ onHint, onUndo, onRedo, onReset, onOptions, 
                 />
             ) : (
                 <BlurView intensity={20} style={{
-                    ...StyleSheet.absoluteFillObject,
+                    ...StyleSheet.absoluteFill,
                     borderRadius: 50,
                     backgroundColor: `${theme.background}DD`,
                     overflow: 'hidden',

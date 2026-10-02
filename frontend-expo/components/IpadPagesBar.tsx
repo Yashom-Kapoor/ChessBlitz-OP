@@ -55,7 +55,7 @@ export default function IpadPagesBar({ }) {
                 tabBarBackground: () => isLiquidGlassAvailable() ?
                     (
                         <GlassView style={{
-                            ...StyleSheet.absoluteFillObject,
+                            ...StyleSheet.absoluteFill,
                             borderRadius: 50,
                             backgroundColor: `${theme.background}DD`,
                             shadowColor: theme.dark ? '#000000' : '#ffffff',
@@ -68,7 +68,7 @@ export default function IpadPagesBar({ }) {
                         />
                     ) : (
                         <BlurView intensity={20} style={{
-                            ...StyleSheet.absoluteFillObject,
+                            ...StyleSheet.absoluteFill,
                             borderRadius: 50,
                             backgroundColor: `${theme.background}DD`,
                             overflow: 'hidden',

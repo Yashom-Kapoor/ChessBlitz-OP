@@ -362,20 +362,22 @@ def get_rankings_by_puzzles_complete(supabase):
 
 # -------- SHOP MANAGEMENT --------
 def get_shop_data(supabase):
-    res = supabase.table('Shop').select('*').single().execute()
-    return res.data
+    res = supabase.table('Shop').select('*').maybe_single().execute()
+    return res.data if res else None
 
 def get_shop_prices(supabase):
     res = supabase.table('Shop-Items').select('*').execute()
     return res.data
 
 def get_item_price(supabase, item):
-    res = supabase.table('Shop-Items').select('*').eq("item_name", item).single().execute()
-    return res.data
+    res = supabase.table('Shop-Items').select('*').eq("item_name", item).maybe_single().execute()
+    return res.data if res else None
 
 def update_currency(supabase, token, currency_gain):
-    res = supabase.table('Shop').select('*').single().execute()
-    curr = res.data["currency"]
+    data = get_shop_data(supabase)
+    if data is None:
+        return False
+    curr = data["currency"]
     user_response = supabase.auth.get_user(token)
     user_id = user_response.user.id
     if curr + currency_gain >= 0:
@@ -385,9 +387,8 @@ def update_currency(supabase, token, currency_gain):
         return False
 
 def unlock_item(supabase, token, item):
-    data = supabase.table('Shop').select("*").single().execute()
-    data = data.data
-    if data[item]:
+    data = get_shop_data(supabase)
+    if data is None or data.get(item):
         return False
     user_response = supabase.auth.get_user(token)
     user_id = user_response.user.id
@@ -759,14 +760,18 @@ def route_get_students_with_ordering(classroom_id, sorting_method:str):
 
 # -------- SHOP MANAGEMENT --------
 @app.route("/shop/me", methods=["GET"])
+@require_auth
 def get_shop_data_route():
     token = get_bearer_token(request)
     supabase = get_supabase_with_auth(token)
 
     data = get_shop_data(supabase)
+    if data is None:
+        return jsonify({"error": "Shop not found"}), 404
     return jsonify(data), 200
 
 @app.route("/shop/prices", methods=["GET"])
+@require_auth
 def get_prices():
     token = get_bearer_token(request)
     supabase = get_supabase_with_auth(token)
@@ -781,6 +786,7 @@ def get_prices():
     return jsonify(items_to_dict), 200
 
 @app.route("/shop/<item>", methods=["PUT"])
+@require_auth
 def buy_item(item):
     token = get_bearer_token(request)
     supabase = get_supabase_with_auth(token)
@@ -793,6 +799,13 @@ def buy_item(item):
 
     if price is None:
         return jsonify({"error": "Item not found"}), 404
+
+    shop = get_shop_data(supabase)
+    if shop is None:
+        return jsonify({"error": "Shop not found"}), 404
+
+    if shop.get(item):
+        return jsonify({"error": "Item already unlocked"}), 400
 
     if not update_currency(supabase, token, -1 * price):
         return jsonify({"error": "Not enough currency"}), 400

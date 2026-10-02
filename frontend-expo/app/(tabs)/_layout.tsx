@@ -2,10 +2,9 @@ import { useEffect, useCallback } from 'react';
 import { Platform } from 'react-native';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import { useFocusEffect } from '@react-navigation/native';
 import IpadPagesBar from '@/components/IpadPagesBar';
 import NativePagesBar from '@/components/NativePagesBar';
-import { useGlobalSearchParams, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect, useGlobalSearchParams, useLocalSearchParams } from 'expo-router';
 import { useUser } from '@/context/UserContext';
 import { useShop } from '@/context/ShopContext';
 

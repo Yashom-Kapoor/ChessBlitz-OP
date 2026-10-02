@@ -13,7 +13,7 @@ export async function getShopData() {
   });
 
   if (!res.ok) {
-    throw new Error("Failed to fetch user");
+    throw new Error(`GET /shop/me failed (${res.status}): ${await res.text()}`);
   }
 
   return res.json();
@@ -31,7 +31,7 @@ export async function getShopPrices() {
   });
 
   if (!res.ok) {
-    throw new Error("Failed to fetch user");
+    throw new Error(`GET /shop/prices failed (${res.status}): ${await res.text()}`);
   }
 
   return res.json();

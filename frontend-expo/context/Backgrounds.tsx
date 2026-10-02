@@ -28,7 +28,7 @@ export function BackgroundContext({ children, theme, ...rest }: any) {
       {...rest}
     >
       {backgroundImages[theme.name] && (<BlurView intensity={isTablet ? 30 : 20} style={{
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
         overflow: 'hidden',
         backgroundColor: theme.dark ? '#00000050' : '#ffffff50',
       }}/>)}

@@ -1,5 +1,5 @@
 import { useTheme } from "@/context/ThemeContext";
-import { useNavigationState } from "@react-navigation/native";
+import { useNavigationState } from "expo-router/react-navigation";
 import { BlurView } from "expo-blur";
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import { useEffect, useState } from "react";
@@ -63,7 +63,7 @@ export default function CustomTabButton({ routeName, onPress, children, style, .
             {isThumbHost && segmentWidth > 0 && (
                 <Animated.View pointerEvents="none" style={[styles.sharedThumb, { width: segmentWidth }, sharedThumbStyle]}>
                     <BlurView intensity={20} style={{
-                        ...StyleSheet.absoluteFillObject,
+                        ...StyleSheet.absoluteFill,
                         borderRadius: 50,
                         overflow: 'hidden',
                         backgroundColor: `${theme.secondaryButton}22`,

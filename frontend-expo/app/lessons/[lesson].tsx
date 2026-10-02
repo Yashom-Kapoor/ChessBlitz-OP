@@ -4,7 +4,6 @@ import { BackgroundContext } from "@/context/Backgrounds";
 import GlobalStyle from "@/context/GlobalStyle";
 import { useTheme } from "@/context/ThemeContext";
 import { useGlobalSearchParams, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
-import { Icon } from "expo-router/unstable-native-tabs";
 import { use, useEffect, useLayoutEffect, useState } from "react";
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
