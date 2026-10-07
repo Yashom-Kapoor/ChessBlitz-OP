@@ -65,7 +65,7 @@ export default function Lesson({ name, description, id, icon, offset, available,
         <TouchableOpacity style={{...localStyles.lesson, left: '50%', top: 60,
                 transform: `translate(${offset.x - (isTablet ? 75 : 50)}px, ${offset.y - (isTablet ? 75 : 50)}px)`}}
                 onPress={onPress} >
-            <GlassBlurView borderRadius={1000} theme={theme} isTablet={isTablet} color={theme.dark ? theme.player1Square : theme.player2Square} glass={'clear'} outset />
+            <GlassBlurView borderRadius={1000} theme={theme} isTablet={isTablet} color={theme.dark ? theme.player1Square : theme.player2Square} glass={'clear'} outset solid />
             {icon && <Image source={icon} style={localStyles.icon} />}
             <Text style={{...styles.title, position: 'absolute', textAlign: 'center', color: theme.secondaryText}}>{id}</Text>
         </TouchableOpacity>

@@ -1,16 +1,18 @@
 import { useTheme } from "@/context/ThemeContext";
 import { useNavigationState } from "expo-router/react-navigation";
 import { BlurView } from "expo-blur";
-import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
+import { GlassView } from "expo-glass-effect";
 import { Pressable, StyleSheet, Text, TouchableOpacity } from "react-native";
 import { IconSymbol } from "../ui/IconSymbol";
 import { useState } from "react";
 import GlobalStyle from "@/context/GlobalStyle";
+import { glassColorSchemeFor, useGlassAvailable } from "@/utils/Glass";
 
 export default function CustomPuzzleButton({ name, onPress, isTablet, icon }: any) {
     const { theme } = useTheme();
     const title = name[0].toUpperCase() + name.slice(1);
     const [pressed, setPressed] = useState(false);
+    const glassAvailable = useGlassAvailable();
 
     const styles = GlobalStyle(theme, isTablet);
 
@@ -23,6 +25,18 @@ export default function CustomPuzzleButton({ name, onPress, isTablet, icon }: an
             borderRadius: 50,
             paddingBottom: isTablet ? 2 : 0,
         }} onPress={onPress} onPressIn={() => setPressed(true)} onPressOut={() => setPressed(false)}>
+            {glassAvailable && pressed && (
+                <GlassView style={{
+                    ...StyleSheet.absoluteFill,
+                    borderRadius: 50,
+                    pointerEvents: 'none',
+                }}
+                    glassEffectStyle='regular'
+                    tintColor={`${theme.secondaryButton}22`}
+                    colorScheme={glassColorSchemeFor(theme.secondaryButton, theme)}
+                />
+            )}
+
             <IconSymbol style={{
                 pointerEvents: 'none',
             }} size={isTablet ? 30 : 23} name={icon} color={theme.primaryText} />

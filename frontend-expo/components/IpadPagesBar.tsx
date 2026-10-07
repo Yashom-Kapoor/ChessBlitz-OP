@@ -1,13 +1,15 @@
 import { useTheme } from "@/context/ThemeContext";
 import { BlurView } from "expo-blur";
-import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
+import { GlassView } from "expo-glass-effect";
 import { Tabs } from "expo-router";
 import { Platform, StyleSheet } from "react-native";
 import { IconSymbol } from "./ui/IconSymbol";
 import CustomTabButton from "./CustomTabButton";
+import { glassColorSchemeFor, useGlassAvailable } from "@/utils/Glass";
 
 export default function IpadPagesBar({ }) {
     const { theme } = useTheme();
+    const glassAvailable = useGlassAvailable();
 
     return (
         <Tabs
@@ -52,18 +54,19 @@ export default function IpadPagesBar({ }) {
                     borderRadius: 40,
                     marginHorizontal: 2,
                 },
-                tabBarBackground: () => isLiquidGlassAvailable() ?
+                tabBarBackground: () => glassAvailable ?
                     (
                         <GlassView style={{
                             ...StyleSheet.absoluteFill,
                             borderRadius: 50,
-                            backgroundColor: `${theme.background}DD`,
                             shadowColor: theme.dark ? '#000000' : '#ffffff',
                             shadowOffset: { width: 0, height: 10 },
                             shadowOpacity: 0.5,
                             shadowRadius: 40,
                         }}
                             glassEffectStyle='clear'
+                            tintColor={`${theme.background}DD`}
+                            colorScheme={glassColorSchemeFor(theme.background, theme)}
                             isInteractive
                         />
                     ) : (

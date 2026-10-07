@@ -1,31 +1,36 @@
 import { BlurView } from "expo-blur";
-import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
-import { LinearGradient } from "expo-linear-gradient";
-import { StyleSheet } from "react-native";
+import { StyleSheet, View } from "react-native";
 
-export default function GlassBlurView({ theme, isTablet, color, glass, interactive=false, borderRadius=(isTablet ? 30 : 20), outset=false, opacity=0.8, ...rest }: any) {
+/**
+ * Background fill for buttons, cards and bubbles.
+ *
+ * Liquid glass was deliberately removed from these surfaces. `GlassView` tints the material
+ * rather than filling it, so a themed button ends up showing mostly glass instead of its own
+ * colour - which left labels too dark to read against their own background. These now render
+ * the blurred fill that every non-iOS-26 device already used, so the look is consistent across
+ * platforms. Glass is still used on `PuzzleBar` and `IpadPagesBar`, which sit over scrolling
+ * content and are where it actually earns itself.
+ *
+ * `glass`, `interactive`, `tintOpacity` and `colorScheme` are still accepted so the 24 call
+ * sites did not need touching, but no longer have any effect.
+ */
+export default function GlassBlurView({ theme, isTablet, color, glass, interactive=false, borderRadius=(isTablet ? 30 : 20), outset=false, tintOpacity=0.5, colorScheme, solid=false, ...rest }: any) {
 
-    return isLiquidGlassAvailable() ? (
-        <>
-            <BlurView intensity={10} style={{
+    const boxShadow = outset ? `0 -${isTablet ? 20 : 12}px 0 inset ${theme.buttonShadow}` : undefined;
+
+    // `solid` skips the blur too, for a flat themed fill.
+    if (solid) {
+        return (
+            <View pointerEvents="none" style={{
                 ...StyleSheet.absoluteFill,
-                backgroundColor: `${color}60`,
-                borderRadius: borderRadius,
-                overflow: 'hidden',
-                pointerEvents: 'none',
-            }} />
-            <GlassView style={{
-                ...StyleSheet.absoluteFill,
-                borderRadius: borderRadius,
                 backgroundColor: color,
-                opacity: opacity,
-                boxShadow: outset ? `0 -${isTablet ? 20 : 12}px 0 inset ${theme.buttonShadow}` : undefined
-            }}
-                glassEffectStyle={glass}
-                isInteractive={interactive}
-            />
-        </>
-    ) : (
+                borderRadius: borderRadius,
+                boxShadow: boxShadow,
+            }} />
+        );
+    }
+
+    return (
         <BlurView intensity={10} style={{
             ...StyleSheet.absoluteFill,
             backgroundColor: `${color}DD`,
@@ -35,7 +40,7 @@ export default function GlassBlurView({ theme, isTablet, color, glass, interacti
             shadowOpacity: 1,
             shadowRadius: 20,
             shadowColor: '#000',
-            boxShadow: outset ? `0 -${isTablet ? 20 : 12}px 0 inset ${theme.buttonShadow}` : undefined
+            boxShadow: boxShadow,
         }} />
     );
 }

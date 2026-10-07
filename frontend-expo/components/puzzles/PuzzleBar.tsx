@@ -1,19 +1,24 @@
 import { useTheme } from "@/context/ThemeContext";
 import { BlurView } from "expo-blur";
-import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
+import { GlassContainer, GlassView } from "expo-glass-effect";
 import { Tabs } from "expo-router";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { IconSymbol } from "../ui/IconSymbol";
 import CustomTabButton from "../CustomTabButton";
 import GlobalStyle from "@/context/GlobalStyle";
 import CustomPuzzleButton from "./CustomPuzzleButton";
+import { glassColorSchemeFor, useGlassAvailable } from "@/utils/Glass";
 
 export default function PuzzleBar({ onHint, onUndo, onRedo, onReset, onOptions, isTablet, raised = false }: any) {
     const { theme } = useTheme();
     const styles = GlobalStyle(theme, isTablet);
+    const glassAvailable = useGlassAvailable();
 
+    // GlassContainer lets the bar's glass and the pressed button's glass merge into one shape
+    // as they approach, instead of rendering as two stacked panes. It degrades to a plain View
+    // off iOS. `spacing` is the distance at which that merge starts.
     return (
-        <View style={Platform.select({
+        <GlassContainer spacing={isTablet ? 30 : 20} style={Platform.select({
             ios: {
                 position: raised ? 'relative' : 'absolute',
                 width: '90%',
@@ -31,17 +36,18 @@ export default function PuzzleBar({ onHint, onUndo, onRedo, onReset, onOptions, 
                 paddingBottom: 0,
             },
         })}>
-            {isLiquidGlassAvailable() ? (
+            {glassAvailable ? (
                 <GlassView style={{
                     ...StyleSheet.absoluteFill,
                     borderRadius: 50,
-                    backgroundColor: `${theme.background}DD`,
                     shadowColor: theme.dark ? '#00000080' : '#ffffff',
                     shadowOffset: { width: 0, height: 10 },
                     shadowOpacity: 0.2,
                     shadowRadius: 30,
                 }}
                     glassEffectStyle='clear'
+                    tintColor={`${theme.background}DD`}
+                    colorScheme={glassColorSchemeFor(theme.background, theme)}
                 />
             ) : (
                 <BlurView intensity={20} style={{
@@ -57,6 +63,6 @@ export default function PuzzleBar({ onHint, onUndo, onRedo, onReset, onOptions, 
             <CustomPuzzleButton name='redo' icon='arrow.uturn.right' onPress={onRedo} isTablet={isTablet} />
             <CustomPuzzleButton name='reset' icon='restart' onPress={onReset} isTablet={isTablet} />
             <CustomPuzzleButton name='options' icon='ellipsis' onPress={onOptions} isTablet={isTablet} />
-        </View>
+        </GlassContainer>
     );
 }

@@ -1,7 +1,6 @@
 import { useTheme } from "@/context/ThemeContext";
 import { useNavigationState } from "expo-router/react-navigation";
 import { BlurView } from "expo-blur";
-import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import { useEffect, useState } from "react";
 import { StyleSheet, TouchableOpacity } from "react-native";
 import Animated, {

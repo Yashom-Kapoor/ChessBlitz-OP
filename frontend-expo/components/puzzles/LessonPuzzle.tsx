@@ -12,7 +12,6 @@ import backgroundImages, { BackgroundContext } from '@/context/Backgrounds';
 import { BlurView } from 'expo-blur';
 import PuzzleBar from '@/components/puzzles/PuzzleBar';
 import GlobalStyle from '@/context/GlobalStyle';
-import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import GlassBlurView from '@/components/GlassBlurView';
 import { postCompletedPuzzle } from '@/api/PostCompleted';
