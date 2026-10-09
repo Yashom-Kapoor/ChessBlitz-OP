@@ -818,8 +818,11 @@ def buy_item(item):
 # ======================== RUN FLASK ========================
 
 def main():
-    #app.run(debug=False, host='0.0.0.0', port=int(os.getenv("PORT", 5000)))
-    app.run(debug=True)
+    app.run(
+        host=os.getenv("HOST", "0.0.0.0"),
+        port=int(os.getenv("PORT", "5000")),
+        debug=False,
+    )
 
 if __name__ == "__main__":
     main()
