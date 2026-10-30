@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, g
+from flask import Flask, jsonify, redirect, render_template, request, g
 from functools import wraps
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -26,6 +26,13 @@ OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 app = Flask(__name__)
 CORS(app)
+
+# Facts records for hints (Ticket 1): GET /puzzles/<id>/records
+try:
+    from backend.records_api import records_bp
+except ImportError:  # running app.py directly
+    from records_api import records_bp
+app.register_blueprint(records_bp)
 # ======================== AUTHORIZATION ========================
 
 # Extract JWT from header
@@ -69,6 +76,18 @@ def require_auth(f):
         return f(*args, **kwargs)
     return decorated
 
+# Decorator: 404 unless DEV_TOOLS=1. Read per-request so flipping .env only needs a restart,
+# not a code change. Stack it ABOVE @require_auth so it runs first — with the flag off the route
+# answers 404 without even looking at the token, so it is indistinguishable from one that does
+# not exist. The handler still gets the authed, RLS-scoped client via get_supabase_with_auth().
+def require_dev(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if os.getenv("DEV_TOOLS") != "1":
+            return jsonify({"error": "Not found"}), 404
+        return f(*args, **kwargs)
+    return decorated
+
 # ======================== HELPER FUNCTIONS ========================
 
 # -------- USER MANAGEMENT --------
@@ -101,19 +120,23 @@ def get_random_puzzle(supabase):
         print(f"Error fetching random puzzle: {e}")
         return None
 
-# Get puzzle by puzzle id
-def get_puzzle_by_id(puzzle_id: int):
+# Get puzzle by puzzle id.
+# `client` defaults to the module-level anon client so existing callers keep working; pass the
+# per-user client from get_supabase_with_auth() to stay inside RLS. maybe_single() returns None
+# for an unknown id instead of raising, so a bad id can 404 rather than 500.
+def get_puzzle_by_id(puzzle_id: str, client=None):
+    client = client or supabase
     try:
         response = (
-            supabase
+            client
             .table("Puzzles")
             .select("*")
             .eq("PuzzleId", puzzle_id)
-            .single()
+            .maybe_single()
             .execute()
         )
 
-        return response.data
+        return response.data if response else None
 
     except Exception as e:
         print(f"Error fetching puzzle: {e}")
@@ -386,6 +409,47 @@ def update_currency(supabase, token, currency_gain):
     else:
         return False
 
+def set_currency(supabase, token, value):
+    """Absolute set, clamped at 0. Dev tooling only."""
+    data = get_shop_data(supabase)
+    if data is None:
+        return None
+    value = max(0, int(value))
+    user_response = supabase.auth.get_user(token)
+    user_id = user_response.user.id
+    supabase.table('Shop').update({"currency": value}).eq("student_id", user_id).execute()
+    return value
+
+def set_all_items(supabase, token, unlocked: bool):
+    """Set every purchasable item column to `unlocked` in one update. Dev tooling only.
+    Goes direct rather than looping unlock_item(), which refuses already-unlocked rows."""
+    shop = get_shop_data(supabase)
+    if shop is None:
+        return None
+    items = [row["item_name"] for row in (get_shop_prices(supabase) or [])]
+    # Only touch columns the Shop row actually has, so a stale Shop-Items row can't 400 the update.
+    items = [item for item in items if item in shop]
+    if not items:
+        return []
+    user_response = supabase.auth.get_user(token)
+    user_id = user_response.user.id
+    supabase.table('Shop').update({item: unlocked for item in items}).eq("student_id", user_id).execute()
+    return items
+
+def ensure_shop_row(supabase, token):
+    """Return the caller's Shop row, creating an empty one if it is missing.
+
+    Sign-up creates this row now, but accounts made before that fix have none, which made every
+    shop read 404. Dev tooling only — the normal shop routes still surface the 404 rather than
+    papering over it."""
+    shop = get_shop_data(supabase)
+    if shop is not None:
+        return shop
+    user_response = supabase.auth.get_user(token)
+    user_id = user_response.user.id
+    supabase.table('Shop').insert({"student_id": user_id, "currency": 0}).execute()
+    return get_shop_data(supabase)
+
 def unlock_item(supabase, token, item):
     data = get_shop_data(supabase)
     if data is None or data.get(item):
@@ -439,12 +503,19 @@ def random_puzzle_route():
 def get_puzzle_route(puzzle_id):
     token = get_bearer_token(request)
     supabase = get_supabase_with_auth(token)
-    puzzle = get_puzzle_by_id(puzzle_id)
+    puzzle = get_puzzle_by_id(puzzle_id, supabase)
 
-    if puzzle:
-        return jsonify(puzzle), 200
-    else:
+    if not puzzle:
         return jsonify({"error": "Puzzle not found"}), 404
+
+    # Same lowercase shape as /puzzles/random/ — the app reads these keys.
+    return jsonify({
+        "puzzleid": puzzle["PuzzleId"],
+        "fen": puzzle["FEN"],
+        "moves": puzzle["Moves"],
+        "rating": puzzle["Rating"],
+        "themes": puzzle["Themes"]
+    }), 200
     
 # Mark puzzle as completed
 @app.route("/puzzles/completed", methods=["POST"])
@@ -814,6 +885,89 @@ def buy_item(item):
         return jsonify({"error": "Item already unlocked"}), 400
 
     return jsonify({"message": "Success!"}), 200
+
+# ======================== DEV TOOLS ========================
+# All gated by DEV_TOOLS=1 (see require_dev) — they 404 when it is off. The consumer is the dev
+# console served at /dev below.
+
+# With the console enabled, the bare origin goes to it. The API has no root route otherwise, so
+# landing on http://127.0.0.1:5000 after a restart used to dead-end on a 404 instead of coming
+# back to the console.
+@app.route("/")
+@require_dev
+def dev_root():
+    return redirect("/dev", code=302)
+
+# Both rules are needed: strict_slashes only auto-redirects when the rule itself ends in a slash,
+# so a lone "/dev" would 404 on "/dev/".
+@app.route("/dev")
+@app.route("/dev/")
+@require_dev
+def dev_console():
+    """The dev console, a single self-contained page.
+
+    Deliberately NOT @require_auth: a browser navigation cannot send an Authorization header, so
+    requiring one here would make the page unreachable. The page signs in with Supabase itself and
+    attaches the token to the XHRs that follow, which do go through @require_auth.
+
+    The anon key is injected here rather than served from a /config endpoint so it is only ever
+    emitted behind require_dev. It is the same key the mobile bundle already ships
+    (frontend-expo/app.config.js), and RLS is what scopes every write to the signed-in user.
+    """
+    return render_template(
+        "dev.html",
+        supabase_url=SUPABASE_URL,
+        supabase_key=SUPABASE_KEY,
+    )
+
+
+@app.route("/dev/currency", methods=["POST"])
+@require_dev
+@require_auth
+def dev_set_currency():
+    token = get_bearer_token(request)
+    supabase = get_supabase_with_auth(token)
+    data = request.get_json(silent=True) or {}
+
+    if ensure_shop_row(supabase, token) is None:
+        return jsonify({"error": "Could not read or create a Shop row for this user"}), 500
+
+    if "set" in data:
+        try:
+            value = set_currency(supabase, token, data["set"])
+        except (TypeError, ValueError):
+            return jsonify({"error": "'set' must be a number"}), 400
+        return jsonify({"currency": value}), 200
+
+    if "add" in data:
+        try:
+            delta = int(data["add"])
+        except (TypeError, ValueError):
+            return jsonify({"error": "'add' must be a number"}), 400
+        if not update_currency(supabase, token, delta):
+            return jsonify({"error": "Would leave currency below zero"}), 400
+        return jsonify({"currency": get_shop_data(supabase)["currency"]}), 200
+
+    return jsonify({"error": "Body must contain 'set' or 'add'"}), 400
+
+@app.route("/dev/items", methods=["PUT"])
+@require_dev
+@require_auth
+def dev_set_items():
+    token = get_bearer_token(request)
+    supabase = get_supabase_with_auth(token)
+    data = request.get_json(silent=True) or {}
+
+    unlocked = data.get("unlocked")
+    if not isinstance(unlocked, bool):
+        return jsonify({"error": "Body must contain 'unlocked' as true or false"}), 400
+
+    if ensure_shop_row(supabase, token) is None:
+        return jsonify({"error": "Could not read or create a Shop row for this user"}), 500
+
+    items = set_all_items(supabase, token, unlocked)
+
+    return jsonify({"unlocked": unlocked, "items": items}), 200
 
 # ======================== RUN FLASK ========================
 

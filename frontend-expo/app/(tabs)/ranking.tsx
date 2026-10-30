@@ -7,7 +7,7 @@ import { useGlobalSearchParams } from 'expo-router';
 import { useTheme } from '@/context/ThemeContext';
 import GlobalStyle from "@/context/GlobalStyle";
 import backgroundImages, { BackgroundContext } from "@/context/Backgrounds";
-import { API_URL } from "@/constants/urls";
+import { getApiUrl } from "@/constants/urls";
 type RankingData = {
   rank: number;
   name: string;
@@ -16,6 +16,18 @@ type RankingData = {
   puzzles_completed: number;
   streak: number;
   isYou:boolean;
+};
+type RankingResponse = {
+  name?: string | null;
+  overall?: number | null;
+  rating?: number | null;
+};
+
+const hasCompleteRanking = ({ name, overall, rating }: RankingResponse) => {
+  const normalizedName = name?.trim().toLowerCase();
+  const ranking = overall ?? rating;
+
+  return Boolean(normalizedName && normalizedName !== "unknown student") && Number.isFinite(ranking);
 };
 //Creates a new player profile to display with given/default properties
 const CreateProfile = ({ 
@@ -40,24 +52,28 @@ export default function RankingsScreen() {
   const [boardScope, setBoardScope] = useState("Global"); //"Global"/"Friends" | Determines tbe scope of the people the leaderboard will display
   const [category, setCategory] = useState("Elo"); //"Elo"/"Streak"/"Time" | Determines how the leaderboard is sorted
 
-  const API_URL = "http://127.0.0.1:5000/leaderboards/35/elo";
   useEffect(() => {
     const fetchRankings = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        const response = await fetch(API_URL, {
+        const response = await fetch(`${getApiUrl()}/leaderboards/35/elo`, {
           headers: { Authorization: `Bearer ${session?.access_token}` },
         });
         const data = await response.json();
 
-        setRankings([...data].reverse().map(({name, student_id, overall, rating}:{name:string, student_id:string, overall:number, rating:number}, i:number) => (
-          CreateProfile({
-            rank: i + 1,
-            name: name,
-            rating: overall ?? rating,
-            isYou: false,
-          })
-        )));
+        const rankedStudents = (data as RankingResponse[])
+          .filter(hasCompleteRanking)
+          .reverse()
+          .map(({ name, overall, rating }, i) => (
+            CreateProfile({
+              rank: i + 1,
+              name: name!.trim(),
+              rating: (overall ?? rating)!,
+              isYou: false,
+            })
+          ));
+
+        setRankings(rankedStudents);
 
       } catch (error) {
         setError(true);

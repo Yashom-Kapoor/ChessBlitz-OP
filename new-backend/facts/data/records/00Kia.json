@@ -1,0 +1,99 @@
+{
+  "puzzle_id": "00Kia",
+  "schema_version": 1,
+  "records": [
+    {
+      "puzzle_id": "00Kia",
+      "move_index": 1,
+      "fen": "5r1k/4n2p/1p4p1/pP5Q/P2pB2K/6P1/2P4P/4q3 w - - 0 38",
+      "player_color": "white",
+      "themes": [
+        "advantage",
+        "discoveredAttack",
+        "endgame",
+        "fork",
+        "long"
+      ],
+      "teaching_themes": [
+        "fork"
+      ],
+      "moving_piece": "queen",
+      "from": "h5",
+      "to": "e5",
+      "move_san": "Qe5+",
+      "is_check": true,
+      "is_checkmate": false,
+      "is_capture": false,
+      "captured_piece": null,
+      "solution_line": [
+        "Qe5+",
+        "Kg8",
+        "Bd5+",
+        "Nxd5",
+        "Qxe1"
+      ],
+      "opponent_idea": {},
+      "engine": {}
+    },
+    {
+      "puzzle_id": "00Kia",
+      "move_index": 2,
+      "fen": "5rk1/4n2p/1p4p1/pP2Q3/P2pB2K/6P1/2P4P/4q3 w - - 2 39",
+      "player_color": "white",
+      "themes": [
+        "advantage",
+        "discoveredAttack",
+        "endgame",
+        "fork",
+        "long"
+      ],
+      "teaching_themes": [
+        "fork"
+      ],
+      "moving_piece": "bishop",
+      "from": "e4",
+      "to": "d5",
+      "move_san": "Bd5+",
+      "is_check": true,
+      "is_checkmate": false,
+      "is_capture": false,
+      "captured_piece": null,
+      "solution_line": [
+        "Bd5+",
+        "Nxd5",
+        "Qxe1"
+      ],
+      "opponent_idea": {},
+      "engine": {}
+    },
+    {
+      "puzzle_id": "00Kia",
+      "move_index": 3,
+      "fen": "5rk1/7p/1p4p1/pP1nQ3/P2p3K/6P1/2P4P/4q3 w - - 0 40",
+      "player_color": "white",
+      "themes": [
+        "advantage",
+        "discoveredAttack",
+        "endgame",
+        "fork",
+        "long"
+      ],
+      "teaching_themes": [
+        "fork"
+      ],
+      "moving_piece": "queen",
+      "from": "e5",
+      "to": "e1",
+      "move_san": "Qxe1",
+      "is_check": false,
+      "is_checkmate": false,
+      "is_capture": true,
+      "captured_piece": "queen",
+      "solution_line": [
+        "Qxe1"
+      ],
+      "opponent_idea": {},
+      "engine": {}
+    }
+  ]
+}

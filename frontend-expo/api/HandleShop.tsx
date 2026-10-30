@@ -1,12 +1,12 @@
 import { supabase } from "./SupabaseClient";
-import { API_URL } from "@/constants/urls";
+import { getApiUrl } from "@/constants/urls";
 
 export async function getShopData() {
   const session = (await supabase.auth.getSession()).data.session;
 
   if (!session) throw new Error("No session");
 
-  const res = await fetch(`${API_URL}/shop/me`, {
+  const res = await fetch(`${getApiUrl()}/shop/me`, {
     headers: {
       Authorization: `Bearer ${session.access_token}`,
     },
@@ -24,7 +24,7 @@ export async function getShopPrices() {
 
   if (!session) throw new Error("No session");
 
-  const res = await fetch(`${API_URL}/shop/prices`, {
+  const res = await fetch(`${getApiUrl()}/shop/prices`, {
     headers: {
       Authorization: `Bearer ${session.access_token}`,
     },
@@ -42,7 +42,7 @@ export async function buyItem(item: string){
 
   if (!session) throw new Error("No session");
 
-  const res = await fetch(`${API_URL}/shop/${item}`, {
+  const res = await fetch(`${getApiUrl()}/shop/${item}`, {
     method: "PUT",
     headers: {
       Authorization: `Bearer ${session.access_token}`,

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { GestureHandlerRootView, Pressable, ScrollView } from "react-native-gesture-handler";
-import { ImageBackground, StyleSheet, View, Text, TouchableOpacity, useWindowDimensions } from "react-native";
+import { Alert, ImageBackground, StyleSheet, View, Text, TouchableOpacity, useWindowDimensions } from "react-native";
 import { CheckerPreview } from "@/components/CheckerPreview";
 import { useTheme } from "@/context/ThemeContext";
 import { useShop } from "@/context/ShopContext";
@@ -9,8 +9,15 @@ import backgroundImages, { BackgroundContext } from "@/context/Backgrounds";
 import { BlurView } from "expo-blur";
 import { useFocusEffect, useGlobalSearchParams } from "expo-router";
 import GlobalStyle from "@/context/GlobalStyle";
+import { Ionicons } from "@expo/vector-icons";
 import camelToTitle from "@/utils/CamelToTitle";
 import { buyItem } from "@/api/HandleShop";
+import SelectionRing from "@/components/SelectionRing";
+import { glassColorSchemeFor } from "@/utils/Glass";
+
+
+
+const TILE_RADIUS = 16;
 
 // Main screen component that displays all themes
 export default function ShopScreen() {
@@ -28,6 +35,9 @@ export default function ShopScreen() {
   const tileWidth = (screenWidth - gridHorizontalPadding - tileGap * (gridColumns - 1)) / gridColumns;
 
   const styles = GlobalStyle(theme, isTablet);
+  // A card whose price row is gone centres geometrically but reads low, the board being the
+  // heavy half of it, so those cards lift their contents by this much to sit optically centred
+  const contentLift = isTablet ? 8 : 6;
   const { currency, themePrices, boardStatus, loadShop, loadPrices } = useShop();
 
   const localStyles = StyleSheet.create({
@@ -66,14 +76,12 @@ export default function ShopScreen() {
       textAlign: 'center',
       paddingTop: 3,
     },
-    selectedThemeTile: {
-    borderWidth: 2,
-    borderColor: "#4DA6FF",
-    shadowColor: "#4DA6FF",
-    shadowOpacity: 0.9,
-    shadowRadius: 7,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 12,
+    lockedOverlay: {
+    ...StyleSheet.absoluteFill,
+    borderRadius: TILE_RADIUS,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    alignItems: "center",
+    justifyContent: "center",
     },
     header: {
     marginTop: 60,
@@ -101,12 +109,15 @@ export default function ShopScreen() {
     },
     themeTile: {
     width: tileWidth - 5,
-    borderRadius: 16,
+    borderRadius: TILE_RADIUS,
     padding: isTablet ? 14 : 12,
     paddingBottom: 14,
     alignItems: "center",
     justifyContent: "space-between",
     minHeight: isTablet ? 190 : 170,
+    },
+    tileWithoutPriceRow: {
+    paddingBottom: 14 + contentLift * 2,
     },
     priceText: {
     color: "white",
@@ -122,6 +133,17 @@ export default function ShopScreen() {
     alignItems: "center",
     justifyContent: "center",
     marginTop: 10,
+    },
+    buyButton: {
+    paddingVertical: isTablet ? 10 : 8,
+    paddingHorizontal: isTablet ? 24 : 18,
+    borderRadius: 24,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    },
+    buyButtonText: {
+    textAlign: "center",
     },
 
   });
@@ -159,25 +181,58 @@ export default function ShopScreen() {
     return { status: "coming_soon" };
   }
 
+  const purchaseTheme = async (name: string) => {
+    const success = await buyItem(themeKey(name));
+    if (!success) {
+      return;
+    }
+    await loadShop();
+
+    setTheme(name);
+    setSelectedThemeName(name as any);
+  }
+
+
+
   const handleSwitchTheme = async (name: string) => {
     const key = themeKey(name);
 
     const item = checkPrice(name)
     if (item.status === "locked") {
       if (currency >= (item.price ?? Infinity)) {
-        const success = await buyItem(key);
-        if (!success) {
-          return;
-        }
-        loadShop();
+        
+        // const success = await buyItem(key);
+        // if (!success) {
+        //   return;
+        // }
+        // loadShop();
+
+        // NEW: ask for confirmation first, purchase happens in purchaseTheme
+        Alert.alert(
+          `Buy ${camelToTitle(name)}?`,
+          `This will cost ${item.price}. You'll have ${currency - (item.price as number)} left.`,
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Buy", onPress: () => purchaseTheme(name) },
+          ]
+        );
+        return;
       }
       else {
-        alert("This theme is locked");
+        Alert.alert(
+          `${camelToTitle(name)} is locked`,
+          `It costs ${item.price} and you have ${currency}.`,
+          [{ text: "OK" }]
+        );
         return;
       }
     }
     if (item.status === "coming_soon") {
-      alert("This theme is locked");
+      Alert.alert(
+        `${camelToTitle(name)} is locked`,
+        "This theme isn't in the shop yet.",
+        [{ text: "OK" }]
+      );
       return;
     }
 
@@ -233,13 +288,21 @@ export default function ShopScreen() {
                 const isArtTheme = Object.prototype.hasOwnProperty.call(ArtThemes, t.name);
                 const artThemeBackground = backgroundImages[t.name];
                 const val = checkPrice(t.name); 
+                const isLocked = val.status !== "unlocked";
+                // An affordable theme shows its price as a buy button instead of a lock
+                const canBuy = val.status === "locked" && currency >= (val.price ?? Infinity);
+                // The pill is filled with the card's own colour, so its outline follows that colour's brightness
+                const pillOutline =
+                  glassColorSchemeFor(t.secondaryButton, t) === "dark"
+                    ? "rgba(255,255,255,0.9)"
+                    : "rgba(0,0,0,0.65)";
 
                 return (
                   <TouchableOpacity
                     key={index}
                     style={[localStyles.themeTile,
                     { backgroundColor: t.secondaryButton, alignItems: 'center', justifyContent: 'center' },
-                      isSelected && localStyles.selectedThemeTile,]}
+                    (!isLocked || canBuy) && localStyles.tileWithoutPriceRow]}
                     onPress={(() => handleSwitchTheme(t.name))}
                   >
                     {isArtTheme && artThemeBackground && (
@@ -250,15 +313,30 @@ export default function ShopScreen() {
                     </Text>
                     {/* CheckerPreview shows the chessboard color scheme */}
                     <CheckerPreview lightColor={t.player1Square} darkColor={t.player2Square} />
-                    <View style={localStyles.priceRow}>
-                      <Text style={localStyles.priceText}>
-                        {val.status === "unlocked"
-                            ? "Unlocked"
-                            : val.status === "locked"
-                            ? val.price
-                            : "Coming Soon"
-                        }
-                    </Text></View>
+                    {isLocked && !canBuy && (
+                      <View style={localStyles.priceRow}>
+                        <Text style={localStyles.priceText}>
+                          {val.status === "locked" ? val.price : "Coming Soon"}
+                        </Text>
+                      </View>
+                    )}
+                    {isLocked && (
+                      <View style={localStyles.lockedOverlay}>
+                        {canBuy ? (
+                          <TouchableOpacity
+                            style={[localStyles.buyButton, { backgroundColor: t.secondaryButton, borderColor: pillOutline }]}
+                            onPress={() => handleSwitchTheme(t.name)}
+                          >
+                            <Text style={[styles.h4, localStyles.buyButtonText, { color: t.secondaryText }]}>
+                              {val.price}
+                            </Text>
+                          </TouchableOpacity>
+                        ) : (
+                          <Ionicons name="lock-closed" size={isTablet ? 48 : 40} color="rgba(255,255,255,0.92)" />
+                        )}
+                      </View>
+                    )}
+                    {isSelected && <SelectionRing color={t.secondaryButton} cardRadius={TILE_RADIUS} />}
                   </TouchableOpacity>
                 );
               })}

@@ -16,6 +16,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import GlassBlurView from '@/components/GlassBlurView';
 import { postCompletedPuzzle } from '@/api/PostCompleted';
 import { supabase } from '@/api/SupabaseClient';
+import PuzzleDevHUD from '@/components/puzzles/PuzzleDevHUD';
 
 interface LessonPuzzleProps {
     page: number;
@@ -309,9 +310,7 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
 
     return (
         <BackgroundContext theme={theme} style={localStyles.container}>
-            <Text style={{ color: theme.primaryText, position: 'absolute', textAlign: 'right', top: 55, right: 5, zIndex: 1000 }}>
-                {`BEST: ${moves[2 * moveNumber - 1]}\n`}
-            </Text>
+            <PuzzleDevHUD bestMove={moves[2 * moveNumber - 1]} />
 
             <Animated.Image
                 source={require('@/assets/images/hints/bear.png')}

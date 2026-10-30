@@ -1,0 +1,64 @@
+{
+  "puzzle_id": "01F1N",
+  "schema_version": 1,
+  "records": [
+    {
+      "puzzle_id": "01F1N",
+      "move_index": 1,
+      "fen": "r4rk1/pp1q2pp/3p1p2/2p2P2/5Q2/2Pn3P/PP1N1PP1/4RRK1 w - - 4 18",
+      "player_color": "white",
+      "themes": [
+        "crushing",
+        "fork",
+        "middlegame",
+        "short"
+      ],
+      "teaching_themes": [
+        "fork"
+      ],
+      "moving_piece": "queen",
+      "from": "f4",
+      "to": "c4",
+      "move_san": "Qc4+",
+      "is_check": true,
+      "is_checkmate": false,
+      "is_capture": false,
+      "captured_piece": null,
+      "solution_line": [
+        "Qc4+",
+        "d5",
+        "Qxd3"
+      ],
+      "opponent_idea": {},
+      "engine": {}
+    },
+    {
+      "puzzle_id": "01F1N",
+      "move_index": 2,
+      "fen": "r4rk1/pp1q2pp/5p2/2pp1P2/2Q5/2Pn3P/PP1N1PP1/4RRK1 w - - 0 19",
+      "player_color": "white",
+      "themes": [
+        "crushing",
+        "fork",
+        "middlegame",
+        "short"
+      ],
+      "teaching_themes": [
+        "fork"
+      ],
+      "moving_piece": "queen",
+      "from": "c4",
+      "to": "d3",
+      "move_san": "Qxd3",
+      "is_check": false,
+      "is_checkmate": false,
+      "is_capture": true,
+      "captured_piece": "knight",
+      "solution_line": [
+        "Qxd3"
+      ],
+      "opponent_idea": {},
+      "engine": {}
+    }
+  ]
+}

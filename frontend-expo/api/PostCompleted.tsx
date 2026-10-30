@@ -1,4 +1,4 @@
-import { API_URL } from "@/constants/urls";
+import { getApiUrl } from "@/constants/urls";
 import { supabase } from "@/api/SupabaseClient";
 
 export interface CompletedPuzzleData {
@@ -24,7 +24,7 @@ export async function postCompletedPuzzle(data: CompletedPuzzleData): Promise<un
         };
 
         const { data: { session } } = await supabase.auth.getSession();
-        const response = await fetch(`${API_URL}/puzzles/completed`, {
+        const response = await fetch(`${getApiUrl()}/puzzles/completed`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

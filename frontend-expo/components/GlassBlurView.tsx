@@ -30,17 +30,19 @@ export default function GlassBlurView({ theme, isTablet, color, glass, interacti
         );
     }
 
+    // The rounded corners come from this plain wrapper, not from the BlurView. Giving a
+    // BlurView its own borderRadius makes iOS mask the effect layer with a soft falloff, which
+    // faded every corner in over ~15px while the straight edges stayed crisp. A normal view
+    // clips cleanly, so the blur keeps its shape.
     return (
-        <BlurView intensity={10} style={{
+        <View pointerEvents="none" style={{
             ...StyleSheet.absoluteFill,
             backgroundColor: `${color}DD`,
             borderRadius: borderRadius,
             overflow: 'hidden',
-            pointerEvents: 'none',
-            shadowOpacity: 1,
-            shadowRadius: 20,
-            shadowColor: '#000',
             boxShadow: boxShadow,
-        }} />
+        }}>
+            <BlurView intensity={10} style={StyleSheet.absoluteFill} />
+        </View>
     );
 }

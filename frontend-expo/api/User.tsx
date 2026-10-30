@@ -1,12 +1,12 @@
 import { supabase } from "./SupabaseClient";
-import { API_URL } from "@/constants/urls";
+import { getApiUrl } from "@/constants/urls";
 
 export async function getCurrentUser() {
   const session = (await supabase.auth.getSession()).data.session;
 
   if (!session) throw new Error("No session");
 
-  const res = await fetch(`${API_URL}/users/me`, {
+  const res = await fetch(`${getApiUrl()}/users/me`, {
     headers: {
       Authorization: `Bearer ${session.access_token}`,
     },

@@ -1,0 +1,81 @@
+{
+  "puzzle_id": "00AhO",
+  "schema_version": 1,
+  "records": [
+    {
+      "puzzle_id": "00AhO",
+      "move_index": 1,
+      "fen": "Q1b2rk1/2q2p1p/1p2pbp1/pP6/2P5/P2B1N2/5PPP/3R1RK1 b - - 0 20",
+      "player_color": "black",
+      "themes": [],
+      "teaching_themes": [
+        "trappedPiece"
+      ],
+      "moving_piece": "bishop",
+      "from": "c8",
+      "to": "b7",
+      "move_san": "Bb7",
+      "is_check": false,
+      "is_checkmate": false,
+      "is_capture": false,
+      "captured_piece": null,
+      "solution_line": [
+        "Bb7",
+        "Qa7",
+        "Ra8",
+        "Qxa8+",
+        "Bxa8"
+      ],
+      "opponent_idea": {},
+      "engine": {}
+    },
+    {
+      "puzzle_id": "00AhO",
+      "move_index": 2,
+      "fen": "5rk1/Qbq2p1p/1p2pbp1/pP6/2P5/P2B1N2/5PPP/3R1RK1 b - - 2 21",
+      "player_color": "black",
+      "themes": [],
+      "teaching_themes": [
+        "trappedPiece"
+      ],
+      "moving_piece": "rook",
+      "from": "f8",
+      "to": "a8",
+      "move_san": "Ra8",
+      "is_check": false,
+      "is_checkmate": false,
+      "is_capture": false,
+      "captured_piece": null,
+      "solution_line": [
+        "Ra8",
+        "Qxa8+",
+        "Bxa8"
+      ],
+      "opponent_idea": {},
+      "engine": {}
+    },
+    {
+      "puzzle_id": "00AhO",
+      "move_index": 3,
+      "fen": "Q5k1/1bq2p1p/1p2pbp1/pP6/2P5/P2B1N2/5PPP/3R1RK1 b - - 0 22",
+      "player_color": "black",
+      "themes": [],
+      "teaching_themes": [
+        "trappedPiece"
+      ],
+      "moving_piece": "bishop",
+      "from": "b7",
+      "to": "a8",
+      "move_san": "Bxa8",
+      "is_check": false,
+      "is_checkmate": false,
+      "is_capture": true,
+      "captured_piece": "queen",
+      "solution_line": [
+        "Bxa8"
+      ],
+      "opponent_idea": {},
+      "engine": {}
+    }
+  ]
+}

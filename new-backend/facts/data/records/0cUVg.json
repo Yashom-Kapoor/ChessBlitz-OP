@@ -1,0 +1,108 @@
+{
+  "puzzle_id": "0cUVg",
+  "schema_version": 1,
+  "records": [
+    {
+      "puzzle_id": "0cUVg",
+      "move_index": 1,
+      "fen": "8/8/PPk3p1/1r6/2N1K3/8/8/8 w - - 1 74",
+      "player_color": "white",
+      "themes": [
+        "advancedPawn",
+        "crushing",
+        "deflection",
+        "endgame",
+        "exposedKing",
+        "fork",
+        "long",
+        "promotion"
+      ],
+      "teaching_themes": [
+        "promotion"
+      ],
+      "moving_piece": "pawn",
+      "from": "a6",
+      "to": "a7",
+      "move_san": "a7",
+      "is_check": false,
+      "is_checkmate": false,
+      "is_capture": false,
+      "captured_piece": null,
+      "solution_line": [
+        "a7",
+        "Kb7",
+        "Nd6+",
+        "Kxb6",
+        "a8=Q"
+      ],
+      "opponent_idea": {},
+      "engine": {}
+    },
+    {
+      "puzzle_id": "0cUVg",
+      "move_index": 2,
+      "fen": "8/Pk6/1P4p1/1r6/2N1K3/8/8/8 w - - 1 75",
+      "player_color": "white",
+      "themes": [
+        "advancedPawn",
+        "crushing",
+        "deflection",
+        "endgame",
+        "exposedKing",
+        "fork",
+        "long",
+        "promotion"
+      ],
+      "teaching_themes": [
+        "promotion"
+      ],
+      "moving_piece": "knight",
+      "from": "c4",
+      "to": "d6",
+      "move_san": "Nd6+",
+      "is_check": true,
+      "is_checkmate": false,
+      "is_capture": false,
+      "captured_piece": null,
+      "solution_line": [
+        "Nd6+",
+        "Kxb6",
+        "a8=Q"
+      ],
+      "opponent_idea": {},
+      "engine": {}
+    },
+    {
+      "puzzle_id": "0cUVg",
+      "move_index": 3,
+      "fen": "8/P7/1k1N2p1/1r6/4K3/8/8/8 w - - 0 76",
+      "player_color": "white",
+      "themes": [
+        "advancedPawn",
+        "crushing",
+        "deflection",
+        "endgame",
+        "exposedKing",
+        "fork",
+        "long",
+        "promotion"
+      ],
+      "teaching_themes": [
+        "promotion"
+      ],
+      "moving_piece": "pawn",
+      "from": "a7",
+      "to": "a8",
+      "move_san": "a8=Q",
+      "is_check": false,
+      "is_checkmate": false,
+      "is_capture": false,
+      "captured_piece": null,
+      "solution_line": [
+        "a8=Q"
+      ],
+      "opponent_idea": {},
+      "engine": {}
+    }
+  ]
+}

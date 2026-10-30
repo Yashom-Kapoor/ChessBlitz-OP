@@ -1,0 +1,68 @@
+{
+  "puzzle_id": "04E5q",
+  "schema_version": 1,
+  "records": [
+    {
+      "puzzle_id": "04E5q",
+      "move_index": 1,
+      "fen": "5r1k/p3q1pp/1p6/3pB3/3Pb3/2P3Q1/P5PP/5RK1 w - - 0 28",
+      "player_color": "white",
+      "themes": [
+        "endgame",
+        "mate",
+        "mateIn2",
+        "pin",
+        "sacrifice",
+        "short"
+      ],
+      "teaching_themes": [
+        "pin"
+      ],
+      "moving_piece": "queen",
+      "from": "g3",
+      "to": "g7",
+      "move_san": "Qxg7+",
+      "is_check": true,
+      "is_checkmate": false,
+      "is_capture": true,
+      "captured_piece": "pawn",
+      "solution_line": [
+        "Qxg7+",
+        "Qxg7",
+        "Rxf8#"
+      ],
+      "opponent_idea": {},
+      "engine": {}
+    },
+    {
+      "puzzle_id": "04E5q",
+      "move_index": 2,
+      "fen": "5r1k/p5qp/1p6/3pB3/3Pb3/2P5/P5PP/5RK1 w - - 0 29",
+      "player_color": "white",
+      "themes": [
+        "endgame",
+        "mate",
+        "mateIn2",
+        "pin",
+        "sacrifice",
+        "short"
+      ],
+      "teaching_themes": [
+        "pin"
+      ],
+      "moving_piece": "rook",
+      "from": "f1",
+      "to": "f8",
+      "move_san": "Rxf8#",
+      "is_check": true,
+      "is_checkmate": true,
+      "is_capture": true,
+      "captured_piece": "rook",
+      "solution_line": [
+        "Rxf8#"
+      ],
+      "opponent_idea": {},
+      "engine": {}
+    }
+  ]
+}

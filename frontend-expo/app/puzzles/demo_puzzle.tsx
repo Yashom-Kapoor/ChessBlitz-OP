@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
-import { useGlobalSearchParams } from 'expo-router';
+import { useGlobalSearchParams, useLocalSearchParams } from 'expo-router';
 import ChessboardDemo from '@/components/puzzles/ChessboardDemo';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { secondsToHMS } from '@/utils/Time';
@@ -15,6 +15,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import GlassBlurView from '@/components/GlassBlurView';
 import { postCompletedPuzzle } from '@/api/PostCompleted';
 import { supabase } from '@/api/SupabaseClient';
+import PuzzleDevHUD from '@/components/puzzles/PuzzleDevHUD';
 
 type PuzzleData = {
     fen: string;
@@ -41,6 +42,10 @@ export default function DemoPuzzle() {
     const { theme } = useTheme();
     const isTablet = useGlobalSearchParams().isTablet === 'true';
     const styles = GlobalStyle(theme, isTablet);
+
+    // `?puzzle=<id>` loads a specific puzzle; without it ChessboardDemo serves a random one.
+    const puzzleParam = useLocalSearchParams().puzzle;
+    const requestedPuzzleId = typeof puzzleParam === 'string' ? puzzleParam : undefined;
 
     const chessboardRef = useRef<any>(null);
     const [chess] = useState(() => new Chess());
@@ -399,10 +404,7 @@ export default function DemoPuzzle() {
 
     return (
         <BackgroundContext theme={theme} style={localStyles.container}>
-            <Text style={{ color: theme.primaryText, position: 'absolute', textAlign: 'right', top: 55, right: 5, zIndex: 1000 }}>
-                {`BEST: ${bestMoveLabel}\n`}
-                {`ID: ${currentPuzzle?.puzzleid ?? 'N/A'}`}
-            </Text>
+            <PuzzleDevHUD puzzleId={currentPuzzle?.puzzleid} bestMove={bestMoveLabel} />
 
             <Animated.Image
                 source={require('@/assets/images/hints/bear.png')}
@@ -414,6 +416,7 @@ export default function DemoPuzzle() {
                 ref={chessboardRef}
                 colors={{ black: theme.player2Square, white: theme.player1Square }}
                 isTablet={isTablet}
+                puzzleId={requestedPuzzleId}
                 onPuzzleLoaded={initializePuzzle}
                 onMove={handleMove}
                 gestureEnabled={gestureEnabled}
