@@ -16,6 +16,7 @@ import GlassBlurView from '@/components/GlassBlurView';
 import { postCompletedPuzzle } from '@/api/PostCompleted';
 import { supabase } from '@/api/SupabaseClient';
 import PuzzleDevHUD from '@/components/puzzles/PuzzleDevHUD';
+import WrongMovePrompt from '@/components/puzzles/WrongMovePrompt';
 
 type PuzzleData = {
     fen: string;
@@ -66,6 +67,7 @@ export default function DemoPuzzle() {
     const [loadingHint, setLoadingHint] = useState(false);
     const [expanded, setExpanded] = useState(false);
     const [isHintExpandable, setIsHintExpandable] = useState(false);
+    const [retryFen, setRetryFen] = useState<string | null>(null);
 
     const hintHeight = useSharedValue(55);
     const hintWidth = useSharedValue(200);
@@ -107,6 +109,9 @@ export default function DemoPuzzle() {
             alignItems: 'center',
             backgroundColor: theme.background,
             paddingBottom: 150,
+        },
+        boardWrapper: {
+            position: 'relative',
         },
         hintContainer: {
             position: 'absolute',
@@ -224,6 +229,7 @@ export default function DemoPuzzle() {
         setLoadingHint(false);
         setExpanded(false);
         setIsHintExpandable(false);
+        setRetryFen(null);
         setElapsedTime(0);
         setPuzzleReady(true);
 
@@ -244,7 +250,7 @@ export default function DemoPuzzle() {
     };
 
     const handleGetHint = async () => {
-        if (!currentPuzzle || puzzleCompleted) {
+        if (!currentPuzzle || puzzleCompleted || retryFen) {
             return;
         }
 
@@ -284,6 +290,7 @@ export default function DemoPuzzle() {
         setError(null);
         setIsHintExpandable(false);
         setExpanded(false);
+        setRetryFen(null);
         setLastFEN(currentPuzzle.fen);
         setElapsedTime(0);
         setTurn(getTurnFromFEN(currentPuzzle.fen));
@@ -304,6 +311,18 @@ export default function DemoPuzzle() {
 
     const handleUndo = () => {
         if (!currentPuzzle || !chessboardRef.current?.board) {
+            return;
+        }
+
+        if (retryFen) {
+            // Wrong moves only reach the displayed board; preserve the engine's undo history.
+            chessboardRef.current.board.resetBoard(chess.fen());
+            setLastFEN(chess.fen());
+            setRetryFen(null);
+            setHint(null);
+            setIsHintExpandable(false);
+            setExpanded(false);
+            setUndosUsed((count) => count + 1);
             return;
         }
 
@@ -331,6 +350,10 @@ export default function DemoPuzzle() {
 
     const handleRedo = () => {
         if (!currentPuzzle || !chessboardRef.current?.board) {
+            return;
+        }
+
+        if (retryFen) {
             return;
         }
 
@@ -365,12 +388,14 @@ export default function DemoPuzzle() {
         const expectedMove = moves[moveNumber * 2 - 1];
 
         if (!detectedMove || detectedMove !== expectedMove) {
-            setHint('Try again!');
+            setRetryFen(previousFen);
+            setHint(null);
             setIsHintExpandable(false);
             setExpanded(false);
             return;
         }
 
+        setRetryFen(null);
         chess.move(toMoveNotation(detectedMove));
         setHint(null);
         setIsHintExpandable(false);
@@ -398,7 +423,9 @@ export default function DemoPuzzle() {
         }, 700);
     };
 
-    const gestureEnabled = Boolean(puzzleReady && lastFEN && turn && getTurnFromFEN(lastFEN) !== turn);
+
+
+    const gestureEnabled = Boolean(puzzleReady && !retryFen && lastFEN && turn && getTurnFromFEN(lastFEN) !== turn);
     const bestMoveLabel = moves[2 * moveNumber - 1] ?? '...';
     const ratingLabel = currentPuzzle?.rating ?? '1000';
 
@@ -411,16 +438,19 @@ export default function DemoPuzzle() {
                 style={{ ...bearHintStyle }}
             />
 
-            <ChessboardDemo
-                playerBlack={currentPuzzle?.fen?.split(' ')[1] === 'w' || false}
-                ref={chessboardRef}
-                colors={{ black: theme.player2Square, white: theme.player1Square }}
-                isTablet={isTablet}
-                puzzleId={requestedPuzzleId}
-                onPuzzleLoaded={initializePuzzle}
-                onMove={handleMove}
-                gestureEnabled={gestureEnabled}
-            />
+            <View style={localStyles.boardWrapper}>
+                <ChessboardDemo
+                    playerBlack={currentPuzzle?.fen?.split(' ')[1] === 'w' || false}
+                    ref={chessboardRef}
+                    colors={{ black: theme.player2Square, white: theme.player1Square }}
+                    isTablet={isTablet}
+                    puzzleId={requestedPuzzleId}
+                    onPuzzleLoaded={initializePuzzle}
+                    onMove={handleMove}
+                    gestureEnabled={gestureEnabled}
+                />
+                <WrongMovePrompt visible={Boolean(retryFen)} onTryAgain={handleUndo} isTablet={isTablet} />
+            </View>
 
             <Animated.View style={localStyles.hintContainer}>
                 <Pressable

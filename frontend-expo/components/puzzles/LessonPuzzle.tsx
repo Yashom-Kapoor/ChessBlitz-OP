@@ -17,6 +17,7 @@ import GlassBlurView from '@/components/GlassBlurView';
 import { postCompletedPuzzle } from '@/api/PostCompleted';
 import { supabase } from '@/api/SupabaseClient';
 import PuzzleDevHUD from '@/components/puzzles/PuzzleDevHUD';
+import WrongMovePrompt from '@/components/puzzles/WrongMovePrompt';
 
 interface LessonPuzzleProps {
     page: number;
@@ -89,6 +90,9 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
             backgroundColor: theme.background,
             paddingBottom: 150,
         },
+        boardWrapper: {
+            position: 'relative',
+        },
         hintContainer: {
             position: 'absolute',
             flex: 1,
@@ -135,9 +139,10 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
     const [turn, setTurn] = useState<string | null>(null); // Track the turn
     const [redoUnlocked, setRedoUnlocked] = useState<number | null>(1); // Track the redo max state
     const [puzzleCompleted, setPuzzleCompleted] = useState<boolean | null>(false); // Track puzzle completion stat
+    const [retryFen, setRetryFen] = useState<string | null>(null);
 
     const handleGetHint = async () => {
-        if (!puzzleCompleted) {
+        if (!puzzleCompleted && !retryFen) {
             try {
                 setHint(null);
                 setIsHintExpandable(false);
@@ -177,6 +182,7 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
             if (puzzle) {
                 setMoves(puzzle.moves.split(' ')); // Set the moves from the puzzle
                 setLastFEN(puzzle.fen); // Set the last FEN
+                setRetryFen(null);
                 chess.load(puzzle.fen); // Load the FEN into the chess instance
                 setTurn(getTurnFromFEN(puzzle.fen)); // Get the turn from the FEN
             }
@@ -229,6 +235,7 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
             setHint(null); // Reset hint
             setIsHintExpandable(false);
             setExpanded(false);
+            setRetryFen(null);
             setLastFEN(chessboardRef.current.getPuzzle().fen); // Reset last FEN
             setElapsedTime(0); // Reset elapsed time
             setTurn(getTurnFromFEN(chessboardRef.current.getPuzzle().fen)); // Reset turn
@@ -238,6 +245,18 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
     };
     const handleUndo = () => {
         if (chessboardRef.current) {
+            if (retryFen) {
+                // Wrong moves only reach the displayed board; the engine is still at the valid position.
+                chessboardRef.current.board.resetBoard(chess.fen());
+                setLastFEN(chess.fen());
+                setRetryFen(null);
+                setHint(null);
+                setIsHintExpandable(false);
+                setExpanded(false);
+                setUndosUsed((count) => count + 1);
+                return;
+            }
+
             chess.undo(); // Undo the last move
             if (getTurnFromFEN(chess.fen()) === turn) {
                 chess.undo();
@@ -264,6 +283,10 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
     };
     const handleRedo = () => {
         if (chessboardRef.current && redoUnlocked !== null) {
+            if (retryFen) {
+                return;
+            }
+
             if (moveNumber < redoUnlocked) {
                 setTimeout(async () => {
                     await chessboardRef.current?.board.move({
@@ -275,6 +298,62 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
                 }, 200);
             }
         }
+    };
+
+
+
+    const handleMove = ({ state }: { state: { fen: string } }) => {
+        const previousFen = lastFEN;
+        setLastFEN(state.fen);
+
+        if (!previousFen || getTurnFromFEN(state.fen) !== turn) {
+            return;
+        }
+
+        const detectedMove = detectMoveFromFEN(previousFen, state.fen);
+        const expectedMove = moves[moveNumber * 2 - 1];
+
+        if (!detectedMove || detectedMove !== expectedMove) {
+            setRetryFen(previousFen);
+            setHint(null);
+            setIsHintExpandable(false);
+            setExpanded(false);
+            return;
+        }
+
+        setRetryFen(null);
+        chess.move({
+            from: detectedMove.substring(0, 2),
+            to: detectedMove.substring(2, 4),
+            promotion: detectedMove.substring(4),
+        });
+        setHint(null);
+        setIsHintExpandable(false);
+
+        if (moveNumber >= moves.length / 2) {
+            setHint('Congratulations! You completed the puzzle!');
+            setExpanded(true);
+            setRedoUnlocked(moveNumber + 1);
+            setPuzzleCompleted(true);
+            return;
+        }
+
+        setMoveNumber(moveNumber + 1);
+        setHint('Great job! Keep going!');
+        setExpanded(false);
+
+        setTimeout(async () => {
+            chess.move({
+                from: moves[moveNumber * 2].substring(0, 2),
+                to: moves[moveNumber * 2].substring(2, 4),
+                promotion: moves[moveNumber * 2].substring(4),
+            });
+            await chessboardRef.current?.board.move({
+                from: moves[moveNumber * 2].substring(0, 2),
+                to: moves[moveNumber * 2].substring(2, 4),
+                promotion: moves[moveNumber * 2].substring(4),
+            });
+        });
     };
 
     useEffect(() => {
@@ -317,67 +396,32 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
                 style={{ ...bearHintStyle }}
             />
 
-            {chessboardRef.current?.getPuzzle() ? (
-                <ChessboardDemo
-                    playerBlack={chessboardRef.current?.getPuzzle()?.fen?.split(' ')[1] === 'w' || false}
-                    ref={chessboardRef}
-                    colors={{ black: theme.player2Square, white: theme.player1Square }}
-                    isTablet={isTablet}
-                    onMove={({ state }) => {
-                        setLastFEN(state.fen); // Update the last FEN
+            <View style={localStyles.boardWrapper}>
+                {chessboardRef.current?.getPuzzle() ? (
+                    <ChessboardDemo
+                        playerBlack={chessboardRef.current?.getPuzzle()?.fen?.split(' ')[1] === 'w' || false}
+                        ref={chessboardRef}
+                        colors={{ black: theme.player2Square, white: theme.player1Square }}
+                        isTablet={isTablet}
+                        onMove={handleMove}
+                        gestureEnabled={!retryFen && ((getTurnFromFEN(lastFEN) !== turn) || false)}
+                    />
+                ) : (
+                    <ChessboardDemo
+                        playerBlack={false}
+                        ref={chessboardRef}
+                        colors={{ black: theme.player2Square, white: theme.player1Square }}
+                        isTablet={isTablet}
+                        gestureEnabled={false}
+                    />
+                )}
 
-                        if (getTurnFromFEN(state.fen) === turn) {
-                            const detectedMove = detectMoveFromFEN(lastFEN, state.fen);
-                            if (detectedMove) {
-                                chess.move({ from: detectedMove.substring(0, 2), to: detectedMove.substring(2, 4), promotion: detectedMove.substring(4) }); // Make the move
-                            }
-                            if (moves[moveNumber * 2 - 1] == detectMoveFromFEN(lastFEN, state.fen)) {
-                                setHint(null); // Clear hint if the move is correct
-                                setIsHintExpandable(false);
-
-                            if (moveNumber >= moves.length / 2) {
-                                    setHint('Congratulations! You completed the puzzle!'); // Show success message
-                                    setIsHintExpandable(false); // Not expandable
-                                    setExpanded(false);
-                                    setRedoUnlocked(moveNumber + 1);
-                                    setPuzzleCompleted(true);
-                                    setExpanded(true);
-                                } else {
-                                    setMoveNumber(moveNumber + 1); // Increment move number
-                                    setHint('Great job! Keep going!'); // Show success message for correct move
-                                    setIsHintExpandable(false); // Not expandable
-                                    setExpanded(false);
-                                    setTimeout(async () => {
-                                        chess.move({
-                                            from: moves[moveNumber * 2].substring(0, 2),
-                                            to: moves[moveNumber * 2].substring(2, 4),
-                                            promotion: moves[moveNumber * 2].substring(4)
-                                        }); // Make the next move
-                                        await chessboardRef.current?.board.move({
-                                            from: moves[moveNumber * 2].substring(0, 2),
-                                            to: moves[moveNumber * 2].substring(2, 4),
-                                            promotion: moves[moveNumber * 2].substring(4)
-                                        });
-                                    }), (700);
-                                }
-                            } else {
-                                setHint('Try again!'); // Show error message if the move is incorrect
-                                setIsHintExpandable(false); // Not expandable
-                                setExpanded(false);
-                            }
-                        }
-                    }}
-                    gestureEnabled={(getTurnFromFEN(lastFEN) !== turn) || false} // Enable gestures only if it's the player's turn
-                />
-            ) : (
-                <ChessboardDemo
-                    playerBlack={false}
-                    ref={chessboardRef}
-                    colors={{ black: theme.player2Square, white: theme.player1Square }}
+                <WrongMovePrompt
+                    visible={Boolean(retryFen)}
+                    onTryAgain={handleUndo}
                     isTablet={isTablet}
-                    gestureEnabled={false}
                 />
-            )}
+            </View>
 
             <Animated.View style={[localStyles.hintContainer]}>
                 <Pressable onPress={() => {
