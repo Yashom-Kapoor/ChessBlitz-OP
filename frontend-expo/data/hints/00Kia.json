@@ -1,0 +1,85 @@
+{
+  "puzzle_id": "00Kia",
+  "placeholder": true,
+  "note": "PLACEHOLDER hints for Ticket 6 UI testing. Replace with Ticket 3's final hints; keep this shape.",
+  "moves": [
+    {
+      "move_index": 1,
+      "move_san": "Qe5+",
+      "tiers": [
+        {
+          "tier": 1,
+          "text": "Black's queen is close to your king. Can you give check so Black has no time to attack?"
+        },
+        {
+          "tier": 2,
+          "text": "Look for a check that also lines your queen up with something else."
+        },
+        {
+          "tier": 3,
+          "text": "Your queen is the piece to use."
+        },
+        {
+          "tier": 4,
+          "text": "Play Qe5+."
+        },
+        {
+          "tier": 5,
+          "text": "Qe5+ checks the king. Now your queen and Black's queen are on the same line, with only your bishop in between."
+        }
+      ]
+    },
+    {
+      "move_index": 2,
+      "move_san": "Bd5+",
+      "tiers": [
+        {
+          "tier": 1,
+          "text": "Your bishop is standing between your queen and Black's queen. What happens if it moves?"
+        },
+        {
+          "tier": 2,
+          "text": "Move a piece out of the way and give check at the same time."
+        },
+        {
+          "tier": 3,
+          "text": "Your bishop is the piece to use."
+        },
+        {
+          "tier": 4,
+          "text": "Play Bd5+."
+        },
+        {
+          "tier": 5,
+          "text": "Bd5+ is check, and it opens the line from your queen to Black's queen. Black has to deal with the check first."
+        }
+      ]
+    },
+    {
+      "move_index": 3,
+      "move_san": "Qxe1",
+      "tiers": [
+        {
+          "tier": 1,
+          "text": "Black had to answer your check. What did Black leave unprotected?"
+        },
+        {
+          "tier": 2,
+          "text": "Grab the biggest piece you can reach."
+        },
+        {
+          "tier": 3,
+          "text": "Your queen is the piece to use."
+        },
+        {
+          "tier": 4,
+          "text": "Play Qxe1."
+        },
+        {
+          "tier": 5,
+          "text": "Qxe1 wins Black's queen. Your bishop was a small price to pay."
+        }
+      ]
+    }
+  ]
+}

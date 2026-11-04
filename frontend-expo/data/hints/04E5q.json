@@ -1,0 +1,51 @@
+{
+  "puzzle_id": "04E5q",
+  "placeholder": true,
+  "note": "PLACEHOLDER hints for Ticket 6 UI testing. Replace with Ticket 3's final hints; keep this shape.",
+  "moves": [
+    {
+      "move_index": 1,
+      "move_san": "Qxg7+",
+      "tiers": [
+        {
+          "tier": 1,
+          "text": "Look at Black's king. Which squares next to it are weak?"
+        },
+        {
+          "tier": 2,
+          "text": "Can you force a Black piece onto a line where it gets pinned?"
+        },
+        {
+          "tier": 3,
+          "text": "Your queen is the piece to use."
+        },
+        {
+          "tier": 4,
+          "text": "Play Qxg7+."
+        },
+        {
+          "tier": 5,
+          "text": "Qxg7+ gives up your queen. Black has to take with the queen, and then that queen is pinned by your bishop."
+        }
+      ]
+    },
+    {
+      "move_index": 2,
+      "move_san": "Rxf8#",
+      "tiers": [
+        {
+          "tier": 1,
+          "text": "Black's queen is stuck on g7. What can it no longer protect?"
+        },
+        {
+          "tier": 2,
+          "text": "Play Rxf8#."
+        },
+        {
+          "tier": 3,
+          "text": "Rxf8# is checkmate! Black's queen can't take back because it's pinned to the king."
+        }
+      ]
+    }
+  ]
+}
