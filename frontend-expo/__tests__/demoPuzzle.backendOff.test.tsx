@@ -62,6 +62,25 @@ describe('wrong-move fallback with the backend unavailable', () => {
         expect(bubble(tree)).toBe(WRONG_MOVE_FALLBACK);
     });
 
+    test('illegal move (400): falls back', async () => {
+        global.fetch = jest.fn(async () => ({ ok: false, status: 400, json: async () => ({ error: 'Illegal move' }) })) as unknown as typeof fetch;
+        const tree = await playWrongMove();
+        await wait(1000);
+        expect(bubble(tree)).toBe(WRONG_MOVE_FALLBACK);
+    });
+
+    test('sends move_index and the UCI move to /puzzles/<id>/wrong-move', async () => {
+        global.fetch = jest.fn(async () => ({ ok: true, status: 200, json: async () => ({ classification: 'miss' }) })) as unknown as typeof fetch;
+        await playWrongMove();
+        await wait(1000);
+        const [url, init] = jest.mocked(global.fetch).mock.calls[0] as unknown as [string, RequestInit];
+        expect(url).toMatch(/\/puzzles\/00Kia\/wrong-move$/);
+        const body = JSON.parse(init.body as string);
+        expect(Object.keys(body).sort()).toEqual(['move', 'move_index']);
+        expect(body.move_index).toBe(1);
+        expect(body.move).toMatch(/^[a-h][1-8][a-h][1-8][qrbn]?$/);
+    });
+
     test('backend returns 500: falls back', async () => {
         global.fetch = jest.fn(async () => ({ ok: false, status: 500, json: async () => ({ error: 'Something went wrong' }) })) as unknown as typeof fetch;
         const tree = await playWrongMove();

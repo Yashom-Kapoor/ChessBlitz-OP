@@ -437,7 +437,6 @@ export default function DemoPuzzle() {
         void getWrongMoveMessage({
             puzzleId: currentPuzzle.puzzleid,
             moveIndex: moveNumber,
-            fen: previousFen,
             move: playedMove,
         }).then(showMessage);
     };
