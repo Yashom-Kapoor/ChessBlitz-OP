@@ -1,5 +1,6 @@
+import { useHeaderHeight } from 'expo-router/react-navigation';
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
+import { useWindowDimensions, View, Text, StyleSheet, Pressable, Image } from 'react-native';
 import { useGlobalSearchParams, useLocalSearchParams } from 'expo-router';
 import ChessboardDemo from '@/components/puzzles/ChessboardDemo';
 import { IconSymbol } from '@/components/ui/IconSymbol';
@@ -41,6 +42,12 @@ const toMoveNotation = (move: string): MoveNotation => ({
 export default function DemoPuzzle() {
     const { theme } = useTheme();
     const isTablet = useGlobalSearchParams().isTablet === 'true';
+    const windowSize = useWindowDimensions();
+    const [layoutSize, setLayoutSize] = useState({ width: windowSize.width, height: windowSize.height });
+    const headerHeight = useHeaderHeight();
+    const hintTop = headerHeight + 12;
+    const boardTop = hintTop + (isTablet ? 150 : 110);
+    const boardSize = Math.floor(Math.max(8, Math.min(layoutSize.width, layoutSize.height - boardTop - (isTablet ? 220 : 190))) / 8) * 8;
     const styles = GlobalStyle(theme, isTablet);
 
     // `?puzzle=<id>` loads a specific puzzle; without it ChessboardDemo serves a random one.
@@ -89,7 +96,7 @@ export default function DemoPuzzle() {
     const bearHintStyle = useAnimatedStyle(() => ({
         position: 'absolute',
         left: isTablet ? '2%' : 0,
-        top: isTablet ? '8%' : '25%',
+        top: hintTop,
         width: isTablet ? 140 : 100,
         height: isTablet ? 140 : 100,
         zIndex: zIndex.value,
@@ -103,16 +110,17 @@ export default function DemoPuzzle() {
     const localStyles = StyleSheet.create({
         container: {
             flex: 1,
-            justifyContent: 'flex-end',
+            justifyContent: 'flex-start',
             alignItems: 'center',
             backgroundColor: theme.background,
-            paddingBottom: 150,
+            paddingTop: boardTop,
+            paddingBottom: 20,
         },
         hintContainer: {
             position: 'absolute',
             flex: 1,
             left: isTablet ? '17%' : '20%',
-            top: isTablet ? '12%' : '29%',
+            top: hintTop + (isTablet ? 35 : 25),
             flexDirection: 'row',
             marginBottom: isTablet ? 0 : 20,
             alignItems: 'flex-start',
@@ -403,7 +411,7 @@ export default function DemoPuzzle() {
     const ratingLabel = currentPuzzle?.rating ?? '1000';
 
     return (
-        <BackgroundContext theme={theme} style={localStyles.container}>
+        <BackgroundContext theme={theme} style={localStyles.container} onLayout={({ nativeEvent }: { nativeEvent: { layout: { width: number; height: number } } }) => setLayoutSize(nativeEvent.layout)}>
             <PuzzleDevHUD puzzleId={currentPuzzle?.puzzleid} bestMove={bestMoveLabel} />
 
             <Animated.Image
@@ -412,6 +420,7 @@ export default function DemoPuzzle() {
             />
 
             <ChessboardDemo
+                boardSize={boardSize}
                 playerBlack={currentPuzzle?.fen?.split(' ')[1] === 'w' || false}
                 ref={chessboardRef}
                 colors={{ black: theme.player2Square, white: theme.player1Square }}
@@ -456,7 +465,7 @@ export default function DemoPuzzle() {
                 </Pressable>
             </Animated.View>
 
-            <View style={[styles.hStack, { marginTop: isTablet ? -10 : 10, marginBottom: -30 }]}> 
+            <View style={[styles.hStack, { marginTop: 10, marginBottom: 0 }]}>
                 <View style={localStyles.ratingContainer}>
                     <IconSymbol size={isTablet ? 45 : 30} style={{ marginHorizontal: 5 }} name="puzzlepiece.extension.fill" color={theme.primaryText} />
                     <Text style={[styles.subtitle, { marginLeft: isTablet ? 5 : 0, color: theme.primaryText }]}> 
@@ -473,7 +482,7 @@ export default function DemoPuzzle() {
                 </View>
             </View>
 
-            <PuzzleBar onHint={handleGetHint} onUndo={handleUndo} onRedo={handleRedo} onReset={resetToStart} onOptions={null} isTablet={isTablet} />
+            <PuzzleBar raised onHint={handleGetHint} onUndo={handleUndo} onRedo={handleRedo} onReset={resetToStart} onOptions={null} isTablet={isTablet} />
         </BackgroundContext>
     );
 }

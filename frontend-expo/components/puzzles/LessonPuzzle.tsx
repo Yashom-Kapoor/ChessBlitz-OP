@@ -1,5 +1,6 @@
+import { useHeaderHeight } from 'expo-router/react-navigation';
 import React, { useRef, useState, useEffect, useLayoutEffect } from 'react';
-import { View, Text, StyleSheet, Pressable, Image, ImageBackground, Platform, TouchableOpacity } from 'react-native';
+import { useWindowDimensions, View, Text, StyleSheet, Pressable, Image, ImageBackground, Platform, TouchableOpacity } from 'react-native';
 import { useGlobalSearchParams, useLocalSearchParams, useRouter } from 'expo-router';
 import ChessboardDemo from '@/components/puzzles/ChessboardDemo';
 import { IconSymbol } from '@/components/ui/IconSymbol';
@@ -31,6 +32,12 @@ interface LessonPuzzleProps {
 export default function LessonPuzzle({ length, page, pageBack, pageForward, pagePrevPuzzle, pageNextPuzzle, puzzleId }: LessonPuzzleProps) {
     const { theme } = useTheme();
     const isTablet = useGlobalSearchParams().isTablet === 'true';
+    const windowSize = useWindowDimensions();
+    const [layoutSize, setLayoutSize] = useState({ width: windowSize.width, height: windowSize.height });
+    const headerHeight = useHeaderHeight();
+    const hintTop = headerHeight + 12;
+    const boardTop = hintTop + (isTablet ? 150 : 110);
+    const boardSize = Math.floor(Math.max(8, Math.min(layoutSize.width, layoutSize.height - boardTop - (isTablet ? 240 : 210))) / 8) * 8;
     const [hint, setHint] = useState<string | null>(null);
 
     const hintHeight = useSharedValue(55);
@@ -58,7 +65,7 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
         return {
             position: 'absolute',
             left: isTablet ? '2%' : 0,
-            top: isTablet ? '8%' : '25%',
+            top: hintTop,
             width: isTablet ? 140 : 100,
             height: isTablet ? 140 : 100,
             zIndex: zIndex.value,
@@ -84,16 +91,17 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
     const localStyles = StyleSheet.create({
         container: {
             flex: 1,
-            justifyContent: 'flex-end',
+            justifyContent: 'flex-start',
             alignItems: 'center',
             backgroundColor: theme.background,
-            paddingBottom: 150,
+            paddingTop: boardTop,
+            paddingBottom: 20,
         },
         hintContainer: {
             position: 'absolute',
             flex: 1,
             left: isTablet ? '17%' : '20%',
-            top: isTablet ? '12%' : '29%',
+            top: hintTop + (isTablet ? 35 : 25),
             flexDirection: 'row',
             marginBottom: isTablet ? 0 : 20,
             alignItems: 'flex-start',
@@ -309,7 +317,7 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
     }, [puzzleCompleted]);
 
     return (
-        <BackgroundContext theme={theme} style={localStyles.container}>
+        <BackgroundContext theme={theme} style={localStyles.container} onLayout={({ nativeEvent }: { nativeEvent: { layout: { width: number; height: number } } }) => setLayoutSize(nativeEvent.layout)}>
             <PuzzleDevHUD bestMove={moves[2 * moveNumber - 1]} />
 
             <Animated.Image
@@ -319,6 +327,7 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
 
             {chessboardRef.current?.getPuzzle() ? (
                 <ChessboardDemo
+                boardSize={boardSize}
                     playerBlack={chessboardRef.current?.getPuzzle()?.fen?.split(' ')[1] === 'w' || false}
                     ref={chessboardRef}
                     colors={{ black: theme.player2Square, white: theme.player1Square }}
@@ -371,6 +380,7 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
                 />
             ) : (
                 <ChessboardDemo
+                boardSize={boardSize}
                     playerBlack={false}
                     ref={chessboardRef}
                     colors={{ black: theme.player2Square, white: theme.player1Square }}
@@ -413,7 +423,7 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
 
             <PuzzleBar raised onHint={handleGetHint} onUndo={handleUndo} onRedo={handleRedo} onReset={handleReset} onOptions={null} isTablet={isTablet} />
 
-            <View style={{...styles.hStack, gap: isTablet ? 30 : 20, paddingHorizontal: isTablet ? 30 : 20, marginBottom: -125, marginTop: 15}}>
+            <View style={{...styles.hStack, gap: isTablet ? 30 : 20, paddingHorizontal: isTablet ? 30 : 20, marginBottom: 0, marginTop: 0}}>
             
                 <TouchableOpacity style={{flex: 1, opacity: page > 1 ? 1 : 0.4}} onPress={() => {
                         pageBack();

@@ -145,7 +145,7 @@ const ChessboardDemo = forwardRef<ChessboardDemoRef, ChessboardDemoProps>((props
     }
     return (
         <View style={{ transform: `scale(${props.playerBlack ? '-1' : '1'})`}} >
-            <GestureHandlerRootView style={[styles.boardContainer, { transform: `scale(${props.isTablet ? 0.95 : 1})` }]}>
+            <GestureHandlerRootView style={styles.boardContainer}>
                 <Chessboard
                     withLetters={false}
                     withNumbers={false}
@@ -165,7 +165,6 @@ const ChessboardDemo = forwardRef<ChessboardDemoRef, ChessboardDemoProps>((props
 
 const styles = StyleSheet.create({
     boardContainer: {
-        marginTop: -10,
         borderRadius: 2,
         overflow: 'hidden',
     },
