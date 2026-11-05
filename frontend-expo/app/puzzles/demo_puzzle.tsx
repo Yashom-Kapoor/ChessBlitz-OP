@@ -1,3 +1,4 @@
+import { getPuzzleActionAvailability } from '@/components/puzzles/puzzleActions';
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
 import { useGlobalSearchParams, useLocalSearchParams } from 'expo-router';
@@ -66,6 +67,19 @@ export default function DemoPuzzle() {
     const [loadingHint, setLoadingHint] = useState(false);
     const [expanded, setExpanded] = useState(false);
     const [isHintExpandable, setIsHintExpandable] = useState(false);
+    const [pendingMove, setPendingMove] = useState(false);
+    const actionAvailability = getPuzzleActionAvailability({
+        ready: Boolean(puzzleReady && currentPuzzle !== null && lastFEN && turn && chessboardRef.current?.board),
+        playerTurn: Boolean(lastFEN && turn && getTurnFromFEN(lastFEN) !== turn),
+        retrying: hint === 'Try again!',
+        completed: Boolean(puzzleCompleted),
+        loadingHint,
+        pendingMove,
+        moveNumber,
+        redoUnlocked: redoUnlocked ?? 1,
+        hasProgress: chess.history().length > 1,
+        hasRedoMove: Boolean(moves[moveNumber * 2 - 1]),
+    });
 
     const hintHeight = useSharedValue(55);
     const hintWidth = useSharedValue(200);
@@ -244,6 +258,7 @@ export default function DemoPuzzle() {
     };
 
     const handleGetHint = async () => {
+        if (!actionAvailability.hint) return;
         if (!currentPuzzle || puzzleCompleted) {
             return;
         }
@@ -270,6 +285,7 @@ export default function DemoPuzzle() {
     };
 
     const resetToStart = () => {
+        if (!actionAvailability.reset) return;
         if (!currentPuzzle || !chessboardRef.current?.board) {
             return;
         }
@@ -303,10 +319,23 @@ export default function DemoPuzzle() {
     };
 
     const handleUndo = () => {
+        if (!actionAvailability.undo) return;
         if (!currentPuzzle || !chessboardRef.current?.board) {
             return;
         }
 
+        if (hint === 'Try again!') {
+            // Wrong moves only reach the displayed board; preserve the engine's undo history.
+            chessboardRef.current.board.resetBoard(chess.fen());
+            setLastFEN(chess.fen());
+            setHint(null);
+            setIsHintExpandable(false);
+            setExpanded(false);
+            setUndosUsed((count) => count + 1);
+            return;
+        }
+
+        setPuzzleCompleted(false);
         chess.undo();
 
         if (getTurnFromFEN(chess.fen()) === turn) {
@@ -319,33 +348,24 @@ export default function DemoPuzzle() {
         setIsHintExpandable(false);
         setExpanded(false);
 
-        if (moveNumber <= 1) {
-            resetToStart();
-            return;
-        }
-
         chessboardRef.current.board.resetBoard(chess.fen());
-        setTurn(getTurnFromFEN(chess.fen()));
+        setTurn(getTurnFromFEN(currentPuzzle.fen));
         setUndosUsed((count) => count + 1);
     };
 
     const handleRedo = () => {
-        if (!currentPuzzle || !chessboardRef.current?.board) {
-            return;
-        }
-
-        if (moveNumber >= redoUnlocked) {
-            return;
-        }
-
+        if (!actionAvailability.redo || !chessboardRef.current?.board) return;
         const redoMove = moves[moveNumber * 2 - 1];
-        if (!redoMove) {
-            return;
-        }
+        if (!redoMove) return;
 
+        setPendingMove(true);
         setTimeout(async () => {
-            await chessboardRef.current?.board.move(toMoveNotation(redoMove));
-            setRedosUsed((count) => count + 1);
+            try {
+                await chessboardRef.current?.board.move(toMoveNotation(redoMove));
+                setRedosUsed((count) => count + 1);
+            } finally {
+                setPendingMove(false);
+            }
         }, 200);
     };
 
@@ -371,6 +391,7 @@ export default function DemoPuzzle() {
             return;
         }
 
+        setRedoUnlocked((current) => Math.max(current, moveNumber + 1));
         chess.move(toMoveNotation(detectedMove));
         setHint(null);
         setIsHintExpandable(false);
@@ -398,7 +419,7 @@ export default function DemoPuzzle() {
         }, 700);
     };
 
-    const gestureEnabled = Boolean(puzzleReady && lastFEN && turn && getTurnFromFEN(lastFEN) !== turn);
+    const gestureEnabled = Boolean(puzzleReady && !pendingMove && lastFEN && turn && getTurnFromFEN(lastFEN) !== turn);
     const bestMoveLabel = moves[2 * moveNumber - 1] ?? '...';
     const ratingLabel = currentPuzzle?.rating ?? '1000';
 
@@ -473,7 +494,7 @@ export default function DemoPuzzle() {
                 </View>
             </View>
 
-            <PuzzleBar onHint={handleGetHint} onUndo={handleUndo} onRedo={handleRedo} onReset={resetToStart} onOptions={null} isTablet={isTablet} />
+            <PuzzleBar onHint={handleGetHint} onUndo={handleUndo} onRedo={handleRedo} onReset={resetToStart} available={actionAvailability} isTablet={isTablet} />
         </BackgroundContext>
     );
 }
