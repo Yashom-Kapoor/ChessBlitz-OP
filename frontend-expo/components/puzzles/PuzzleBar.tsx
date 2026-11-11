@@ -16,7 +16,6 @@ export default function PuzzleBar({ onHint, onUndo, onRedo, onReset, available, 
     const handlers = { hint: onHint, undo: onUndo, redo: onRedo, reset: onReset };
     const runAction = (action: PuzzleAction) => {
         if (!available[action]) return;
-        setOptionsVisible(false);
         handlers[action]();
     };
 
@@ -71,7 +70,7 @@ export default function PuzzleBar({ onHint, onUndo, onRedo, onReset, available, 
             <CustomPuzzleButton name='reset' icon='restart' onPress={() => runAction('reset')} disabled={!available.reset} isTablet={isTablet} />
             <CustomPuzzleButton name='options' icon='ellipsis' onPress={() => setOptionsVisible(true)} isTablet={isTablet} />
         </GlassContainer>
-        <PuzzleOptions visible={optionsVisible} onClose={() => setOptionsVisible(false)} onAction={runAction} available={available} isTablet={isTablet} />
+        <PuzzleOptions visible={optionsVisible} onClose={() => setOptionsVisible(false)} isTablet={isTablet} />
         </>
     );
 }

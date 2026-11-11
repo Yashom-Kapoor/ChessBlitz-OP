@@ -29,6 +29,8 @@ import { postCompletedPuzzle } from '@/api/PostCompleted';
 import { supabase } from '@/api/SupabaseClient';
 import PuzzleDevHUD from '@/components/puzzles/PuzzleDevHUD';
 import WrongMovePrompt from '@/components/puzzles/WrongMovePrompt';
+import { opponentDelay, usePuzzleSettings } from '@/context/PuzzleSettingsContext';
+import * as Haptics from 'expo-haptics';
 
 type PuzzleData = {
     fen: string;
@@ -53,6 +55,7 @@ const toMoveNotation = (move: string): MoveNotation => ({
 
 export default function DemoPuzzle() {
     const { theme } = useTheme();
+    const { autoFlip, opponentSpeed, haptics, showTimer } = usePuzzleSettings();
     const isTablet = useGlobalSearchParams().isTablet === 'true';
     const styles = GlobalStyle(theme, isTablet);
 
@@ -284,7 +287,7 @@ export default function DemoPuzzle() {
 
             setTimeout(async () => {
                 await chessboardRef.current?.board.move(openingMove);
-            }, 500);
+            }, opponentDelay(500, opponentSpeed));
         }
     };
 
@@ -373,7 +376,7 @@ export default function DemoPuzzle() {
 
             setTimeout(async () => {
                 await chessboardRef.current?.board.move(openingMove);
-            }, 500);
+            }, opponentDelay(500, opponentSpeed));
         }
     };
 
@@ -486,11 +489,13 @@ export default function DemoPuzzle() {
         const expectedMove = moves[moveNumber * 2 - 1];
 
         if (!detectedMove || detectedMove !== expectedMove) {
+            if (haptics) void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
             setRetryFen(previousFen);
             handleWrongMove(previousFen, detectedMove);
             return;
         }
 
+        if (haptics) void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         setRedoUnlocked((current) => Math.max(current, moveNumber + 1));
         setRetryFen(null);
         wrongMoveRequestRef.current += 1;
@@ -520,7 +525,7 @@ export default function DemoPuzzle() {
         setTimeout(async () => {
             chess.move(followUpNotation);
             await chessboardRef.current?.board.move(followUpNotation);
-        }, 700);
+        }, opponentDelay(700, opponentSpeed));
     };
 
     const gestureEnabled = Boolean(puzzleReady && !pendingMove && !retryFen && lastFEN && turn && getTurnFromFEN(lastFEN) !== turn);
@@ -542,7 +547,7 @@ export default function DemoPuzzle() {
 
             <View style={localStyles.boardWrapper}>
                 <ChessboardDemo
-                    playerBlack={currentPuzzle?.fen?.split(' ')[1] === 'w' || false}
+                    playerBlack={autoFlip && currentPuzzle?.fen?.split(' ')[1] === 'w'}
                     ref={chessboardRef}
                     colors={{ black: theme.player2Square, white: theme.player1Square }}
                     isTablet={isTablet}
@@ -597,12 +602,12 @@ export default function DemoPuzzle() {
                     <IconSymbol size={isTablet ? 40 : 32} style={{ marginLeft: 'auto' }} name="chevron.up.circle.fill" color={theme.primaryText} />
                 </View>
 
-                <View style={localStyles.timeElapsed}>
+                {showTimer && <View style={localStyles.timeElapsed}>
                     <IconSymbol style={localStyles.clockIcon} size={isTablet ? 40 : 32} name="clock" color={theme.primaryText} />
                     <Text style={[styles.h2, { textAlign: 'right', color: theme.primaryText }]}>
                         {secondsToHMS(elapsedTime)}
                     </Text>
-                </View>
+                </View>}
             </View>
 
             <PuzzleBar onHint={handleGetHint} hintLabel={hintButtonLabel(activeHints)} onUndo={handleUndo} onRedo={handleRedo} onReset={resetToStart} available={actionAvailability} isTablet={isTablet} />

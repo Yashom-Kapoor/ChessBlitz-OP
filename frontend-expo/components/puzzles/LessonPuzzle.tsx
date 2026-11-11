@@ -18,6 +18,8 @@ import GlassBlurView from '@/components/GlassBlurView';
 import { postCompletedPuzzle } from '@/api/PostCompleted';
 import { supabase } from '@/api/SupabaseClient';
 import PuzzleDevHUD from '@/components/puzzles/PuzzleDevHUD';
+import { opponentDelay, usePuzzleSettings } from '@/context/PuzzleSettingsContext';
+import * as Haptics from 'expo-haptics';
 import WrongMovePrompt from '@/components/puzzles/WrongMovePrompt';
 
 interface LessonPuzzleProps {
@@ -32,6 +34,7 @@ interface LessonPuzzleProps {
 
 export default function LessonPuzzle({ length, page, pageBack, pageForward, pagePrevPuzzle, pageNextPuzzle, puzzleId }: LessonPuzzleProps) {
     const { theme } = useTheme();
+    const { autoFlip, opponentSpeed, haptics } = usePuzzleSettings();
     const isTablet = useGlobalSearchParams().isTablet === 'true';
     const [hint, setHint] = useState<string | null>(null);
 
@@ -230,7 +233,7 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
                 chess.move({ from: moves[0].substring(0, 2), to: moves[0].substring(2, 4), promotion: moves[0].substring(4) }); // Make the first move
                 setTimeout(async () => {
                     await chessboardRef.current?.board.move({ from: moves[0].substring(0, 2), to: moves[0].substring(2, 4), promotion: moves[0].substring(4) });
-                }, 500); // Delay the first move by 1 second
+                }, opponentDelay(500, opponentSpeed)); // Short pause before the opponent's opening move
             }
         }
     };
@@ -320,6 +323,7 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
         const expectedMove = moves[moveNumber * 2 - 1];
 
         if (!detectedMove || detectedMove !== expectedMove) {
+            if (haptics) void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
             setRetryFen(previousFen);
             setHint(null);
             setIsHintExpandable(false);
@@ -327,6 +331,7 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
             return;
         }
 
+        if (haptics) void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         setRetryFen(null);
         chess.move({
             from: detectedMove.substring(0, 2),
@@ -359,7 +364,7 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
                 to: moves[moveNumber * 2].substring(2, 4),
                 promotion: moves[moveNumber * 2].substring(4),
             });
-        });
+        }, opponentDelay(700, opponentSpeed));
     };
 
     useEffect(() => {
@@ -405,7 +410,7 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
             <View style={localStyles.boardWrapper}>
                 {chessboardRef.current?.getPuzzle() ? (
                     <ChessboardDemo
-                        playerBlack={chessboardRef.current?.getPuzzle()?.fen?.split(' ')[1] === 'w' || false}
+                        playerBlack={autoFlip && chessboardRef.current?.getPuzzle()?.fen?.split(' ')[1] === 'w'}
                         ref={chessboardRef}
                         colors={{ black: theme.player2Square, white: theme.player1Square }}
                         isTablet={isTablet}

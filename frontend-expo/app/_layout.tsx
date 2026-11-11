@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { UserProvider } from '@/context/UserContext';
 import { ShopProvider } from '@/context/ShopContext';
+import { PuzzleSettingsProvider } from '@/context/PuzzleSettingsContext';
 import { getFocusedRouteNameFromRoute } from "expo-router/react-navigation";
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import GlobalStyle from '@/context/GlobalStyle';
@@ -45,7 +46,9 @@ export default function RootLayout() {
     <ThemeProvider>
       <UserProvider>
         <ShopProvider>
-          <ThemedRoot isTablet={isTablet} />
+          <PuzzleSettingsProvider>
+            <ThemedRoot isTablet={isTablet} />
+          </PuzzleSettingsProvider>
         </ShopProvider>
       </UserProvider>
     </ThemeProvider>
