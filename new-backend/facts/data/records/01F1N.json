@@ -1,6 +1,6 @@
 {
   "puzzle_id": "01F1N",
-  "schema_version": 1,
+  "schema_version": 2,
   "records": [
     {
       "puzzle_id": "01F1N",
@@ -30,7 +30,60 @@
         "Qxd3"
       ],
       "opponent_idea": {},
-      "engine": {}
+      "engine": {
+        "depth": 20,
+        "lines": [
+          {
+            "move": "Qc4+",
+            "score": 5.02,
+            "mate_in": null,
+            "line": [
+              "Qc4+",
+              "d5",
+              "Qxd3",
+              "Rae8",
+              "Nf3"
+            ],
+            "win_chance": 86.4
+          },
+          {
+            "move": "Qf3",
+            "score": -3.03,
+            "mate_in": null,
+            "line": [
+              "Qf3",
+              "Nxe1",
+              "Rxe1",
+              "d5",
+              "b4"
+            ],
+            "win_chance": 24.7
+          },
+          {
+            "move": "Qe4",
+            "score": -3.2,
+            "mate_in": null,
+            "line": [
+              "Qe4",
+              "Nxe1",
+              "Rxe1",
+              "d5",
+              "Qe6+"
+            ],
+            "win_chance": 23.5
+          }
+        ],
+        "solution_is_top": true,
+        "gap": "+5.02 vs -3.03",
+        "gap_pawns": 8.05,
+        "one_clear_solution": true,
+        "engine_name": "Stockfish 17.1"
+      },
+      "outcome": {
+        "checkmate": false,
+        "material_change": 3,
+        "promotion": false
+      }
     },
     {
       "puzzle_id": "01F1N",
@@ -58,7 +111,60 @@
         "Qxd3"
       ],
       "opponent_idea": {},
-      "engine": {}
+      "engine": {
+        "depth": 20,
+        "lines": [
+          {
+            "move": "Qxd3",
+            "score": 5.06,
+            "mate_in": null,
+            "line": [
+              "Qxd3",
+              "c4",
+              "Qb1",
+              "Rfe8",
+              "Nf3"
+            ],
+            "win_chance": 86.6
+          },
+          {
+            "move": "Qg4",
+            "score": -3.58,
+            "mate_in": null,
+            "line": [
+              "Qg4",
+              "Nxe1",
+              "Rxe1",
+              "Rfe8",
+              "Re6"
+            ],
+            "win_chance": 21.1
+          },
+          {
+            "move": "Re7",
+            "score": -3.69,
+            "mate_in": null,
+            "line": [
+              "Re7",
+              "Qxe7",
+              "Qxd3",
+              "Rad8",
+              "Nf3"
+            ],
+            "win_chance": 20.4
+          }
+        ],
+        "solution_is_top": true,
+        "gap": "+5.06 vs -3.58",
+        "gap_pawns": 8.64,
+        "one_clear_solution": true,
+        "engine_name": "Stockfish 17.1"
+      },
+      "outcome": {
+        "checkmate": false,
+        "material_change": 3,
+        "promotion": false
+      }
     }
   ]
 }
