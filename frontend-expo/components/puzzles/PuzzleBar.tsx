@@ -8,7 +8,8 @@ import { Platform, StyleSheet } from "react-native";
 import CustomPuzzleButton from "./CustomPuzzleButton";
 import { glassColorSchemeFor, useGlassAvailable } from "@/utils/Glass";
 
-export default function PuzzleBar({ onHint, onUndo, onRedo, onReset, available, isTablet, raised = false }: { onHint: () => void; onUndo: () => void; onRedo: () => void; onReset: () => void; available: PuzzleActionAvailability; isTablet: boolean; raised?: boolean }) {
+// `hintLabel` lets the screen change the Hint button's text, e.g. to "No more" after the last tier.
+export default function PuzzleBar({ onHint, onUndo, onRedo, onReset, available, isTablet, raised = false, hintLabel = 'hint' }: { onHint: () => void; onUndo: () => void; onRedo: () => void; onReset: () => void; available: PuzzleActionAvailability; isTablet: boolean; raised?: boolean; hintLabel?: string }) {
     const { theme } = useTheme();
     const glassAvailable = useGlassAvailable();
     const [optionsVisible, setOptionsVisible] = useState(false);
@@ -64,7 +65,7 @@ export default function PuzzleBar({ onHint, onUndo, onRedo, onReset, available, 
                 }} />
             )}
 
-            <CustomPuzzleButton name='hint' icon='lightbulb' onPress={() => runAction('hint')} disabled={!available.hint} isTablet={isTablet} />
+            <CustomPuzzleButton name={hintLabel} icon='lightbulb' onPress={() => runAction('hint')} disabled={!available.hint} isTablet={isTablet} />
             <CustomPuzzleButton name='undo' icon='arrow.uturn.backward' onPress={() => runAction('undo')} disabled={!available.undo} isTablet={isTablet} />
             <CustomPuzzleButton name='redo' icon='arrow.uturn.right' onPress={() => runAction('redo')} disabled={!available.redo} isTablet={isTablet} />
             <CustomPuzzleButton name='reset' icon='restart' onPress={() => runAction('reset')} disabled={!available.reset} isTablet={isTablet} />
