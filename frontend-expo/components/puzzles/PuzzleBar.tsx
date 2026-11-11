@@ -9,7 +9,8 @@ import GlobalStyle from "@/context/GlobalStyle";
 import CustomPuzzleButton from "./CustomPuzzleButton";
 import { glassColorSchemeFor, useGlassAvailable } from "@/utils/Glass";
 
-export default function PuzzleBar({ onHint, onUndo, onRedo, onReset, onOptions, isTablet, raised = false }: any) {
+// `hintLabel` lets the screen change the Hint button's text, e.g. to "No more" after the last tier.
+export default function PuzzleBar({ onHint, onUndo, onRedo, onReset, onOptions, isTablet, raised = false, hintLabel = 'hint' }: any) {
     const { theme } = useTheme();
     const styles = GlobalStyle(theme, isTablet);
     const glassAvailable = useGlassAvailable();
@@ -58,7 +59,7 @@ export default function PuzzleBar({ onHint, onUndo, onRedo, onReset, onOptions, 
                 }} />
             )}
 
-            <CustomPuzzleButton name='hint' icon='lightbulb' onPress={onHint} isTablet={isTablet} />
+            <CustomPuzzleButton name={hintLabel} icon='lightbulb' onPress={onHint} isTablet={isTablet} />
             <CustomPuzzleButton name='undo' icon='arrow.uturn.backward' onPress={onUndo} isTablet={isTablet} />
             <CustomPuzzleButton name='redo' icon='arrow.uturn.right' onPress={onRedo} isTablet={isTablet} />
             <CustomPuzzleButton name='reset' icon='restart' onPress={onReset} isTablet={isTablet} />
