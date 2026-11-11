@@ -4,7 +4,18 @@ import { useGlobalSearchParams, useLocalSearchParams } from 'expo-router';
 import ChessboardDemo from '@/components/puzzles/ChessboardDemo';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { secondsToHMS } from '@/utils/Time';
-import { fetchHint } from '@/api/GetHint';
+import { getHintTiers } from '@/api/GetHintTiers';
+import { getWrongMoveMessage, WRONG_MOVE_FALLBACK } from '@/api/WrongMove';
+import {
+    HintState,
+    NO_HINTS_MESSAGE,
+    NO_MORE_HINTS_MESSAGE,
+    hintButtonLabel,
+    initialHintState,
+    revealNext,
+    revealedHints,
+    withTiers,
+} from '@/utils/hintTiers';
 import { detectMoveFromFEN, getTurnFromFEN } from '@/utils/Notation';
 import { Chess } from 'chess.js';
 import { useTheme } from '@/context/ThemeContext';
@@ -61,8 +72,10 @@ export default function DemoPuzzle() {
     const [hintsUsed, setHintsUsed] = useState(0);
     const [undosUsed, setUndosUsed] = useState(0);
     const [redosUsed, setRedosUsed] = useState(0);
+    // `hint` is the short message at the top of the bubble (wrong-move feedback, "Great job!", ...).
+    // The tiered hints for the current move live in `hintState` and are listed under it.
     const [hint, setHint] = useState<string | null>(null);
-    const [error, setError] = useState<string | null>(null);
+    const [hintState, setHintState] = useState<HintState>(() => initialHintState(1));
     const [loadingHint, setLoadingHint] = useState(false);
     const [expanded, setExpanded] = useState(false);
     const [isHintExpandable, setIsHintExpandable] = useState(false);
@@ -73,6 +86,16 @@ export default function DemoPuzzle() {
     const zIndex = useSharedValue(0);
     const openingMovePlayedRef = useRef(false);
     const completionSubmittedRef = useRef(false);
+    // Hints belong to one player move. After a correct move, undo or redo, `moveNumber` changes and
+    // the hints start again at tier 1 without needing an extra state update.
+    const activeHints = hintState.moveIndex === moveNumber ? hintState : initialHintState(moveNumber);
+    // Latest hint state, for async callbacks that finish after the player has moved on.
+    const hintStateRef = useRef(activeHints);
+    useEffect(() => {
+        hintStateRef.current = activeHints;
+    }, [activeHints]);
+    // Bumped on every move, undo and reset so a slow /wrong-move reply can't land on a later position.
+    const wrongMoveRequestRef = useRef(0);
 
     const hintAnimStyle = useAnimatedStyle(() => ({
         maxHeight: withTiming(hintHeight.value, { duration: 500 }),
@@ -157,7 +180,8 @@ export default function DemoPuzzle() {
     });
 
     useEffect(() => {
-        hintHeight.value = expanded ? 300 : (isTablet ? 55 : 45);
+        // Expanded height leaves room for several hint tiers stacked under each other.
+        hintHeight.value = expanded ? (isTablet ? 520 : 420) : (isTablet ? 55 : 45);
         hintWidth.value = (expanded || !isHintExpandable) ? (isTablet ? 500 : 300) : (isTablet ? 100 : 70);
         hintOpacity.value = (expanded || !isHintExpandable) ? 1 : 0;
         zIndex.value = expanded ? 100 : 0;
@@ -220,12 +244,13 @@ export default function DemoPuzzle() {
         setRedoUnlocked(1);
         setPuzzleCompleted(false);
         setHint(null);
-        setError(null);
+        setHintState(initialHintState(1));
         setLoadingHint(false);
         setExpanded(false);
         setIsHintExpandable(false);
         setElapsedTime(0);
         setPuzzleReady(true);
+        wrongMoveRequestRef.current += 1;
 
         openingMovePlayedRef.current = false;
         completionSubmittedRef.current = false;
@@ -243,30 +268,57 @@ export default function DemoPuzzle() {
         }
     };
 
+    // Each tap reveals the next tier for the current move. Tiers are loaded on the first tap.
     const handleGetHint = async () => {
-        if (!currentPuzzle || puzzleCompleted) {
+        if (!currentPuzzle || puzzleCompleted || loadingHint) {
             return;
         }
 
-        try {
-            setHint(null);
+        const forMove = activeHints.moveIndex;
+        let state = activeHints;
+
+        if (state.tiers === null) {
+            setLoadingHint(true);
             setIsHintExpandable(false);
             setExpanded(false);
-            setLoadingHint(true);
 
-            const fetchedHint = await fetchHint(currentPuzzle.puzzleid, 2 * moveNumber);
-            setHint(fetchedHint);
-            setHintsUsed((count) => count + 1);
-            setError(null);
-        } catch (err) {
-            setError((err as Error).message);
-            setHint(null);
-            setIsHintExpandable(false);
-        } finally {
-            setLoadingHint(false);
-            setIsHintExpandable(true);
-            setExpanded(true);
+            let tiers: string[] | null = null;
+            try {
+                tiers = await getHintTiers(currentPuzzle.puzzleid, forMove);
+            } catch (err) {
+                console.warn('Hint lookup failed:', err);
+            } finally {
+                setLoadingHint(false);
+            }
+
+            // The player moved, undid or reset while we were loading: drop this result.
+            if (hintStateRef.current.moveIndex !== forMove) {
+                return;
+            }
+
+            if (tiers === null) {
+                // Leave tiers unloaded so the next tap tries again.
+                setHint("Couldn't get a hint right now. Try again in a moment.");
+                setIsHintExpandable(true);
+                setExpanded(true);
+                return;
+            }
+
+            state = withTiers(hintStateRef.current, tiers);
         }
+
+        const next = revealNext(state);
+        setHintState(next);
+
+        if (next.revealed > state.revealed) {
+            setHint(null);
+            setHintsUsed((count) => count + 1);
+        } else {
+            setHint(next.tiers && next.tiers.length > 0 ? NO_MORE_HINTS_MESSAGE : NO_HINTS_MESSAGE);
+        }
+
+        setIsHintExpandable(true);
+        setExpanded(true);
     };
 
     const resetToStart = () => {
@@ -281,10 +333,11 @@ export default function DemoPuzzle() {
         setRedoUnlocked(1);
         setPuzzleCompleted(false);
         setHint(null);
-        setError(null);
+        setHintState(initialHintState(1));
         setIsHintExpandable(false);
         setExpanded(false);
         setLastFEN(currentPuzzle.fen);
+        wrongMoveRequestRef.current += 1;
         setElapsedTime(0);
         setTurn(getTurnFromFEN(currentPuzzle.fen));
 
@@ -307,6 +360,7 @@ export default function DemoPuzzle() {
             return;
         }
 
+        wrongMoveRequestRef.current += 1;
         chess.undo();
 
         if (getTurnFromFEN(chess.fen()) === turn) {
@@ -349,6 +403,44 @@ export default function DemoPuzzle() {
         }, 200);
     };
 
+    // A wrong move: ask /wrong-move (Ticket 5, mocked for now) what kind of mistake it was, show a
+    // short message, and put the piece back so the player can try again. Earlier hints stay listed.
+    const handleWrongMove = (previousFen: string, playedMove: string | null) => {
+        const requestId = ++wrongMoveRequestRef.current;
+
+        setHint('Hmmm...');
+        setIsHintExpandable(false);
+        setExpanded(false);
+
+        setTimeout(() => {
+            if (requestId !== wrongMoveRequestRef.current) {
+                return;
+            }
+            chessboardRef.current?.board?.resetBoard(previousFen);
+            setLastFEN(previousFen);
+        }, 600);
+
+        const showMessage = (message: string) => {
+            if (requestId !== wrongMoveRequestRef.current) {
+                return;
+            }
+            setHint(message);
+            setIsHintExpandable(true);
+            setExpanded(true);
+        };
+
+        if (!currentPuzzle || !playedMove) {
+            showMessage(WRONG_MOVE_FALLBACK);
+            return;
+        }
+
+        void getWrongMoveMessage({
+            puzzleId: currentPuzzle.puzzleid,
+            moveIndex: moveNumber,
+            move: playedMove,
+        }).then(showMessage);
+    };
+
     const handleMove = ({ state }: { state: { fen: string } }) => {
         if (!turn) {
             return;
@@ -365,13 +457,14 @@ export default function DemoPuzzle() {
         const expectedMove = moves[moveNumber * 2 - 1];
 
         if (!detectedMove || detectedMove !== expectedMove) {
-            setHint('Try again!');
-            setIsHintExpandable(false);
-            setExpanded(false);
+            handleWrongMove(previousFen, detectedMove);
             return;
         }
 
+        wrongMoveRequestRef.current += 1;
         chess.move(toMoveNotation(detectedMove));
+        // Clear this move's hints, including after the last move of the puzzle.
+        setHintState(initialHintState(moveNumber + 1));
         setHint(null);
         setIsHintExpandable(false);
         setExpanded(false);
@@ -401,6 +494,10 @@ export default function DemoPuzzle() {
     const gestureEnabled = Boolean(puzzleReady && lastFEN && turn && getTurnFromFEN(lastFEN) !== turn);
     const bestMoveLabel = moves[2 * moveNumber - 1] ?? '...';
     const ratingLabel = currentPuzzle?.rating ?? '1000';
+    // The message (if any) first, then every tier revealed so far for this move.
+    const bubbleText = loadingHint
+        ? 'Hmmm...'
+        : [hint, ...revealedHints(activeHints)].filter(Boolean).join('\n\n') || 'Need a hint?';
 
     return (
         <BackgroundContext theme={theme} style={localStyles.container}>
@@ -436,7 +533,7 @@ export default function DemoPuzzle() {
                     <GlassBlurView theme={theme} isTablet={isTablet} color={theme.hintBubble} glass="clear" interactive />
                     <Animated.View style={hintAnimStyle}>
                         <Text style={{ ...styles.h4, color: theme.secondaryText, ...localStyles.hintSpeech }}>
-                            {loadingHint ? 'Hmmm...' : error ? error : hint ? hint : 'Need a hint?'}
+                            {bubbleText}
                         </Text>
                     </Animated.View>
                     <Animated.Image
@@ -473,7 +570,7 @@ export default function DemoPuzzle() {
                 </View>
             </View>
 
-            <PuzzleBar onHint={handleGetHint} onUndo={handleUndo} onRedo={handleRedo} onReset={resetToStart} onOptions={null} isTablet={isTablet} />
+            <PuzzleBar onHint={handleGetHint} hintLabel={hintButtonLabel(activeHints)} onUndo={handleUndo} onRedo={handleRedo} onReset={resetToStart} onOptions={null} isTablet={isTablet} />
         </BackgroundContext>
     );
 }
