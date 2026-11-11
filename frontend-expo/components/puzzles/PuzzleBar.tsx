@@ -1,24 +1,29 @@
+import { useState } from 'react';
+import PuzzleOptions from './PuzzleOptions';
+import { PuzzleAction, PuzzleActionAvailability } from './puzzleActions';
 import { useTheme } from "@/context/ThemeContext";
 import { BlurView } from "expo-blur";
 import { GlassContainer, GlassView } from "expo-glass-effect";
-import { Tabs } from "expo-router";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
-import { IconSymbol } from "../ui/IconSymbol";
-import CustomTabButton from "../CustomTabButton";
-import GlobalStyle from "@/context/GlobalStyle";
+import { Platform, StyleSheet } from "react-native";
 import CustomPuzzleButton from "./CustomPuzzleButton";
 import { glassColorSchemeFor, useGlassAvailable } from "@/utils/Glass";
 
 // `hintLabel` lets the screen change the Hint button's text, e.g. to "No more" after the last tier.
-export default function PuzzleBar({ onHint, onUndo, onRedo, onReset, onOptions, isTablet, raised = false, hintLabel = 'hint' }: any) {
+export default function PuzzleBar({ onHint, onUndo, onRedo, onReset, available, isTablet, raised = false, hintLabel = 'hint' }: { onHint: () => void; onUndo: () => void; onRedo: () => void; onReset: () => void; available: PuzzleActionAvailability; isTablet: boolean; raised?: boolean; hintLabel?: string }) {
     const { theme } = useTheme();
-    const styles = GlobalStyle(theme, isTablet);
     const glassAvailable = useGlassAvailable();
+    const [optionsVisible, setOptionsVisible] = useState(false);
+    const handlers = { hint: onHint, undo: onUndo, redo: onRedo, reset: onReset };
+    const runAction = (action: PuzzleAction) => {
+        if (!available[action]) return;
+        handlers[action]();
+    };
 
     // GlassContainer lets the bar's glass and the pressed button's glass merge into one shape
     // as they approach, instead of rendering as two stacked panes. It degrades to a plain View
     // off iOS. `spacing` is the distance at which that merge starts.
     return (
+        <>
         <GlassContainer spacing={isTablet ? 30 : 20} style={Platform.select({
             ios: {
                 position: raised ? 'relative' : 'absolute',
@@ -60,11 +65,13 @@ export default function PuzzleBar({ onHint, onUndo, onRedo, onReset, onOptions, 
                 }} />
             )}
 
-            <CustomPuzzleButton name={hintLabel} icon='lightbulb' onPress={onHint} isTablet={isTablet} />
-            <CustomPuzzleButton name='undo' icon='arrow.uturn.backward' onPress={onUndo} isTablet={isTablet} />
-            <CustomPuzzleButton name='redo' icon='arrow.uturn.right' onPress={onRedo} isTablet={isTablet} />
-            <CustomPuzzleButton name='reset' icon='restart' onPress={onReset} isTablet={isTablet} />
-            <CustomPuzzleButton name='options' icon='ellipsis' onPress={onOptions} isTablet={isTablet} />
+            <CustomPuzzleButton name={hintLabel} icon='lightbulb' onPress={() => runAction('hint')} disabled={!available.hint} isTablet={isTablet} />
+            <CustomPuzzleButton name='undo' icon='arrow.uturn.backward' onPress={() => runAction('undo')} disabled={!available.undo} isTablet={isTablet} />
+            <CustomPuzzleButton name='redo' icon='arrow.uturn.right' onPress={() => runAction('redo')} disabled={!available.redo} isTablet={isTablet} />
+            <CustomPuzzleButton name='reset' icon='restart' onPress={() => runAction('reset')} disabled={!available.reset} isTablet={isTablet} />
+            <CustomPuzzleButton name='options' icon='ellipsis' onPress={() => setOptionsVisible(true)} isTablet={isTablet} />
         </GlassContainer>
+        <PuzzleOptions visible={optionsVisible} onClose={() => setOptionsVisible(false)} isTablet={isTablet} />
+        </>
     );
 }

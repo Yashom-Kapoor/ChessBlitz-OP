@@ -1,4 +1,5 @@
 import { useHeaderHeight } from 'expo-router/react-navigation';
+import { getPuzzleActionAvailability } from '@/components/puzzles/puzzleActions';
 import React, { useRef, useState, useEffect, useLayoutEffect } from 'react';
 import { useWindowDimensions, View, Text, StyleSheet, Pressable, Image, ImageBackground, Platform, TouchableOpacity } from 'react-native';
 import { useGlobalSearchParams, useLocalSearchParams, useRouter } from 'expo-router';
@@ -18,6 +19,8 @@ import GlassBlurView from '@/components/GlassBlurView';
 import { postCompletedPuzzle } from '@/api/PostCompleted';
 import { supabase } from '@/api/SupabaseClient';
 import PuzzleDevHUD from '@/components/puzzles/PuzzleDevHUD';
+import { opponentDelay, usePuzzleSettings } from '@/context/PuzzleSettingsContext';
+import * as Haptics from 'expo-haptics';
 import WrongMovePrompt from '@/components/puzzles/WrongMovePrompt';
 
 interface LessonPuzzleProps {
@@ -32,6 +35,7 @@ interface LessonPuzzleProps {
 
 export default function LessonPuzzle({ length, page, pageBack, pageForward, pagePrevPuzzle, pageNextPuzzle, puzzleId }: LessonPuzzleProps) {
     const { theme } = useTheme();
+    const { autoFlip, opponentSpeed, haptics } = usePuzzleSettings();
     const isTablet = useGlobalSearchParams().isTablet === 'true';
     const windowSize = useWindowDimensions();
     const [layoutSize, setLayoutSize] = useState({ width: windowSize.width, height: windowSize.height });
@@ -147,9 +151,23 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
     const [turn, setTurn] = useState<string | null>(null); // Track the turn
     const [redoUnlocked, setRedoUnlocked] = useState<number | null>(1); // Track the redo max state
     const [puzzleCompleted, setPuzzleCompleted] = useState<boolean | null>(false); // Track puzzle completion stat
+    const [pendingMove, setPendingMove] = useState(false);
     const [retryFen, setRetryFen] = useState<string | null>(null);
+    const actionAvailability = getPuzzleActionAvailability({
+        ready: Boolean(puzzleLoaded && lastFEN && turn && chessboardRef.current?.board),
+        playerTurn: Boolean(lastFEN && turn && getTurnFromFEN(lastFEN) !== turn),
+        retrying: Boolean(retryFen),
+        completed: Boolean(puzzleCompleted),
+        loadingHint,
+        pendingMove,
+        moveNumber,
+        redoUnlocked: redoUnlocked ?? 1,
+        hasProgress: chess.history().length > 1,
+        hasRedoMove: Boolean(moves[moveNumber * 2 - 1]),
+    });
 
     const handleGetHint = async () => {
+        if (!actionAvailability.hint) return;
         if (!puzzleCompleted && !retryFen) {
             try {
                 setHint(null);
@@ -223,7 +241,7 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
                 chess.move({ from: moves[0].substring(0, 2), to: moves[0].substring(2, 4), promotion: moves[0].substring(4) }); // Make the first move
                 setTimeout(async () => {
                     await chessboardRef.current?.board.move({ from: moves[0].substring(0, 2), to: moves[0].substring(2, 4), promotion: moves[0].substring(4) });
-                }, 500); // Delay the first move by 1 second
+                }, opponentDelay(500, opponentSpeed)); // Short pause before the opponent's opening move
             }
         }
     };
@@ -234,6 +252,7 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
     }, [moves]);
 
     const handleReset = () => {
+        if (!actionAvailability.reset) return;
         if (chessboardRef.current) {
             chess.load(chessboardRef.current.getPuzzle().fen); // Reset the chess board to starting position
             chessboardRef.current.board.resetBoard(chessboardRef.current.getPuzzle().fen); // Call the reset method on the chessboard
@@ -252,6 +271,7 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
         }
     };
     const handleUndo = () => {
+        if (!actionAvailability.undo) return;
         if (chessboardRef.current) {
             if (retryFen) {
                 // Wrong moves only reach the displayed board; the engine is still at the valid position.
@@ -265,6 +285,7 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
                 return;
             }
 
+            setPuzzleCompleted(false);
             chess.undo(); // Undo the last move
             if (getTurnFromFEN(chess.fen()) === turn) {
                 chess.undo();
@@ -274,38 +295,26 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
             setHint(null);
             setIsHintExpandable(false);
 
-            if (moveNumber <= 1) {
-                chess.load(chessboardRef.current.getPuzzle().fen); // Reset the chess board to starting position
-                chessboardRef.current.board.resetBoard(chessboardRef.current.getPuzzle().fen); // Call the reset method on the chessboard
-                setMoveNumber(1); // Reset move number
-                setLastFEN(chessboardRef.current.getPuzzle().fen); // Reset last FEN
-
-                handleFirstMove(); // Make the first move
-            } else {
-                chessboardRef.current.board.resetBoard(chess.fen()); // Call the reset method on the chessboard
-                setTurn(getTurnFromFEN(chessboardRef.current.getPuzzle().fen)); // Reset turn
-                setUndosUsed(undosUsed + 1); // Counts undo
-            }
+            chessboardRef.current.board.resetBoard(chess.fen());
+            setTurn(getTurnFromFEN(chessboardRef.current.getPuzzle().fen));
+            setUndosUsed((count) => count + 1);
 
         }
     };
     const handleRedo = () => {
-        if (chessboardRef.current && redoUnlocked !== null) {
-            if (retryFen) {
-                return;
-            }
+        if (!actionAvailability.redo || !chessboardRef.current?.board) return;
+        const redoMove = moves[moveNumber * 2 - 1];
+        if (!redoMove) return;
 
-            if (moveNumber < redoUnlocked) {
-                setTimeout(async () => {
-                    await chessboardRef.current?.board.move({
-                        from: moves[moveNumber * 2 - 1].substring(0, 2),
-                        to: moves[moveNumber * 2 - 1].substring(2, 4),
-                        promotion: moves[moveNumber * 2 - 1].substring(4)
-                    });
-                    setRedosUsed(redosUsed + 1); // Counts redo
-                }, 200);
+        setPendingMove(true);
+        setTimeout(async () => {
+            try {
+                await chessboardRef.current?.board.move({ from: redoMove.substring(0, 2), to: redoMove.substring(2, 4), promotion: redoMove.substring(4) });
+                setRedosUsed((count) => count + 1);
+            } finally {
+                setPendingMove(false);
             }
-        }
+        }, 200);
     };
 
 
@@ -322,6 +331,7 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
         const expectedMove = moves[moveNumber * 2 - 1];
 
         if (!detectedMove || detectedMove !== expectedMove) {
+            if (haptics) void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
             setRetryFen(previousFen);
             setHint(null);
             setIsHintExpandable(false);
@@ -329,6 +339,7 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
             return;
         }
 
+        if (haptics) void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         setRetryFen(null);
         chess.move({
             from: detectedMove.substring(0, 2),
@@ -361,7 +372,7 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
                 to: moves[moveNumber * 2].substring(2, 4),
                 promotion: moves[moveNumber * 2].substring(4),
             });
-        });
+        }, opponentDelay(700, opponentSpeed));
     };
 
     useEffect(() => {
@@ -408,12 +419,12 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
                 {chessboardRef.current?.getPuzzle() ? (
                     <ChessboardDemo
                         boardSize={boardSize}
-                        playerBlack={chessboardRef.current?.getPuzzle()?.fen?.split(' ')[1] === 'w' || false}
+                        playerBlack={autoFlip && chessboardRef.current?.getPuzzle()?.fen?.split(' ')[1] === 'w'}
                         ref={chessboardRef}
                         colors={{ black: theme.player2Square, white: theme.player1Square }}
                         isTablet={isTablet}
                         onMove={handleMove}
-                        gestureEnabled={!retryFen && ((getTurnFromFEN(lastFEN) !== turn) || false)}
+                        gestureEnabled={!pendingMove && !retryFen && Boolean(lastFEN && turn && getTurnFromFEN(lastFEN) !== turn)}
                     />
                 ) : (
                     <ChessboardDemo
@@ -465,7 +476,7 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
                 </Pressable>
             </Animated.View>
 
-            <PuzzleBar raised onHint={handleGetHint} onUndo={handleUndo} onRedo={handleRedo} onReset={handleReset} onOptions={null} isTablet={isTablet} />
+            <PuzzleBar raised onHint={handleGetHint} onUndo={handleUndo} onRedo={handleRedo} onReset={handleReset} available={actionAvailability} isTablet={isTablet} />
 
             <View style={{...styles.hStack, gap: isTablet ? 30 : 20, paddingHorizontal: isTablet ? 30 : 20, marginBottom: 0, marginTop: 0}}>
             
