@@ -63,7 +63,7 @@ jest.mock('@/components/puzzles/ChessboardDemo', () => {
         React.useImperativeHandle(ref, () => ({
             getPuzzle: () => fakeBoard.puzzle,
             board: {
-                // Programmatic moves fire onMove, like react-native-chessboard.
+                // Programmatic moves fire onMove, like the real board.
                 move: async (m: any) => {
                     fakeBoard.game.move(m);
                     fakeBoard.props.onMove({ state: { fen: fakeBoard.game.fen() } });

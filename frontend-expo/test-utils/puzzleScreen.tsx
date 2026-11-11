@@ -3,7 +3,7 @@
  *
  * The real screen is rendered. Only the parts that need a device (the chessboard, glass/blur
  * views, Supabase) are swapped for small fakes. The fake board is a chess.js game that calls
- * `onMove` the way react-native-chessboard does.
+ * `onMove` the way components/chess/Chessboard does.
  */
 import { Chess } from 'chess.js';
 

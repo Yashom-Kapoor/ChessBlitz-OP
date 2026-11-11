@@ -3,7 +3,7 @@ import { Dimensions } from 'react-native';
 import { fetchRandomPuzzle } from '@/api/RandomPuzzle';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import Chessboard, { ChessboardRef } from 'react-native-chessboard';
+import Chessboard, { ChessboardRef, ChessMoveInfo } from '@/components/chess/Chessboard';
 import { SvgProps } from 'react-native-svg';
 import { useTheme } from '@/context/ThemeContext';
 import { fetchPuzzle } from '@/api/GetPuzzle';
@@ -31,7 +31,7 @@ type PieceSvgComponent = React.ComponentType<SvgProps>;
 
 // Define the props for ChessboardDemo
 interface ChessboardDemoProps {
-    onMove?: (info: any) => void; // Optional onMove callback
+    onMove?: (info: ChessMoveInfo) => void; // Optional onMove callback
     onPuzzleLoaded?: (puzzle: any) => void;
     colors?: { black: string; white: string }; // Optional colors for the chessboard
     gestureEnabled?: boolean; // Optional gesture enabled flag
@@ -39,7 +39,7 @@ interface ChessboardDemoProps {
     isTablet?: boolean;
     puzzleId?: string;
     renderPiece?: (piece: string) => React.ReactElement | null;
-    playerBlack?: boolean; // Optional flag to determine if the player is black
+    playerBlack?: boolean; // Shows the board from black's side (black at the bottom)
 }
 
 // Define the type of the ref object
@@ -124,7 +124,7 @@ const ChessboardDemo = forwardRef<ChessboardDemoRef, ChessboardDemoProps>((props
 
         return (
             <View style={styles.pieceContainer}>
-                <PieceComponent width={pieceSize} height={pieceSize} style={styles.pieceSvg} transform={props.playerBlack ? `scale(-1)` : `scale(1)`} />
+                <PieceComponent width={pieceSize} height={pieceSize} style={styles.pieceSvg} />
             </View>
         );
     };
@@ -192,19 +192,17 @@ const ChessboardDemo = forwardRef<ChessboardDemoRef, ChessboardDemoProps>((props
         );
     }
     return (
-        <View style={{ transform: `scale(${props.playerBlack ? '-1' : '1'})`}} >
+        <View>
             <GestureHandlerRootView style={styles.boardContainer}>
                 <Chessboard
-                    withLetters={false}
-                    withNumbers={false}
+                    orientation={props.playerBlack ? 'b' : 'w'}
                     renderPiece={renderPieceHandler}
                     boardSize={resolvedBoardSize}
-
-                    colors={boardColors} // Default colors if not provided
-                    gestureEnabled={props.gestureEnabled} // Manage gestures
-                    fen={puzzle?.fen} // Pass the fetched FEN to the chessboard
+                    colors={boardColors}
+                    gestureEnabled={props.gestureEnabled}
+                    fen={puzzle?.fen}
                     ref={chessboardRef}
-                    onMove={props.onMove} // Pass the onMove callback
+                    onMove={props.onMove}
                 />
             </GestureHandlerRootView>
         </View>

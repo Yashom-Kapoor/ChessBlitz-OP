@@ -174,6 +174,57 @@ def update_elo(rating_a, rating_b, score_a, k=32):
     new_rating_a = rating_a + k * (score_a - expected_score)
     return new_rating_a
 
+# -------- THEME RATINGS --------
+# One row per student in "Ratings", with an `overall` column plus one column per puzzle theme
+# (fork, pin, skewer, ...). Theme names match the Lichess tags stored in Puzzles.Themes.
+def get_theme_ratings(supabase, user_id):
+    res = supabase.table("Ratings") \
+        .select("*") \
+        .eq("student_id", user_id) \
+        .maybe_single() \
+        .execute()
+    return (res.data if res else None) or {}
+
+def puzzle_theme_names(themes):
+    """Puzzles.Themes may be a space-separated string or a list; return a list of names."""
+    if not themes:
+        return []
+    if isinstance(themes, str):
+        return themes.split()
+    return [str(t) for t in themes]
+
+def theme_column(row, theme):
+    """The Ratings column for a theme, matching case-insensitively (backRankMate vs backrankmate)."""
+    if theme in row:
+        return theme
+    lowered = theme.lower()
+    return next((key for key in row if key.lower() == lowered), None)
+
+def update_theme_ratings(supabase, user_id, themes, puzzle_rating, completed):
+    """Apply the Elo update to every theme column this puzzle is tagged with."""
+    try:
+        row = get_theme_ratings(supabase, user_id)
+        if not row:
+            return {}
+
+        updates = {}
+        for theme in puzzle_theme_names(themes):
+            column = theme_column(row, theme)
+            if column is None or column in ("student_id", "name", "overall"):
+                continue
+            current = row.get(column)
+            if not isinstance(current, (int, float)):
+                current = 1000
+            updates[column] = round(update_elo(current, puzzle_rating, int(completed)))
+
+        if updates:
+            supabase.table("Ratings").update(updates).eq("student_id", user_id).execute()
+        return updates
+
+    except Exception as e:
+        print(f"Error updating theme ratings: {e}")
+        return {}
+
 def get_puzzle_attempt(puzzle_id: str, student_id: str, supabase):
     ...
 
@@ -476,6 +527,19 @@ def get_user():
 
     return jsonify(response), 200    
 
+# Get the user's per-theme puzzle ratings (one row from "Ratings"; {} if they have none yet)
+@app.route("/ratings/me", methods=["GET"])
+@require_auth
+def get_my_ratings():
+    token = get_bearer_token(request)
+    supabase = get_supabase_with_auth(token)
+
+    try:
+        return jsonify(get_theme_ratings(supabase, g.user_id)), 200
+    except Exception as e:
+        print(f"Error fetching ratings: {e}")
+        return jsonify({"error": "Failed to fetch ratings"}), 500
+
 # -------- PUZZLES --------
 
 # Get random puzzle
@@ -532,7 +596,8 @@ def completed_puzzle_route():
     info = get_user_info(supabase)
     student_rating = info["rating"]
     puzzles_completed = info["puzzles_completed"]
-    puzzle_rating = get_puzzle_by_id(puzzle_id)["Rating"]
+    puzzle = get_puzzle_by_id(puzzle_id)
+    puzzle_rating = puzzle["Rating"]
     new_rating = round(update_elo(student_rating, puzzle_rating, int(completed)))
     rating_gain = new_rating - student_rating
     
@@ -549,12 +614,15 @@ def completed_puzzle_route():
 
     update_currency(supabase, token, currency_gain)
 
+    theme_updates = update_theme_ratings(supabase, g.user_id, puzzle.get("Themes"), puzzle_rating, completed)
+
     if not result:
         return jsonify({"error": "Failed to record attempt"}), 500
 
     return jsonify({
         "message": "Puzzle attempt recorded",
-        "data": result
+        "data": result,
+        "theme_ratings": theme_updates
     }), 201
 
 # -------- LESSONS (CONTENT SUBTEAM) -------- THIS WHOLE BLACK IS OLD AND TEMPORARY, JUST FOR TESTING PURPOSES.
