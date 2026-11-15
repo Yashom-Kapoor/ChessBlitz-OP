@@ -1,5 +1,5 @@
 import { useTheme } from "@/context/ThemeContext";
-import { NativeTabs } from "expo-router/unstable-native-tabs";
+import { NativeTabs } from "expo-router/native-tabs";
 
 export default function NativePagesBar({}) {
     const { theme } = useTheme();

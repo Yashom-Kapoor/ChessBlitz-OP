@@ -1040,8 +1040,9 @@ def dev_set_items():
 # ======================== RUN FLASK ========================
 
 def main():
-    #app.run(debug=False, host='0.0.0.0', port=int(os.getenv("PORT", 5000)))
-    app.run(debug=True)
+    # 0.0.0.0 so a phone on the same Wi-Fi can reach this machine. 127.0.0.1 is loopback only.
+    # Default off 5000: macOS AirPlay Receiver already listens on *:5000 and answers with AirTunes.
+    app.run(debug=True, host="0.0.0.0", port=int(os.getenv("PORT", 5050)))
 
 if __name__ == "__main__":
     main()
