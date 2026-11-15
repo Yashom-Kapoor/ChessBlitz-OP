@@ -44,16 +44,16 @@ describe('wrong-move request', () => {
     });
 
     test('live call POSTs that body to that path', async () => {
-        const realFetch = global.fetch;
-        global.fetch = fakeFetch(200, FULL);
+        const realFetch = globalThis.fetch;
+        globalThis.fetch = fakeFetch(200, FULL);
         try {
             await classifyWrongMove(req, { source: 'live' });
-            const [url, init] = jest.mocked(global.fetch).mock.calls[0] as [string, RequestInit];
+            const [url, init] = jest.mocked(globalThis.fetch).mock.calls[0] as [string, RequestInit];
             expect(url).toBe('http://127.0.0.1:5000/puzzles/00Kia/wrong-move');
             expect(init.method).toBe('POST');
             expect(JSON.parse(init.body as string)).toEqual({ move_index: 1, move: 'h5g4' });
         } finally {
-            global.fetch = realFetch;
+            globalThis.fetch = realFetch;
         }
     });
 });
@@ -103,24 +103,24 @@ describe('wrong-move messages', () => {
     });
 
     test.each([400, 401, 404, 500])('HTTP %i falls back', async (status) => {
-        const realFetch = global.fetch;
-        global.fetch = fakeFetch(status, { error: 'Illegal move' });
+        const realFetch = globalThis.fetch;
+        globalThis.fetch = fakeFetch(status, { error: 'Illegal move' });
         try {
             expect(await getWrongMoveMessage(req, { source: 'live' })).toBe(WRONG_MOVE_FALLBACK);
         } finally {
-            global.fetch = realFetch;
+            globalThis.fetch = realFetch;
         }
     });
 
     test('backend off falls back', async () => {
-        const realFetch = global.fetch;
-        global.fetch = jest.fn(async () => {
+        const realFetch = globalThis.fetch;
+        globalThis.fetch = jest.fn(async () => {
             throw new TypeError('Network request failed');
         }) as unknown as typeof fetch;
         try {
             expect(await getWrongMoveMessage(req, { source: 'live' })).toBe(WRONG_MOVE_FALLBACK);
         } finally {
-            global.fetch = realFetch;
+            globalThis.fetch = realFetch;
         }
     });
 

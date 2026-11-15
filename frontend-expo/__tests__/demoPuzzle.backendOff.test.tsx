@@ -19,13 +19,13 @@ const wait = async (ms: number) => {
 const bubble = (tree: ReactTestRenderer) =>
     tree.root.findAllByType(Text).map((t) => [].concat(t.props.children as any).join('')).find((t) => t.length > 0 && t !== '1500' && !/^\d+:\d\d/.test(t));
 
-const realFetch = global.fetch;
+const realFetch = globalThis.fetch;
 beforeEach(() => {
     jest.useFakeTimers();
 });
 afterEach(() => {
     jest.useRealTimers();
-    global.fetch = realFetch;
+    globalThis.fetch = realFetch;
 });
 
 async function playWrongMove(): Promise<ReactTestRenderer> {
@@ -44,17 +44,17 @@ async function playWrongMove(): Promise<ReactTestRenderer> {
 
 describe('wrong-move fallback with the backend unavailable', () => {
     test('backend off: shows "Not quite, try again", no raw error', async () => {
-        global.fetch = jest.fn(async () => {
+        globalThis.fetch = jest.fn(async () => {
             throw new TypeError('Network request failed');
         }) as unknown as typeof fetch;
         const tree = await playWrongMove();
         await wait(1000);
         expect(bubble(tree)).toBe(WRONG_MOVE_FALLBACK);
-        expect(global.fetch).toHaveBeenCalledWith(expect.stringMatching(/\/wrong-move$/), expect.anything());
+        expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringMatching(/\/wrong-move$/), expect.anything());
     });
 
     test('backend too slow: falls back after the timeout', async () => {
-        global.fetch = jest.fn(() => new Promise(() => {})) as unknown as typeof fetch;
+        globalThis.fetch = jest.fn(() => new Promise(() => {})) as unknown as typeof fetch;
         const tree = await playWrongMove();
         await wait(1000);
         expect(bubble(tree)).toBe('Hmmm...');
@@ -63,17 +63,17 @@ describe('wrong-move fallback with the backend unavailable', () => {
     });
 
     test('illegal move (400): falls back', async () => {
-        global.fetch = jest.fn(async () => ({ ok: false, status: 400, json: async () => ({ error: 'Illegal move' }) })) as unknown as typeof fetch;
+        globalThis.fetch = jest.fn(async () => ({ ok: false, status: 400, json: async () => ({ error: 'Illegal move' }) })) as unknown as typeof fetch;
         const tree = await playWrongMove();
         await wait(1000);
         expect(bubble(tree)).toBe(WRONG_MOVE_FALLBACK);
     });
 
     test('sends move_index and the UCI move to /puzzles/<id>/wrong-move', async () => {
-        global.fetch = jest.fn(async () => ({ ok: true, status: 200, json: async () => ({ classification: 'miss' }) })) as unknown as typeof fetch;
+        globalThis.fetch = jest.fn(async () => ({ ok: true, status: 200, json: async () => ({ classification: 'miss' }) })) as unknown as typeof fetch;
         await playWrongMove();
         await wait(1000);
-        const [url, init] = jest.mocked(global.fetch).mock.calls[0] as unknown as [string, RequestInit];
+        const [url, init] = jest.mocked(globalThis.fetch).mock.calls[0] as unknown as [string, RequestInit];
         expect(url).toMatch(/\/puzzles\/00Kia\/wrong-move$/);
         const body = JSON.parse(init.body as string);
         expect(Object.keys(body).sort()).toEqual(['move', 'move_index']);
@@ -82,7 +82,7 @@ describe('wrong-move fallback with the backend unavailable', () => {
     });
 
     test('backend returns 500: falls back', async () => {
-        global.fetch = jest.fn(async () => ({ ok: false, status: 500, json: async () => ({ error: 'Something went wrong' }) })) as unknown as typeof fetch;
+        globalThis.fetch = jest.fn(async () => ({ ok: false, status: 500, json: async () => ({ error: 'Something went wrong' }) })) as unknown as typeof fetch;
         const tree = await playWrongMove();
         await wait(1000);
         expect(bubble(tree)).toBe(WRONG_MOVE_FALLBACK);

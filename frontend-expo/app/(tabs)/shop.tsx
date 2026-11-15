@@ -27,7 +27,7 @@ export default function ShopScreen() {
 
   const [shopPage, setShopPage] = useState(0);
   const [selectedThemeName, setSelectedThemeName] = useState(theme.name);
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
 
   const gridColumns = isTablet ? 3 : 2;
   const gridHorizontalPadding = 24; // matches scrollContent horizontal padding (12 + 12)
