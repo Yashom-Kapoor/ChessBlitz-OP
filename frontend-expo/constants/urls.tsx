@@ -1,4 +1,4 @@
-export const LOCAL_API_URL = 'http://10.136.7.164:5050';
+export const LOCAL_API_URL = 'http://127.0.0.1:5050';
 export const REMOTE_API_URL = 'https://chessblitzbackend-caz1.onrender.com';
 
 /**
