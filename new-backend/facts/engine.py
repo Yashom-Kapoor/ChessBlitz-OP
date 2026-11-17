@@ -7,6 +7,7 @@ Two fields get added to every record:
 
 `compute_outcome` and `summarize_lines` are pure (no engine needed), so they are
 easy to test. `Analyzer` wraps one Stockfish process and is reused for every position.
+The batch runner gives each worker process its own single-threaded Analyzer.
 
 Scores are always from the PLAYER's point of view (the side to move in `fen`).
 """
@@ -149,27 +150,46 @@ def line_from_info(board: chess.Board, info: dict, length: int = LINE_LENGTH) ->
     }
 
 
-def enrich_document(doc: dict, analyzer: "Analyzer") -> list[str]:
-    """Fill `engine` and `outcome` on every record in place. Returns warnings to report."""
-    warnings = []
-    for r in doc["records"]:
-        r["engine"] = analyzer.engine_field(r["fen"], r["move_san"])
+# Flag reasons. The text before " (" is the category the batch runner counts in its summary.
+FLAG_NOT_TOP = "solution is not the engine's top move"
+FLAG_UNCLEAR = "no single clear solution"
+
+
+def fill_outcomes(records: list[dict]) -> None:
+    """Fill `outcome` on every record in place (no engine needed)."""
+    for r in records:
         r["outcome"] = compute_outcome(r["fen"], r["solution_line"])
-        where = f"{r['puzzle_id']} move {r['move_index']} ({r['move_san']})"
-        e = r["engine"]
-        if not e["solution_is_top"]:
-            warnings.append(f"{where}: solution is not the engine's top move "
-                            f"(engine prefers {e['lines'][0]['move']}; {e['gap']})")
-        if not e["one_clear_solution"]:
-            warnings.append(f"{where}: no single clear solution ({e['gap']})")
-    return warnings
+
+
+def flags_for(record: dict) -> list[str]:
+    """Reasons a record needs a human look, from its `engine` field."""
+    e = record["engine"]
+    if not e:
+        return []
+    where = f"move {record['move_index']} {record['move_san']}"
+    flags = []
+    if not e["solution_is_top"]:
+        flags.append(f"{where}: {FLAG_NOT_TOP} (engine prefers {e['lines'][0]['move']}; {e['gap']})")
+    if not e["one_clear_solution"]:
+        flags.append(f"{where}: {FLAG_UNCLEAR} ({e['gap']})")
+    return flags
+
+
+def enrich_records(records: list[dict], analyzer: "Analyzer") -> list[str]:
+    """Fill `engine` and `outcome` on every record in place. Returns flags (may be empty)."""
+    fill_outcomes(records)
+    flags = []
+    for r in records:
+        r["engine"] = analyzer.engine_field(r["fen"], r["move_san"])
+        flags += flags_for(r)
+    return flags
 
 
 class Analyzer:
     """One Stockfish process, reused for every position.
 
         with Analyzer() as a:
-            record["engine"] = a.engine_field(record["fen"], record["move_san"])
+            flags = enrich_records(records, a)
     """
 
     def __init__(self, path=None, depth: int = DEPTH, multipv: int = MULTIPV):

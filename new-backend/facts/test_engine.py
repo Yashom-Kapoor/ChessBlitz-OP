@@ -1,4 +1,4 @@
-"""Tests for engine.py and add_engine.py. Run: python test_engine.py  (or python -m pytest -q)
+"""Tests for engine.py. Run: python test_engine.py  (or python -m pytest -q)
 
 The pure tests always run. Tests marked "needs Stockfish" are skipped when no binary
 is found ($STOCKFISH_PATH or `stockfish` on PATH).
@@ -12,7 +12,7 @@ for _p in (_HERE, _HERE.parent / "src" / "backend"):
     sys.path.insert(0, str(_p))
 
 import engine
-from records import build_records, validate_document
+from records import build_base_records, validate_records
 
 MATE_FEN = "r1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 3 3"
 PROMO_FEN = "8/P7/8/8/8/8/k7/4K3 b - - 0 1"
@@ -25,13 +25,13 @@ def _line(move, score=None, mate=None):
 # --- outcome --------------------------------------------------------------
 
 def test_outcome_mate_in_one():
-    [r] = build_records("m", MATE_FEN, "g8f6 h5f7")["records"]
+    [r] = build_base_records("m", MATE_FEN, "g8f6 h5f7")
     assert engine.compute_outcome(r["fen"], r["solution_line"]) == {
         "checkmate": True, "material_change": 1, "promotion": False}
 
 
 def test_outcome_promotion_counts_queen_minus_pawn():
-    [r] = build_records("p", PROMO_FEN, ["a2b2", "a7a8q"])["records"]
+    [r] = build_base_records("p", PROMO_FEN, ["a2b2", "a7a8q"])
     assert engine.compute_outcome(r["fen"], r["solution_line"]) == {
         "checkmate": False, "material_change": 8, "promotion": True}
 
@@ -114,26 +114,31 @@ def test_engine_on_mate_in_one():
     if not _has_stockfish():
         print("  (skipped: needs Stockfish)")
         return
-    doc = build_records("m", MATE_FEN, "g8f6 h5f7")
+    records = build_base_records("m", MATE_FEN, "g8f6 h5f7")
     with engine.Analyzer(depth=12) as a:
-        assert engine.enrich_document(doc, a) == []
-    validate_document(doc)
-    e = doc["records"][0]["engine"]
+        assert engine.enrich_records(records, a) == []
+    validate_records(records)
+    e = records[0]["engine"]
     assert e["lines"][0] == {**e["lines"][0], "move": "Qxf7#", "score": None, "mate_in": 1}
     assert e["solution_is_top"] and e["depth"] == 12 and len(e["lines"]) == 3
 
 
-def test_committed_records_are_filled():
-    """Every committed record has engine + outcome (Ticket 4 'done when'), and the API serves them."""
-    import records_api
-    from flask import Flask
+def test_flags_for():
+    rec = {"move_index": 2, "move_san": "e4",
+           "engine": engine.summarize_lines([_line("Nf3", 1.0), _line("e4", 0.9)], "e4", 20)}
+    flags = engine.flags_for(rec)
+    assert len(flags) == 2
+    assert flags[0].startswith("move 2 e4: " + engine.FLAG_NOT_TOP)
+    assert engine.FLAG_UNCLEAR in flags[1]
+    assert engine.flags_for({"move_index": 1, "move_san": "e4", "engine": {}}) == []
 
-    app = Flask(__name__)
-    app.register_blueprint(records_api.records_bp)
-    c = app.test_client()
+
+def test_v2_reference_records_are_filled():
+    """data/records/*.json are the frozen schema-v2 snapshots the demo-puzzle check compares against."""
+    import json
     for path in sorted((_HERE / "data" / "records").glob("*.json")):
-        doc = c.get(f"/puzzles/{path.stem}/records").get_json()
-        validate_document(doc)
+        doc = json.loads(path.read_text())
+        assert doc["schema_version"] == 2, path.stem
         for r in doc["records"]:
             assert r["engine"]["lines"] and r["engine"]["depth"] == engine.DEPTH, path.stem
             assert set(r["outcome"]) == {"checkmate", "material_change", "promotion"}, path.stem
