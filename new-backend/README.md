@@ -57,6 +57,19 @@ rows that user is allowed to see.
 **When you add a route, add `@require_auth`** unless it is genuinely public. Several existing
 routes are missing it — see Known issues in the root README.
 
+## Leaderboard profile synchronization
+
+`Users.name` and `Users.rating` are the source for the leaderboard's display name and overall Elo.
+Apply `supabase/migrations/20261118000100_sync_leaderboard_profiles.sql` from the repository root
+in Supabase's SQL Editor. It updates the existing signup trigger to populate `Ratings.name` and
+`Ratings.overall` on signup and whenever a profile's name or rating is updated. Puzzle completion
+already updates `Users.rating`, so the leaderboard follows in the same database transaction.
+The migration fills missing leaderboard fields for existing accounts and preserves per-theme scores.
+
+Run its integration tests from the repository root with
+`python3 -m unittest discover -s supabase/tests -v`. PostgreSQL's `initdb`, `pg_ctl`, and `psql`
+must be on `PATH`; the tests create and remove their own isolated local database.
+
 ## Working with Supabase queries
 
 `.single()` **raises** when a query matches zero rows, which surfaces as a `500`. Use
