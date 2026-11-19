@@ -364,36 +364,56 @@ def delete_classroom(classroom_id, supabase):
 
 # -------- STUDENT CLASSROOM MEMBERSHIP --------
 
-# Enroll a student in a classroom
-def join_classroom(student_uid, join_code, supabase):
+class MembershipError(Exception):
+    def __init__(self, message, status):
+        super().__init__(message)
+        self.status = status
 
-    classroom = supabase.table("Classroom-DB") \
-        .select("*") \
-        .eq("join_code", join_code) \
-        .single() \
-        .execute()
 
-    if classroom.data is None:
+def get_membership_profile(student_uid, supabase):
+    response = supabase.table("Users").select("classroom") \
+        .eq("user_id", student_uid).maybe_single().execute()
+    if response is None or response.data is None:
+        raise MembershipError("Your student profile could not be found.", 404)
+    return response.data
+
+
+def get_student_classroom(student_uid, supabase):
+    classroom_id = get_membership_profile(student_uid, supabase)["classroom"]
+    if classroom_id is None:
         return None
+    response = supabase.table("Classroom-DB").select("classroom_id,name") \
+        .eq("classroom_id", classroom_id).maybe_single().execute()
+    if response is None or response.data is None:
+        raise MembershipError("Your classroom could not be loaded. Please try again.", 404)
+    return response.data
 
+
+def join_classroom(student_uid, join_code, supabase):
+    profile = get_membership_profile(student_uid, supabase)
+    classroom = supabase.table("Classroom-DB").select("classroom_id,name,is_active") \
+        .eq("join_code", join_code).maybe_single().execute()
+    if classroom is None or classroom.data is None or classroom.data.get("is_active") is False:
+        raise MembershipError("No active classroom matches that join code.", 404)
     classroom_id = classroom.data["classroom_id"]
+    if profile["classroom"] not in (None, classroom_id):
+        raise MembershipError("Unenroll from your current classroom before joining another.", 409)
+    if profile["classroom"] is None:
+        updated = supabase.table("Users").update({"classroom": classroom_id}) \
+            .eq("user_id", student_uid).is_("classroom", "null").execute()
+        # Do not overwrite a membership changed by another request/device.
+        if not updated.data and get_membership_profile(student_uid, supabase)["classroom"] != classroom_id:
+            raise MembershipError("Your enrollment changed. Refresh and try again.", 409)
+    return {"classroom_id": classroom_id, "name": classroom.data["name"]}
 
-    supabase.table("Users") \
-        .update({"classroom": classroom_id}) \
-        .eq("id", student_uid) \
-        .execute()
 
-    return classroom_id
-
-# Unenroll student from classroom
 def leave_classroom(student_uid, supabase):
-
-    supabase.table("Users") \
-        .update({"classroom": None}) \
-        .eq("id", student_uid) \
-        .execute()
-
-    return True
+    classroom_id = get_membership_profile(student_uid, supabase)["classroom"]
+    if classroom_id is not None:
+        updated = supabase.table("Users").update({"classroom": None}) \
+            .eq("user_id", student_uid).eq("classroom", classroom_id).execute()
+        if not updated.data and get_membership_profile(student_uid, supabase)["classroom"] is not None:
+            raise MembershipError("Your enrollment changed. Refresh and try again.", 409)
 
 # Student roster
 def get_students_in_classroom(classroom_id,supabase):
@@ -847,24 +867,44 @@ def route_delete_classroom(classroom_id):
 
 # -------- STUDENT CLASSROOM MEMBERSHIP --------
 
+@app.route("/classrooms/me", methods=["GET", "DELETE"])
+@require_auth
+def route_my_classroom():
+    client = get_supabase_with_auth(get_bearer_token(request))
+    try:
+        if request.method == "DELETE":
+            leave_classroom(g.user_id, client)
+            return jsonify({"classroom": None})
+        return jsonify({"classroom": get_student_classroom(g.user_id, client)})
+    except MembershipError as error:
+        return jsonify({"error": str(error)}), error.status
+    except Exception:
+        app.logger.exception("Classroom membership request failed")
+        return jsonify({"error": "Could not load or update your enrollment. Please try again."}), 500
+
+
 # Join a classroom
 @app.route("/classrooms/join", methods=["POST"])
 @require_auth
 def route_join_classroom():
-    token = get_bearer_token(request)
-    supabase = get_supabase_with_auth(token)
+    data = request.get_json(silent=True)
+    join_code = data.get("join_code") if isinstance(data, dict) else None
+    if not isinstance(join_code, str):
+        return jsonify({"error": "Enter a six-character classroom code."}), 400
+    join_code = join_code.strip().upper()
+    if len(join_code) != 6 or any(c not in string.ascii_uppercase + string.digits for c in join_code):
+        return jsonify({"error": "Enter a six-character classroom code."}), 400
 
-    data = request.json
-
-    student_uid = data["student_uid"]
-    join_code = data["join_code"]
-
-    classroom_id = join_classroom(student_uid, join_code, supabase)
-
-    if classroom_id is None:
-        return jsonify({"error": "Invalid join code"}), 400
-
-    return jsonify({"classroom_id": classroom_id})
+    client = get_supabase_with_auth(get_bearer_token(request))
+    try:
+        # Membership always belongs to the verified user, never a caller-supplied ID.
+        classroom = join_classroom(g.user_id, join_code, client)
+        return jsonify({"classroom_id": classroom["classroom_id"], "classroom": classroom})
+    except MembershipError as error:
+        return jsonify({"error": str(error)}), error.status
+    except Exception:
+        app.logger.exception("Classroom enrollment failed")
+        return jsonify({"error": "Could not enroll in this classroom. Please try again."}), 500
 
 # Get students in a classroom
 @app.route("/classrooms/<classroom_id>/students", methods=["GET"])

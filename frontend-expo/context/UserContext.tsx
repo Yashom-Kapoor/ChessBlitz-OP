@@ -14,6 +14,8 @@ interface UserData {
 }
 
 interface UserContextType {
+  authUserId: string | null;
+  authReady: boolean;
   userData: UserData;
   loadUser: () => Promise<void>;
   updateUserData: (updates: Partial<UserData>) => void;
@@ -33,6 +35,7 @@ const emptyUser: UserData = {
 };
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
+  const [authState, setAuthState] = useState<{ userId: string | null; ready: boolean }>({ userId: null, ready: false });
   const [userData, setUserData] = useState<UserData>(emptyUser);
   const requestVersion = useRef(0);
   const currentUserId = useRef<string | null>(null);
@@ -71,6 +74,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       const id = session?.user.id ?? null;
       if (currentUserId.current === id && event !== 'INITIAL_SESSION') return;
       currentUserId.current = id;
+      setAuthState({ userId: id, ready: true });
       requestVersion.current += 1;
       setUserData(emptyUser);
       clearTimeout(pendingLoad);
@@ -97,7 +101,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <UserContext.Provider value={{ userData, loadUser, updateUserData, saveAvatar }}>
+    <UserContext.Provider value={{ authUserId: authState.userId, authReady: authState.ready, userData, loadUser, updateUserData, saveAvatar }}>
       {children}
     </UserContext.Provider>
   );

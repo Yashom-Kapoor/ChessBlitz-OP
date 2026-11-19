@@ -77,3 +77,17 @@ test('retains the saved photo when a refresh cannot load photo metadata', async 
   await act(async () => { await context.loadUser(); });
   expect(context.userData.avatarUrl).toBe('alice-photo');
 });
+
+test('exposes auth state for navigation and clears it even before a pending profile load completes', async () => {
+  expect(context.authReady).toBe(true);
+  expect(context.authUserId).toBe('alice');
+  let finish;
+  getCurrentUser.mockReturnValue(new Promise(resolve => { finish = resolve; }));
+  const pending = context.loadUser();
+  await act(async () => { authChanged('SIGNED_OUT', null); });
+  expect(context.authUserId).toBeNull();
+  await act(async () => { finish(user('alice')); await pending; });
+  expect(context.userData.userId).toBe('');
+  await act(async () => { authChanged('INITIAL_SESSION', null); });
+  expect(context.authReady).toBe(true);
+});
