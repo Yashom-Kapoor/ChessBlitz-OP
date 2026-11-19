@@ -1,12 +1,14 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { getCurrentUser } from '@/api/User';
 import { uploadAvatar } from '@/api/Avatars';
+import { updateLeaderboardName } from '@/api/LeaderboardName';
 import { supabase } from '@/api/SupabaseClient';
 
 interface UserData {
   userId: string;
   avatarUrl: string | null;
   name: string;
+  leaderboardName: string | null;
   email: string;
   joinDate: string;
   totalPuzzlesSolved: string;
@@ -20,6 +22,7 @@ interface UserContextType {
   loadUser: () => Promise<void>;
   updateUserData: (updates: Partial<UserData>) => void;
   saveAvatar: (base64: string, userId: string) => Promise<void>;
+  saveLeaderboardName: (nickname: string | null, userId: string) => Promise<void>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -28,6 +31,7 @@ const emptyUser: UserData = {
     userId: '',
     avatarUrl: null,
     name: 'Loading...',
+    leaderboardName: null,
     email: 'Loading...',
     joinDate: 'Loading...',
     totalPuzzlesSolved: 'Loading...',
@@ -58,6 +62,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         avatarUrl: data.avatar_url === undefined && previous.userId === data.user_id
           ? previous.avatarUrl : data.avatar_url ?? null,
         name: data.name,
+        leaderboardName: data.leaderboard_name ?? null,
         email: data.email,
         joinDate: formatFullDate(data.created_at),
         totalPuzzlesSolved: data.puzzles_completed,
@@ -100,8 +105,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     setUserData(previous => previous.userId === userId ? { ...previous, avatarUrl } : previous);
   }, []);
 
+  const saveLeaderboardName = useCallback(async (nickname: string | null, userId: string) => {
+    const leaderboardName = await updateLeaderboardName(userId, nickname);
+    if (currentUserId.current !== userId) return;
+    requestVersion.current += 1;
+    setUserData(previous => previous.userId === userId ? { ...previous, leaderboardName } : previous);
+  }, []);
+
   return (
-    <UserContext.Provider value={{ authUserId: authState.userId, authReady: authState.ready, userData, loadUser, updateUserData, saveAvatar }}>
+    <UserContext.Provider value={{ authUserId: authState.userId, authReady: authState.ready, userData, loadUser, updateUserData, saveAvatar, saveLeaderboardName }}>
       {children}
     </UserContext.Provider>
   );

@@ -93,7 +93,7 @@ def require_dev(f):
 # -------- USER MANAGEMENT --------
 def get_user_info(supabase):
     res = supabase.table("Users") \
-        .select("name,email,username,rating,puzzles_completed,classroom,created_at") \
+        .select("name,leaderboard_name,email,username,rating,puzzles_completed,classroom,created_at") \
         .maybe_single() \
         .execute()
     return res.data
@@ -546,6 +546,36 @@ def get_user():
         return jsonify({"error": "User not found"}), 404
 
     return jsonify(response), 200    
+
+@app.route("/users/me/leaderboard-name", methods=["PATCH"])
+@require_auth
+def set_leaderboard_name():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict) or "leaderboard_name" not in data:
+        return jsonify({"error": "Provide a leaderboard nickname, or null to use your account name."}), 400
+    nickname = data["leaderboard_name"]
+    if nickname is not None:
+        if not isinstance(nickname, str) or any(
+            ord(c) < 32 or 127 <= ord(c) <= 159 or c in "\u2028\u2029" for c in nickname
+        ):
+            return jsonify({"error": "Use a single line without control characters."}), 400
+        nickname = nickname.strip()
+        if not 3 <= len(nickname) <= 24:
+            return jsonify({"error": "Use 3–24 characters for your leaderboard nickname."}), 400
+        # Rankings filters this legacy placeholder out of the list.
+        if nickname.lower() == "unknown student":
+            return jsonify({"error": "Please choose a different leaderboard nickname."}), 400
+
+    try:
+        client = get_supabase_with_auth(get_bearer_token(request))
+        result = client.table("Users").update({"leaderboard_name": nickname}).eq("user_id", g.user_id).execute()
+        if not result.data:
+            return jsonify({"error": "Your profile could not be found."}), 404
+        return jsonify({"leaderboard_name": result.data[0]["leaderboard_name"]}), 200
+    except Exception:
+        app.logger.exception("Leaderboard nickname update failed")
+        return jsonify({"error": "Could not save your leaderboard nickname. Please try again."}), 500
+
 
 # Get the user's per-theme puzzle ratings (one row from "Ratings"; {} if they have none yet)
 @app.route("/ratings/me", methods=["GET"])

@@ -1,6 +1,7 @@
 import GlassBlurView from '@/components/GlassBlurView';
 import Avatar from '@/components/Avatar';
 import ClassroomMembership from '@/components/profile/ClassroomMembership';
+import LeaderboardName from '@/components/profile/LeaderboardName';
 import { chooseProfilePhoto } from '@/utils/profilePhoto';
 import backgroundImages, { BackgroundContext } from '@/context/Backgrounds';
 import GlobalStyle from '@/context/GlobalStyle';
@@ -48,7 +49,7 @@ export default function ProfileScreen() {
   const isTablet = useGlobalSearchParams().isTablet === 'true';
   const styles = GlobalStyle(theme, isTablet);
   const router = useRouter();
-  const { userData, loadUser, updateUserData, saveAvatar } = useUser();
+  const { authUserId, userData, loadUser, updateUserData, saveAvatar } = useUser();
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const photoBusy = useRef(false);
 
@@ -395,6 +396,10 @@ export default function ProfileScreen() {
               <Text style={[styles.h6, { color: `${theme.primaryText}60` }]}>Member Since</Text>
               <Text style={[styles.h5, localStyles.infoValue]}>{userData.joinDate}</Text>
             </View>
+          </InfoBox>
+
+          <InfoBox style={localStyles.generalInfoBox} theme={theme} isTablet={isTablet}>
+            <LeaderboardName key={authUserId ?? 'signed-out'} isTablet={isTablet} />
           </InfoBox>
 
           {/* Notifications Box */}

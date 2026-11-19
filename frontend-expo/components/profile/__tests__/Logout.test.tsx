@@ -16,6 +16,7 @@ jest.mock('@/context/Backgrounds', () => ({ BackgroundContext: ({ children }: an
 jest.mock('@/components/GlassBlurView', () => () => null);
 jest.mock('@/components/Avatar', () => () => null);
 jest.mock('@/components/profile/ClassroomMembership', () => () => null);
+jest.mock('@/components/profile/LeaderboardName', () => () => null);
 jest.mock('@/utils/profilePhoto', () => ({ chooseProfilePhoto: jest.fn() }));
 jest.mock('expo-router', () => ({ useRouter: () => ({}), useGlobalSearchParams: () => ({}), useFocusEffect: jest.fn() }));
 let root: ReactTestRenderer;

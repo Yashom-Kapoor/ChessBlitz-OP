@@ -3,10 +3,12 @@ import { create } from 'react-test-renderer';
 import { UserProvider, useUser } from '../UserContext';
 import { getCurrentUser } from '@/api/User';
 import { uploadAvatar } from '@/api/Avatars';
+import { updateLeaderboardName } from '@/api/LeaderboardName';
 import { supabase } from '@/api/SupabaseClient';
 
 jest.mock('@/api/User', () => ({ getCurrentUser: jest.fn() }));
 jest.mock('@/api/Avatars', () => ({ uploadAvatar: jest.fn() }));
+jest.mock('@/api/LeaderboardName', () => ({ updateLeaderboardName: jest.fn() }));
 jest.mock('@/api/SupabaseClient', () => ({ supabase: { auth: { onAuthStateChange: jest.fn() } } }));
 
 let root, context, authChanged;
@@ -90,4 +92,35 @@ test('exposes auth state for navigation and clears it even before a pending prof
   expect(context.userData.userId).toBe('');
   await act(async () => { authChanged('INITIAL_SESSION', null); });
   expect(context.authReady).toBe(true);
+});
+
+test('loads the nickname separately and only changes it after persistence succeeds', async () => {
+  getCurrentUser.mockResolvedValue({ ...user('alice'), leaderboard_name: 'Knight Owl' });
+  await act(async () => { await context.loadUser(); });
+  expect(context.userData.leaderboardName).toBe('Knight Owl');
+  expect(context.userData.name).toBe('alice');
+  updateLeaderboardName.mockRejectedValueOnce(new Error('offline'));
+  await expect(context.saveLeaderboardName(null, 'alice')).rejects.toThrow('offline');
+  expect(context.userData.leaderboardName).toBe('Knight Owl');
+  updateLeaderboardName.mockResolvedValue(null);
+  await act(async () => { await context.saveLeaderboardName(null, 'alice'); });
+  expect(context.userData.leaderboardName).toBeNull();
+  expect(context.userData.name).toBe('alice');
+});
+
+test('ignores stale profile loads and nickname saves for a previous account', async () => {
+  let finishLoad;
+  getCurrentUser.mockReturnValue(new Promise(resolve => { finishLoad = resolve; }));
+  const loading = context.loadUser();
+  updateLeaderboardName.mockResolvedValue('Knight Owl');
+  await act(async () => { await context.saveLeaderboardName('Knight Owl', 'alice'); });
+  await act(async () => { finishLoad(user('alice')); await loading; });
+  expect(context.userData.leaderboardName).toBe('Knight Owl');
+  let finishSave;
+  updateLeaderboardName.mockReturnValue(new Promise(resolve => { finishSave = resolve; }));
+  const saving = context.saveLeaderboardName('Alice New', 'alice');
+  await signIn('bob');
+  await act(async () => { finishSave('Alice New'); await saving; });
+  expect(context.userData.userId).toBe('bob');
+  expect(context.userData.leaderboardName).toBeNull();
 });

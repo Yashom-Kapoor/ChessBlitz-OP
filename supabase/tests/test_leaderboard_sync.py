@@ -34,7 +34,7 @@ class LeaderboardSyncTests(unittest.TestCase):
         cls.socket_dir = root / "socket"
         cls.socket_dir.mkdir()
         subprocess.run(
-            ["initdb", "-D", str(cls.data), "-U", "postgres", "-A", "trust", "--no-locale"],
+            ["initdb", "-D", str(cls.data), "-U", "postgres", "-A", "trust", "--no-locale", "--encoding=UTF8"],
             check=True, capture_output=True, text=True,
         )
         options = shlex.join(["-F", "-k", str(cls.socket_dir), "-h", "", "-p", "55439"])
