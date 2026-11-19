@@ -7,6 +7,7 @@ import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { UserProvider, useUser } from '@/context/UserContext';
 import { ShopProvider } from '@/context/ShopContext';
 import { PuzzleSettingsProvider } from '@/context/PuzzleSettingsContext';
+import { ThemePuzzleSessionProvider } from '@/context/ThemePuzzleSessionContext';
 import { getFocusedRouteNameFromRoute } from "expo-router/react-navigation";
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import GlobalStyle from '@/context/GlobalStyle';
@@ -54,11 +55,13 @@ export default function RootLayout() {
 }
 
 function SessionRoot({ isTablet }: { isTablet: boolean }) {
-  const { authReady } = useUser();
+  const { authReady, authUserId } = useUser();
   if (!authReady) return null;
   return (
     <ShopProvider>
-      <ThemedRoot isTablet={isTablet} />
+      <ThemePuzzleSessionProvider key={authUserId ?? 'signed-out'}>
+        <ThemedRoot isTablet={isTablet} />
+      </ThemePuzzleSessionProvider>
     </ShopProvider>
   );
 }

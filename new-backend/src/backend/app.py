@@ -631,6 +631,33 @@ def random_puzzle_route():
         "themes": puzzle["Themes"]
     }), 200
 
+@app.route("/puzzles/random-set/", methods=["GET"])
+@require_auth
+def random_puzzle_set_route():
+    themes = request.args.getlist("theme")
+    excluded_ids = request.args.getlist("exclude")
+    if len(themes) != 1 or themes[0] not in PUZZLE_THEMES:
+        return jsonify({"error": "Choose a valid puzzle theme."}), 400
+    if len(excluded_ids) > 9 or any(not value or len(value) > 100 for value in excluded_ids):
+        return jsonify({"error": "Invalid previous puzzle set."}), 400
+
+    client = get_supabase_with_auth(get_bearer_token(request))
+    try:
+        puzzles = client.rpc("get_random_puzzle_set", {
+            "theme_filter": themes[0], "excluded_ids": excluded_ids,
+        }).execute().data or []
+    except Exception:
+        app.logger.exception("Puzzle set lookup failed")
+        return jsonify({"error": "Could not load the puzzles. Please try again."}), 500
+
+    if len(puzzles) != 9:
+        return jsonify({"error": "Not enough puzzles available for this theme."}), 404
+    return jsonify([{
+        "puzzleid": puzzle["PuzzleId"], "fen": puzzle["FEN"], "moves": puzzle["Moves"],
+        "rating": puzzle["Rating"], "themes": puzzle["Themes"],
+    } for puzzle in puzzles]), 200
+
+
 # Get puzzle by puzzle id
 @app.route("/puzzles/<puzzle_id>/", methods=["GET"])
 @require_auth

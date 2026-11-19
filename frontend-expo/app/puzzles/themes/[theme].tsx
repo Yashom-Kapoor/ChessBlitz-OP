@@ -1,11 +1,12 @@
-import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTheme } from '@/context/ThemeContext';
 import { PUZZLE_THEMES, PUZZLE_THEME_TEXT_COLOR } from '@/constants/PuzzleThemes';
-import ThemePuzzlePlaceholder from '@/components/puzzles/ThemePuzzlePlaceholder';
+import ThemePuzzleGrid from '@/components/puzzles/ThemePuzzleGrid';
+import { useThemePuzzleSessions } from '@/context/ThemePuzzleSessionContext';
 
 export default function PuzzleThemeScreen() {
   const params = useLocalSearchParams<{ theme: string; isTablet?: string }>();
@@ -14,6 +15,12 @@ export default function PuzzleThemeScreen() {
   const insets = useSafeAreaInsets();
   const isTablet = params.isTablet === 'true';
   const puzzle = PUZZLE_THEMES.find(item => item.key === params.theme);
+  const puzzleSessions = useThemePuzzleSessions();
+  const session = puzzle ? puzzleSessions?.sessions[puzzle.key] : undefined;
+  const ensure = puzzleSessions?.ensure;
+  useEffect(() => {
+    if (puzzle) ensure?.(puzzle.key);
+  }, [puzzle, ensure]);
   const back = () => {
     if (router.canGoBack()) router.back();
     else router.replace({ pathname: '/(tabs)/puzzles', params: { isTablet: String(isTablet) } });
@@ -43,15 +50,41 @@ export default function PuzzleThemeScreen() {
                 fontSize: isTablet ? 20 : 16, lineHeight: isTablet ? 28 : 23 }]}>{puzzle.description}</Text>
             </View>
             <View style={{ marginTop: isTablet ? 64 : 40 }}>
-              <ThemePuzzlePlaceholder color={puzzle.color} title={puzzle.title} />
+              {session?.status === 'ready' ? (
+                <>
+                  <ThemePuzzleGrid color={puzzle.color} title={puzzle.title} puzzleIds={session.puzzleIds}
+                    completedIds={session.completedIds}
+                    onSelect={puzzleId => router.push({ pathname: '/puzzles/demo_puzzle',
+                      params: { puzzle: puzzleId, theme: puzzle.key, themeSession: session.id, isTablet: String(isTablet) } })} />
+                  <Text accessibilityLiveRegion="polite" style={[styles.progress, { color: theme.primaryText }]}>
+                    {session.completedIds.length} of 9 complete
+                  </Text>
+                  {session.completedIds.length === 9 ? (
+                    <TouchableOpacity accessibilityRole="button" accessibilityLabel="Reset puzzles"
+                      onPress={() => puzzleSessions?.reset(puzzle.key)}
+                      style={[styles.actionButton, { backgroundColor: puzzle.color }]}>
+                      <Text style={[styles.themeTitle, { color: PUZZLE_THEME_TEXT_COLOR, fontSize: 20 }]}>Reset puzzles</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <Text style={[styles.instruction, { color: theme.primaryText }]}>Choose a piece to solve its puzzle.</Text>
+                  )}
+                </>
+              ) : session?.status === 'error' ? (
+                <View style={styles.status}>
+                  <Text accessibilityRole="alert" style={[styles.instruction, { color: theme.primaryText }]}>{session.error}</Text>
+                  <TouchableOpacity accessibilityRole="button" accessibilityLabel="Retry loading puzzles"
+                    onPress={() => puzzleSessions?.retry(puzzle.key)}
+                    style={[styles.actionButton, { backgroundColor: puzzle.color }]}>
+                    <Text style={[styles.themeTitle, { color: PUZZLE_THEME_TEXT_COLOR, fontSize: 20 }]}>Try again</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.status}>
+                  <ActivityIndicator size="large" color={puzzle.color} />
+                  <Text style={[styles.instruction, { color: theme.primaryText }]}>Loading your nine puzzles…</Text>
+                </View>
+              )}
             </View>
-            <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Play ${puzzle.title} puzzle`}
-              accessibilityHint={`Load a random ${puzzle.title} puzzle`}
-              onPress={() => router.push({ pathname: '/puzzles/demo_puzzle',
-                params: { theme: puzzle.key, isTablet: String(isTablet) } })}
-              style={[styles.playButton, { backgroundColor: puzzle.color, marginTop: isTablet ? 32 : 24 }]}>
-              <Text style={[styles.themeTitle, { color: PUZZLE_THEME_TEXT_COLOR, fontSize: isTablet ? 24 : 20 }]}>Play</Text>
-            </TouchableOpacity>
           </View>
         ) : (
           <View style={styles.content}>
@@ -75,5 +108,8 @@ const styles = StyleSheet.create({
   banner: { gap: 8 },
   themeTitle: { fontFamily: 'Nunito', fontWeight: '800' },
   description: { fontFamily: 'Nunito', fontWeight: '600' },
-  playButton: { minHeight: 56, borderRadius: 20, padding: 16, alignItems: 'center', justifyContent: 'center' },
+  actionButton: { minHeight: 56, borderRadius: 20, padding: 16, marginTop: 20, alignItems: 'center', justifyContent: 'center' },
+  progress: { fontFamily: 'Nunito', fontSize: 18, fontWeight: '800', textAlign: 'center', marginTop: 24 },
+  instruction: { fontFamily: 'Nunito', fontSize: 16, textAlign: 'center', marginTop: 12 },
+  status: { minHeight: 240, justifyContent: 'center' },
 });

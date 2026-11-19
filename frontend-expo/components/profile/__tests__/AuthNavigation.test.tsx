@@ -3,6 +3,8 @@ import React, { act } from 'react';
 import { create, ReactTestRenderer } from 'react-test-renderer';
 import RootLayout from '@/app/_layout';
 
+jest.mock('@/api/RandomPuzzleSet', () => ({ fetchRandomPuzzleSet: jest.fn() }));
+
 let mockAuth = { authUserId: 'alice' as string | null, authReady: true };
 const mockShopUnmount = jest.fn();
 jest.mock('@/context/UserContext', () => ({ UserProvider: ({ children }: any) => children, useUser: () => mockAuth }));

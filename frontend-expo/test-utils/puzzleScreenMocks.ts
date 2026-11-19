@@ -7,6 +7,7 @@ import { jest } from '@jest/globals';
 jest.mock('expo-router', () => ({
     useGlobalSearchParams: () => ({}),
     useLocalSearchParams: () => ({}),
+    useRouter: () => ({ dismissTo: jest.fn() }),
 }));
 
 // These screen tests run outside a navigator; provide its header layout value.

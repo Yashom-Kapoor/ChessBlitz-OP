@@ -5,6 +5,7 @@ from pathlib import Path
 import test_leaderboard_sync as fixtures
 
 MIGRATION = Path(__file__).resolve().parents[1] / 'migrations' / '20261118000300_random_puzzles_by_theme.sql'
+SET_MIGRATION = MIGRATION.with_name('20261118000400_theme_puzzle_sets.sql')
 
 
 class RandomPuzzleTests(unittest.TestCase):
@@ -26,6 +27,7 @@ class RandomPuzzleTests(unittest.TestCase):
             ('null', null), ('empty', ''), ('camel', 'backRankMate mateIn1');
         ''')
         self.sql(MIGRATION.read_text())
+        self.sql(SET_MIGRATION.read_text())
 
     def sample(self, themes, count=1):
         array = 'array[' + ','.join("'" + theme.replace("'", "''") + "'" for theme in themes) + ']::text[]'
@@ -66,3 +68,40 @@ class RandomPuzzleTests(unittest.TestCase):
     def test_migration_can_be_replayed_without_changing_puzzles(self):
         self.sql(MIGRATION.read_text())
         self.assertEqual(self.sql('select count(*) from public."Puzzles";'), '9')
+
+    def batch(self, theme='pin', exclude=()):
+        array = 'array[' + ','.join("'" + item.replace("'", "''") + "'" for item in exclude) + ']::text[]'
+        rows = self.sql(f"set role authenticated; select row_to_json(p) from public.get_random_puzzle_set('{theme}', {array}) p;")
+        return [json.loads(row) for row in rows.splitlines() if row]
+
+    def test_set_draws_nine_distinct_exact_matches_and_reset_excludes_previous_set(self):
+        self.sql('''insert into public."Puzzles" select 'extra-' || n, 'middlegame pin short' from generate_series(1, 1500) n;''')
+        all_ids = set()
+        previous = []
+        for _ in range(20):
+            rows = self.batch(exclude=previous)
+            current = [row['PuzzleId'] for row in rows]
+            self.assertEqual(len(set(current)), 9)
+            self.assertFalse(set(current) & set(previous))
+            self.assertTrue(all('pin' in row['Themes'].split() for row in rows))
+            all_ids.update(current)
+            previous = current
+        self.assertGreater(len(all_ids), 9)
+        self.assertTrue(any(item.startswith('extra-') and int(item[6:]) > 1000 for item in all_ids))
+
+    def test_small_set_is_not_padded_and_unknown_theme_is_empty(self):
+        self.assertEqual({row['PuzzleId'] for row in self.batch()}, {'pin-only', 'both'})
+        self.assertEqual(self.batch('unknown'), [])
+        self.assertEqual(self.batch('backRankMate'), [{'PuzzleId': 'camel', 'Themes': 'backRankMate mateIn1'}])
+
+    def test_set_respects_permissions_and_row_level_security(self):
+        self.assertEqual(self.sql("select has_function_privilege('anon', 'public.get_random_puzzle_set(text,text[])', 'EXECUTE');"), 'f')
+        self.sql('''alter table public."Puzzles" enable row level security;
+          create policy visible on public."Puzzles" to authenticated using ("PuzzleId" = 'pin-only');''')
+        self.assertEqual(self.batch(), [{'PuzzleId': 'pin-only', 'Themes': 'pin'}])
+        self.assertEqual(self.batch('fork'), [])
+
+    def test_set_migration_replays_without_changing_existing_puzzles_or_single_random_function(self):
+        self.sql(SET_MIGRATION.read_text())
+        self.assertEqual(self.sql('select count(*) from public."Puzzles";'), '9')
+        self.assertEqual(len(self.sample(['fork'])), 1)
