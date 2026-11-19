@@ -1,11 +1,15 @@
 import GlassBlurView from '@/components/GlassBlurView';
+import Avatar from '@/components/Avatar';
+import ClassroomMembership from '@/components/profile/ClassroomMembership';
+import LeaderboardName from '@/components/profile/LeaderboardName';
+import { chooseProfilePhoto } from '@/utils/profilePhoto';
 import backgroundImages, { BackgroundContext } from '@/context/Backgrounds';
 import GlobalStyle from '@/context/GlobalStyle';
 import { useTheme } from '@/context/ThemeContext';
 import { useUser } from '@/context/UserContext';
-import { useGlobalSearchParams, useRouter } from 'expo-router';
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Switch, RefreshControl, Platform } from 'react-native';
+import { useFocusEffect, useGlobalSearchParams, useRouter } from 'expo-router';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Switch, RefreshControl, Platform, ActivityIndicator, Alert } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { supabase } from '@/api/SupabaseClient';
 
@@ -45,7 +49,25 @@ export default function ProfileScreen() {
   const isTablet = useGlobalSearchParams().isTablet === 'true';
   const styles = GlobalStyle(theme, isTablet);
   const router = useRouter();
-  const { userData, loadUser, updateUserData } = useUser();
+  const { authUserId, userData, loadUser, updateUserData, saveAvatar } = useUser();
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const photoBusy = useRef(false);
+
+  const handleChangePhoto = async () => {
+    if (photoBusy.current || !userData.userId) return;
+    photoBusy.current = true;
+    setUploadingPhoto(true);
+    try {
+      const photo = await chooseProfilePhoto();
+      if (photo !== null) await saveAvatar(photo, userData.userId);
+    } catch (error) {
+      Alert.alert('Could not update photo', error instanceof Error
+        ? error.message : 'Please try again with another image.');
+    } finally {
+      photoBusy.current = false;
+      setUploadingPhoto(false);
+    }
+  };
 
   const refreshColor = theme.primaryText;
   const refreshOffset = 20;
@@ -103,13 +125,17 @@ export default function ProfileScreen() {
   }, [refreshOffset]);
 
   const [refreshing, setRefreshing] = useState(false);
+  const [classroomRefreshKey, setClassroomRefreshKey] = useState(0);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const logoutBusy = useRef(false);
 
-  useEffect(() => {
-    loadUser();
-  }, [loadUser]);
+  useFocusEffect(useCallback(() => {
+    void loadUser();
+  }, [loadUser]));
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
+    setClassroomRefreshKey(key => key + 1);
     try {
       await loadUser();
     } catch (error) {
@@ -120,14 +146,19 @@ export default function ProfileScreen() {
   }, [loadUser]);
 
   const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-
-    if (error) {
-      console.log("Logout error:", error.message);
-      return;
+    if (logoutBusy.current) return;
+    logoutBusy.current = true;
+    setLoggingOut(true);
+    try {
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
+      if (error) throw error;
+      // The root auth guard removes signed-in routes and returns to the welcome screen.
+    } catch (error) {
+      Alert.alert('Could not log out', error instanceof Error ? error.message : 'Please try again.');
+    } finally {
+      logoutBusy.current = false;
+      setLoggingOut(false);
     }
-
-    router.replace("/");
   };
 
   const [isEditing, setIsEditing] = useState(false);
@@ -142,41 +173,15 @@ export default function ProfileScreen() {
     setNotifications(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-    const [classes, setClasses] = useState<string[]>([
-    'Class Name #1',
-    'Class Name #2',
-    'Class Name #3',
-  ]);
-
-  const demoEnrollCode = ['6', 'H', 'X', '7', '5', 'P'];
-
-  const handleEnroll = () => {
-    // later you can replace this with a real enroll call
-    console.log('Enroll with code:', demoEnrollCode.join(''));
-  };
-
-  const handleUnenroll = (index: number) => {
-    setClasses(prev => prev.filter((_, i) => i !== index));
-  };
-
   const localStyles = StyleSheet.create({
     header: {
       alignItems: 'center',
       paddingVertical: 20,
     },
     avatarContainer: {
-      width: isTablet ? 120 : 100,
-      height: isTablet ? 120 : 100,
-      borderRadius: 100,
-      backgroundColor: theme.hintBubble,
-      justifyContent: 'center',
       alignItems: 'center',
+      gap: 10,
       marginBottom: isTablet ? 30 : 15,
-    },
-    avatarText: {
-      fontSize: isTablet ? 40 : 36,
-      fontWeight: 'bold',
-      color: theme.secondaryText,
     },
     editButton: {
       paddingHorizontal: isTablet ? 28 : 22,
@@ -263,74 +268,6 @@ export default function ProfileScreen() {
     enrollBox: {
       marginTop: 24,
     },
-    enrollTitle: {
-      marginBottom: isTablet ? 16 : 12,
-    },
-    enrollTopRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 12,
-    },
-    codeRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      flexWrap: 'wrap',
-      gap: 6,
-    },
-    codeBox: {
-      minWidth: 30,
-      paddingVertical: 6,
-      paddingHorizontal: 10,
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: `${theme.primaryText}40`,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    codeText: {
-      color: theme.primaryText,
-      fontSize: isTablet ? 18 : 16,
-      fontWeight: '600',
-    },
-    enrollButton: {
-      paddingHorizontal: isTablet ? 20 : 16,
-      paddingVertical: isTablet ? 10 : 8,
-      borderRadius: 999,
-      backgroundColor: theme.primaryText,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    enrollButtonText: {
-      color: theme.primaryButton,
-      fontWeight: '600',
-      fontSize: isTablet ? 16 : 14,
-    },
-    enrollSubtext: {
-      marginTop: 8,
-      color: `${theme.primaryText}80`,
-      fontSize: isTablet ? 14 : 12,
-    },
-    classesHeader: {
-      marginTop: 20,
-      marginBottom: 8,
-      color: `${theme.primaryText}80`,
-      fontSize: isTablet ? 14 : 12,
-    },
-    classRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingVertical: 4,
-    },
-    className: {
-      color: theme.primaryText,
-      fontSize: isTablet ? 16 : 14,
-    },
-    classAction: {
-      color: '#FF6B6B', // same red as puzzle "Fork" color
-      fontSize: isTablet ? 14 : 13,
-    },
         logoutContainer: {
       marginTop: 24,
       alignItems: 'center',
@@ -344,7 +281,7 @@ export default function ProfileScreen() {
       borderColor: 'rgba(255, 80, 80, 0.25)',      // subtle border
     },
     logoutText: {
-      color: '#FFFFFF',
+      color: theme.primaryText,
       fontSize: isTablet ? 18 : 16,
       fontWeight: '600',
     },
@@ -367,11 +304,16 @@ export default function ProfileScreen() {
         >
           {/* Header Section */}
           <View style={localStyles.header}>
-            <View style={localStyles.avatarContainer}>
-              <Text style={localStyles.avatarText}>{
-              userData.name.trim().split(" ").filter(Boolean).map(part => part[0].toUpperCase()).join("").slice(0, 2)
-              }</Text>
-            </View>
+            <TouchableOpacity style={localStyles.avatarContainer} onPress={handleChangePhoto}
+              disabled={uploadingPhoto || !userData.userId} accessibilityRole="button"
+              accessibilityLabel="Change profile photo"
+              accessibilityState={{ disabled: uploadingPhoto || !userData.userId, busy: uploadingPhoto }}>
+              <Avatar name={userData.name} uri={userData.avatarUrl} size={isTablet ? 120 : 100} />
+              {uploadingPhoto && <ActivityIndicator color={theme.primaryText} />}
+              <Text style={[styles.b, { color: theme.primaryText }]}>
+                {uploadingPhoto ? 'Updating photo…' : 'Change photo'}
+              </Text>
+            </TouchableOpacity>
             <TouchableOpacity
               style={localStyles.editButton}
               onPress={() => setIsEditing(!isEditing)}
@@ -456,6 +398,10 @@ export default function ProfileScreen() {
             </View>
           </InfoBox>
 
+          <InfoBox style={localStyles.generalInfoBox} theme={theme} isTablet={isTablet}>
+            <LeaderboardName key={authUserId ?? 'signed-out'} isTablet={isTablet} />
+          </InfoBox>
+
           {/* Notifications Box */}
           <InfoBox style={localStyles.notificationsBox} theme={theme} isTablet={isTablet}>
             <Text
@@ -495,51 +441,15 @@ export default function ProfileScreen() {
 
           {/* Enroll / Unenroll Box */}
           <InfoBox style={localStyles.enrollBox} theme={theme} isTablet={isTablet}>
-            <View style={localStyles.enrollTopRow}>
-              <Text
-                style={[
-                  styles.h4,
-                  localStyles.enrollTitle,
-                  { color: theme.primaryText },
-                ]}
-              >
-                Enroll/Unenroll
-              </Text>
-
-              <TouchableOpacity style={localStyles.enrollButton} onPress={handleEnroll}>
-                <Text style={localStyles.enrollButtonText}>Enroll</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Code boxes */}
-            <View style={localStyles.codeRow}>
-              {demoEnrollCode.map((ch, idx) => (
-                <View key={idx} style={localStyles.codeBox}>
-                  <Text style={localStyles.codeText}>{ch}</Text>
-                </View>
-              ))}
-            </View>
-
-            <Text style={localStyles.enrollSubtext}>
-              You are joining Mr. Jackson's class.
-            </Text>
-
-            {/* Classes list */}
-            <Text style={localStyles.classesHeader}>Your classes</Text>
-            {classes.map((className, idx) => (
-              <View key={idx} style={localStyles.classRow}>
-                <Text style={localStyles.className}>{className}</Text>
-                <TouchableOpacity onPress={() => handleUnenroll(idx)}>
-                  <Text style={localStyles.classAction}>Unenroll</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
+            <ClassroomMembership isTablet={isTablet} refreshKey={classroomRefreshKey} />
           </InfoBox>
           
           {/* Log Out Button */}
           <View style={localStyles.logoutContainer}>
-            <TouchableOpacity style={localStyles.logoutButton} onPress={handleLogout}>
-              <Text style={localStyles.logoutText}>Log Out</Text>
+            <TouchableOpacity style={[localStyles.logoutButton, { opacity: loggingOut ? 0.5 : 1 }]}
+              onPress={handleLogout} disabled={loggingOut} accessibilityRole="button"
+              accessibilityLabel="Log out" accessibilityState={{ disabled: loggingOut, busy: loggingOut }}>
+              <Text style={localStyles.logoutText}>{loggingOut ? 'Logging out…' : 'Log Out'}</Text>
             </TouchableOpacity>
           </View>
 

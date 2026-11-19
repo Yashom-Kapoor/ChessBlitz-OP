@@ -73,7 +73,11 @@ Create `new-backend/.env` (copy `.env.example` and fill it in):
 SUPABASE_URL=https://xxxx.supabase.co
 SUPABASE_KEY=your_anon_key
 OPEN_ROUTER_KEY=your_openrouter_key
+PORT=5050
 ```
+
+If you already have `new-backend/.env`, set `PORT=5050` there and restart the backend.
+Pulling repository changes does not update an existing local `.env`.
 
 Run it:
 
@@ -84,7 +88,7 @@ uv run backend
 Check it worked — this should return `401`, not a connection error:
 
 ```bash
-curl -i http://127.0.0.1:5000/shop/prices
+curl -i http://127.0.0.1:5050/shop/prices
 ```
 
 `401` means the server is up and correctly refusing an unauthenticated request. 
@@ -153,7 +157,7 @@ frontend-expo/
 
 ## API reference
 
-Base URL in development: `http://127.0.0.1:5000`
+Base URL in development: `http://127.0.0.1:5050`
 
 🔒 = requires `Authorization: Bearer <supabase_jwt>`
 
@@ -194,11 +198,12 @@ Good first contributions, roughly easiest to hardest:
 ## Troubleshooting
 
 <details>
-<summary><b>Port 5000 returns something weird (<code>Server: AirTunes</code>)</b></summary>
+<summary><b>Backend runs on port 5000 or returns <code>Server: AirTunes</code></b></summary>
 
-macOS AirPlay Receiver squats on port 5000. Turn it off in
-**System Settings → General → AirDrop & Handoff**, or run the backend on another port and update
-`constants/urls.tsx`.
+The app expects the local backend on port **5050**. If an older `new-backend/.env` contains
+`PORT=5000`, change it to `PORT=5050` and restart with `uv run backend` from `new-backend/`.
+macOS AirPlay Receiver can occupy port 5000 and respond with `Server: AirTunes`; using 5050
+also avoids that conflict.
 </details>
 
 <details>

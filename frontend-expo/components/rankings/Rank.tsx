@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
+import Avatar from '@/components/Avatar';
 import { useTheme } from '@/context/ThemeContext';
 import { useGlobalSearchParams } from 'expo-router';
 import GlobalStyle from '@/context/GlobalStyle';
@@ -8,7 +9,7 @@ interface RankingProps {
     rank: number;
     name: string;
     rating: number;
-    icon?: any;
+    avatarUrl?: string | null;
     isYou:boolean;
 }
 
@@ -24,7 +25,7 @@ const GetColorFromRanking = (ranking:number):string => { //Returns the crown col
     return '#7e5a05';
 }
 
-export default function RankingItem({ rank, name, rating, icon, isYou}: RankingProps) {
+export default function RankingItem({ rank, name, rating, avatarUrl, isYou}: RankingProps) {
     const { theme } = useTheme();
     const isTablet = useGlobalSearchParams().isTablet === 'true';
     const styles = GlobalStyle(theme, isTablet);
@@ -39,12 +40,6 @@ export default function RankingItem({ rank, name, rating, icon, isYou}: RankingP
             shadowColor: '#000',
             shadowOpacity: 0.1,
             shadowRadius: 4,
-        },
-        icon: {
-            width: 50,
-            height: 50,
-            resizeMode: 'contain',
-            borderRadius: '20%',
         },
         textContainer: {
             flex: 1,
@@ -91,7 +86,7 @@ export default function RankingItem({ rank, name, rating, icon, isYou}: RankingP
                 <Text style={rankingStyles.rankNumber}>{rank}</Text>
             </View>
 
-            {icon && <Image source={icon} style={rankingStyles.icon} />}
+            <Avatar name={name} uri={avatarUrl} />
             <View style={rankingStyles.textContainer}>
                 <Text style={[styles.h3, { color: isYou ? "#fd3254" : theme.primaryText}]}>{name + (isYou ? " (You)": "")}</Text>
             </View>

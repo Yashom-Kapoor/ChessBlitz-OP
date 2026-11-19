@@ -4,9 +4,10 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
-import { UserProvider } from '@/context/UserContext';
+import { UserProvider, useUser } from '@/context/UserContext';
 import { ShopProvider } from '@/context/ShopContext';
 import { PuzzleSettingsProvider } from '@/context/PuzzleSettingsContext';
+import { ThemePuzzleSessionProvider } from '@/context/ThemePuzzleSessionContext';
 import { getFocusedRouteNameFromRoute } from "expo-router/react-navigation";
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import GlobalStyle from '@/context/GlobalStyle';
@@ -45,17 +46,28 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <UserProvider>
-        <ShopProvider>
-          <PuzzleSettingsProvider>
-            <ThemedRoot isTablet={isTablet} />
-          </PuzzleSettingsProvider>
-        </ShopProvider>
+        <PuzzleSettingsProvider>
+          <SessionRoot isTablet={isTablet} />
+        </PuzzleSettingsProvider>
       </UserProvider>
     </ThemeProvider>
   );
 }
 
+function SessionRoot({ isTablet }: { isTablet: boolean }) {
+  const { authReady, authUserId } = useUser();
+  if (!authReady) return null;
+  return (
+    <ShopProvider>
+      <ThemePuzzleSessionProvider key={authUserId ?? 'signed-out'}>
+        <ThemedRoot isTablet={isTablet} />
+      </ThemePuzzleSessionProvider>
+    </ShopProvider>
+  );
+}
+
 function ThemedRoot({ isTablet }: { isTablet: boolean }) {
+  const { authUserId } = useUser();
   const { theme } = useTheme();
   const styles = GlobalStyle(theme, isTablet);
   const navigation = useNavigation();
@@ -122,45 +134,51 @@ function ThemedRoot({ isTablet }: { isTablet: boolean }) {
             headerBackButtonDisplayMode: 'minimal'
           })}
         />
-        <Stack.Screen
-          name="(tabs)"
-          options={({ route }) => {
-            // derive active tab from nested tab navigator state
-            const focused = getFocusedRouteNameFromRoute(route) ?? 'puzzles';
-            // map route names to friendly titles if desired
-            const titleMap: Record<string, string> = {
-              puzzles: 'Puzzles',
-              lessons: 'Lessons',
-              ranking: 'Ranking',
-              profile: 'Profile',
-              shop: 'Shop',
-            };
-            return {
-              title: titleMap[focused] ?? 'App',
-              headerShown: false,
-              headerBackVisible: false,
-            };
-          }}
-        />
-        <Stack.Screen
-          name="puzzles/demo_puzzle"
-          options={() => ({
-            title: 'Demo Puzzle',
-            animation: 'ios_from_right',
-            headerShown: true,
-            headerBackVisible: true,
-            headerBackButtonDisplayMode: 'minimal'
-          })}
-        />
-        <Stack.Screen
-          name="lessons/[lesson]"
-          options={() => ({
-            animation: 'ios_from_right',
-            headerShown: true,
-            headerBackVisible: true,
-            headerBackButtonDisplayMode: 'minimal'
-          })}
-        />
+        <Stack.Protected guard={authUserId !== null}>
+          <Stack.Screen
+            name="(tabs)"
+            options={({ route }) => {
+              // derive active tab from nested tab navigator state
+              const focused = getFocusedRouteNameFromRoute(route) ?? 'puzzles';
+              // map route names to friendly titles if desired
+              const titleMap: Record<string, string> = {
+                puzzles: 'Puzzles',
+                lessons: 'Lessons',
+                ranking: 'Ranking',
+                profile: 'Profile',
+                shop: 'Shop',
+              };
+              return {
+                title: titleMap[focused] ?? 'App',
+                headerShown: false,
+                headerBackVisible: false,
+              };
+            }}
+          />
+          <Stack.Screen
+            name="puzzles/themes/[theme]"
+            options={{ headerShown: false, animation: 'ios_from_right' }}
+          />
+          <Stack.Screen
+            name="puzzles/demo_puzzle"
+            options={() => ({
+              title: 'Demo Puzzle',
+              animation: 'ios_from_right',
+              headerShown: true,
+              headerBackVisible: true,
+              headerBackButtonDisplayMode: 'minimal'
+            })}
+          />
+          <Stack.Screen
+            name="lessons/[lesson]"
+            options={() => ({
+              animation: 'ios_from_right',
+              headerShown: true,
+              headerBackVisible: true,
+              headerBackButtonDisplayMode: 'minimal'
+            })}
+          />
+        </Stack.Protected>
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style={theme.dark ? 'light' : 'dark'} />
