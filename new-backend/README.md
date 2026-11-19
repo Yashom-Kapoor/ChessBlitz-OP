@@ -15,10 +15,13 @@ cp .env.example .env    # then fill in the real values
 uv run backend
 ```
 
-Serves on `http://127.0.0.1:5000`. Verify with:
+If you already have `.env`, set `PORT=5050` there and restart the backend. Pulling repository
+changes does not update an existing local `.env`.
+
+Serves on `http://127.0.0.1:5050`, matching the app's local API port. Verify with:
 
 ```bash
-curl -i http://127.0.0.1:5000/shop/prices
+curl -i http://127.0.0.1:5050/shop/prices
 ```
 
 A `401` is the correct response — the server is running and refusing an unauthenticated request.
@@ -31,7 +34,7 @@ A connection error means it isn't up. (`Server: AirTunes` means macOS AirPlay ha
 | `SUPABASE_URL` | Your Supabase project URL |
 | `SUPABASE_KEY` | The **anon** key — not the service-role key |
 | `OPEN_ROUTER_KEY` | OpenRouter key, for AI hint generation |
-| `PORT` | Optional, defaults to `5000` |
+| `PORT` | Optional, defaults to `5050`; use `5050` to match the app |
 | `DEV_TOOLS` | Optional. `1` enables the dev console at `/dev` and its endpoints; anything else makes them 404 |
 
 > Note the name is `OPEN_ROUTER_KEY`, not `OPENROUTER_API_KEY`. Easy to get wrong.
@@ -85,7 +88,7 @@ that ordinary case into a server error.
 
 ## Dev tools
 
-Set `DEV_TOOLS=1` in `.env` and **restart**, then open <http://127.0.0.1:5000/dev>. That is the
+Set `DEV_TOOLS=1` in `.env` and **restart**, then open <http://127.0.0.1:5050/dev>. That is the
 dev console: a single self-contained page that manages currency and lets you load any puzzle on a
 real board. It replaces the old in-app dev menu, so the Expo app now ships no dev UI at all.
 
