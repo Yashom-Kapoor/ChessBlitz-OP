@@ -1,11 +1,13 @@
 import GlassBlurView from '@/components/GlassBlurView';
+import Avatar from '@/components/Avatar';
+import { chooseProfilePhoto } from '@/utils/profilePhoto';
 import backgroundImages, { BackgroundContext } from '@/context/Backgrounds';
 import GlobalStyle from '@/context/GlobalStyle';
 import { useTheme } from '@/context/ThemeContext';
 import { useUser } from '@/context/UserContext';
-import { useGlobalSearchParams, useRouter } from 'expo-router';
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Switch, RefreshControl, Platform } from 'react-native';
+import { useFocusEffect, useGlobalSearchParams, useRouter } from 'expo-router';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Switch, RefreshControl, Platform, ActivityIndicator, Alert } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { supabase } from '@/api/SupabaseClient';
 
@@ -45,7 +47,25 @@ export default function ProfileScreen() {
   const isTablet = useGlobalSearchParams().isTablet === 'true';
   const styles = GlobalStyle(theme, isTablet);
   const router = useRouter();
-  const { userData, loadUser, updateUserData } = useUser();
+  const { userData, loadUser, updateUserData, saveAvatar } = useUser();
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const photoBusy = useRef(false);
+
+  const handleChangePhoto = async () => {
+    if (photoBusy.current || !userData.userId) return;
+    photoBusy.current = true;
+    setUploadingPhoto(true);
+    try {
+      const photo = await chooseProfilePhoto();
+      if (photo !== null) await saveAvatar(photo, userData.userId);
+    } catch (error) {
+      Alert.alert('Could not update photo', error instanceof Error
+        ? error.message : 'Please try again with another image.');
+    } finally {
+      photoBusy.current = false;
+      setUploadingPhoto(false);
+    }
+  };
 
   const refreshColor = theme.primaryText;
   const refreshOffset = 20;
@@ -104,9 +124,9 @@ export default function ProfileScreen() {
 
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    loadUser();
-  }, [loadUser]);
+  useFocusEffect(useCallback(() => {
+    void loadUser();
+  }, [loadUser]));
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -165,18 +185,9 @@ export default function ProfileScreen() {
       paddingVertical: 20,
     },
     avatarContainer: {
-      width: isTablet ? 120 : 100,
-      height: isTablet ? 120 : 100,
-      borderRadius: 100,
-      backgroundColor: theme.hintBubble,
-      justifyContent: 'center',
       alignItems: 'center',
+      gap: 10,
       marginBottom: isTablet ? 30 : 15,
-    },
-    avatarText: {
-      fontSize: isTablet ? 40 : 36,
-      fontWeight: 'bold',
-      color: theme.secondaryText,
     },
     editButton: {
       paddingHorizontal: isTablet ? 28 : 22,
@@ -367,11 +378,16 @@ export default function ProfileScreen() {
         >
           {/* Header Section */}
           <View style={localStyles.header}>
-            <View style={localStyles.avatarContainer}>
-              <Text style={localStyles.avatarText}>{
-              userData.name.trim().split(" ").filter(Boolean).map(part => part[0].toUpperCase()).join("").slice(0, 2)
-              }</Text>
-            </View>
+            <TouchableOpacity style={localStyles.avatarContainer} onPress={handleChangePhoto}
+              disabled={uploadingPhoto || !userData.userId} accessibilityRole="button"
+              accessibilityLabel="Change profile photo"
+              accessibilityState={{ disabled: uploadingPhoto || !userData.userId, busy: uploadingPhoto }}>
+              <Avatar name={userData.name} uri={userData.avatarUrl} size={isTablet ? 120 : 100} />
+              {uploadingPhoto && <ActivityIndicator color={theme.primaryText} />}
+              <Text style={[styles.b, { color: theme.primaryText }]}>
+                {uploadingPhoto ? 'Updating photo…' : 'Change photo'}
+              </Text>
+            </TouchableOpacity>
             <TouchableOpacity
               style={localStyles.editButton}
               onPress={() => setIsEditing(!isEditing)}

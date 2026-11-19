@@ -36,7 +36,12 @@ export default {
       ],
       "expo-font",
       "expo-status-bar",
-      "expo-web-browser"
+      "expo-web-browser",
+      ["expo-image-picker", {
+        photosPermission: "Choose a profile photo for ChessBlitz.",
+        cameraPermission: false,
+        microphonePermission: false,
+      }]
     ],
     experiments: {
       typedRoutes: true,
