@@ -153,6 +153,10 @@ function ThemedRoot({ isTablet }: { isTablet: boolean }) {
             }}
           />
           <Stack.Screen
+            name="puzzles/themes/[theme]"
+            options={{ headerShown: false, animation: 'ios_from_right' }}
+          />
+          <Stack.Screen
             name="puzzles/demo_puzzle"
             options={() => ({
               title: 'Demo Puzzle',

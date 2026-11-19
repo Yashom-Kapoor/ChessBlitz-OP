@@ -2,7 +2,8 @@ import React, { useCallback, useState } from 'react';
 import { useWindowDimensions, View, Text, StyleSheet, ImageBackground, TouchableOpacity } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFocusEffect, useGlobalSearchParams, useRouter } from 'expo-router';
-import { getMyRatings, ratingFor, ThemeRatings } from '@/api/Ratings';
+import { getMyRatings, ThemeRatings } from '@/api/Ratings';
+import ThemeRatingsList from '@/components/puzzles/ThemeRatingsList';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/context/ThemeContext';
 import { BackgroundContext } from '@/context/Backgrounds';
@@ -15,59 +16,10 @@ import Animated, {
   useScrollViewOffset,
 } from 'react-native-reanimated';
 
-// `key` is the Lichess theme tag, which is also the column name in the Supabase `Ratings` table.
-const THEMES = [
-  { title: 'Fork', key: 'fork', icon: '⚔️', color: '#E76F51' },
-  { title: 'Pin', key: 'pin', icon: '📌', color: '#2A9D8F' },
-  { title: 'Promotion', key: 'promotion', icon: '👑', color: '#E9C46A' },
-  { title: 'Skewer', key: 'skewer', icon: '🍢', color: '#F4A261' },
-  { title: 'Back Rank', key: 'backRankMate', icon: '⏮️', color: '#264653' },
-  { title: 'Discovered Attack', key: 'discoveredAttack', icon: '🔎', color: '#3A86FF' },
-  { title: 'Trapped Piece', key: 'trappedPiece', icon: '🧱', color: '#6C757D' },
-  { title: 'Removing Defender', key: 'capturingDefender', icon: '💥', color: '#EF476F' },
-  { title: 'Smothered Mate', key: 'smotheredMate', icon: '💀', color: '#8D99AE' },
-  { title: 'Zugzwang', key: 'zugzwang', icon: '♟️', color: '#118AB2' },
-] as const;
-
 const IMG_HEIGHT = 300;
 const STICKY_TITLE_THRESHOLD = IMG_HEIGHT - 80;
 // The sticky "Puzzles" title is pulled up to sit over the lower part of the hero image.
 const TITLE_OVERLAP = IMG_HEIGHT * 0.9;
-
-// 🔹 Same InfoBox as in ProfileScreen
-const InfoBox = ({
-  children,
-  style,
-  theme,
-  isTablet,
-  locked,
-}: {
-  children: React.ReactNode;
-  style?: any;
-  theme: any;
-  isTablet: boolean;
-  locked?: boolean;
-}) => {
-  return (
-    <View
-      pointerEvents={locked ? 'none' : 'auto'}
-      style={[
-        style,
-        {
-          borderRadius: isTablet ? 30 : 20,
-          padding: isTablet ? 25 : 20,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.05,
-          shadowRadius: 2,
-          backgroundColor: theme.primaryButton, // 🔵 blue block background
-        },
-      ]}
-    >
-      {children}
-    </View>
-  );
-};
 
 export default function PuzzlesScreen() {
   const router = useRouter();
@@ -128,43 +80,6 @@ export default function PuzzlesScreen() {
       ...styles.gapContainer,
       marginTop: isTablet ? 30 : 20,
     },
-    puzzleGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      justifyContent: 'center',
-      gap: 20,
-    },
-    puzzleCard: {
-      width: isTablet ? '31%' : '47%',
-      alignItems: 'center',
-    },
-    lockedPuzzleCard: {
-      opacity: 0.45,
-    },
-    puzzleIconContainer: {
-      width: 60,
-      height: 60,
-      borderRadius: isTablet ? 30 : 20,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginBottom: 12,
-    },
-    puzzleIcon: {
-      fontSize: 28,
-    },
-    puzzleTitle: {
-      color: theme.primaryText, // same as ProfileScreen
-      marginBottom: 8,
-      textAlign: 'center',
-    },
-    puzzleRating: {
-      color: `${theme.primaryText}DD`, // slightly different white, same as ProfileScreen
-      marginTop: -5,
-    },
-    ratingLabel: {
-      color: `${theme.primaryText}60`, // gray "Rating", same as ProfileScreen
-      marginTop: 2,
-    },
     bottomSpacing: {
       height: 30,
     },
@@ -200,22 +115,6 @@ export default function PuzzlesScreen() {
     };
   });
 
-  type PuzzleTypeCardProps = {
-    title: string;
-    rating: number | string;
-    icon: string;
-    color: string;
-    locked?: boolean;
-  };
-
-  type PuzzleType = {
-    title: string;
-    rating: number | string;
-    icon: string;
-    color: string;
-    locked?: boolean;
-  };
-
   const [ratings, setRatings] = useState<ThemeRatings | null>(null);
 
   // Refetch whenever the tab comes back into focus, so ratings update after solving a puzzle.
@@ -228,32 +127,6 @@ export default function PuzzlesScreen() {
       return () => { active = false; };
     }, [])
   );
-
-  const puzzleTypes: PuzzleType[] = [
-    ...THEMES.map(({ title, key, icon, color }) => ({
-      title,
-      icon,
-      color,
-      rating: ratingFor(ratings, key) ?? '—',
-    })),
-    { title: 'Coming Soon', rating: 'Locked', icon: '🔒', color: '#A0A0A0', locked: true },
-  ];
-
-  const PuzzleTypeCard = ({ title, rating, icon, color, locked }: PuzzleTypeCardProps) => {
-    return (
-      <InfoBox style={[localStyles.puzzleCard, locked && localStyles.lockedPuzzleCard]} theme={theme} isTablet={isTablet} locked={locked}>
-        {/* colored circle/block behind icon */}
-        <View style={[localStyles.puzzleIconContainer, { backgroundColor: color }]}>
-          <Text style={localStyles.puzzleIcon}>{icon}</Text>
-        </View>
-
-        {/* text colors exactly as in ProfileScreen */}
-        <Text style={[styles.h5, localStyles.puzzleTitle]}>{title}</Text>
-        <Text style={[styles.h2, localStyles.puzzleRating]}>{rating}</Text>
-        <Text style={[styles.h6, localStyles.ratingLabel]}>{locked ? 'Locked' : 'Rating'}</Text>
-      </InfoBox>
-    );
-  };
 
   return (
     <GestureHandlerRootView style={{ ...styles.contentContainer }}>
@@ -319,18 +192,9 @@ export default function PuzzlesScreen() {
               Puzzle Ratings
             </Text>
 
-            <View style={localStyles.puzzleGrid}>
-              {puzzleTypes.map((puzzle, index) => (
-                <PuzzleTypeCard
-                  key={index}
-                  title={puzzle.title}
-                  rating={puzzle.rating}
-                  icon={puzzle.icon}
-                  color={puzzle.color}
-                  locked={puzzle.locked}
-                />
-              ))}
-            </View>
+            <ThemeRatingsList ratings={ratings} isTablet={isTablet} onSelect={puzzle => {
+              router.push({ pathname: '/puzzles/themes/[theme]', params: { theme: puzzle.key, isTablet: String(isTablet) } });
+            }} />
           </View>
 
           <View style={localStyles.bottomSpacing} />
