@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTheme } from '@/context/ThemeContext';
-import { PUZZLE_THEMES, puzzleThemeTextColor } from '@/constants/PuzzleThemes';
+import { PUZZLE_THEMES, PUZZLE_THEME_TEXT_COLOR } from '@/constants/PuzzleThemes';
 import ThemePuzzlePlaceholder from '@/components/puzzles/ThemePuzzlePlaceholder';
 
 export default function PuzzleThemeScreen() {
@@ -37,9 +37,9 @@ export default function PuzzleThemeScreen() {
           <View style={styles.content}>
             <View style={[styles.banner, { backgroundColor: puzzle.color, padding: isTablet ? 28 : 22,
               borderRadius: isTablet ? 28 : 20 }]}>
-              <Text accessibilityRole="header" style={[styles.themeTitle, { color: puzzleThemeTextColor(puzzle.color),
+              <Text accessibilityRole="header" style={[styles.themeTitle, { color: PUZZLE_THEME_TEXT_COLOR,
                 fontSize: isTablet ? 34 : 28, lineHeight: isTablet ? 42 : 36 }]}>{puzzle.title}</Text>
-              <Text style={[styles.description, { color: puzzleThemeTextColor(puzzle.color),
+              <Text style={[styles.description, { color: PUZZLE_THEME_TEXT_COLOR,
                 fontSize: isTablet ? 20 : 16, lineHeight: isTablet ? 28 : 23 }]}>{puzzle.description}</Text>
             </View>
             <View style={{ marginTop: isTablet ? 64 : 40 }}>

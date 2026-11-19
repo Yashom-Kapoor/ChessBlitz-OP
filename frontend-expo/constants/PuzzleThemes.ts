@@ -14,12 +14,4 @@ export const PUZZLE_THEMES = [
 
 export type PuzzleTheme = (typeof PUZZLE_THEMES)[number];
 
-// Keep the existing background colors readable, including the pale gold theme.
-export function puzzleThemeTextColor(color: string) {
-  const [r, g, b] = [1, 3, 5].map(offset => {
-    const value = parseInt(color.slice(offset, offset + 2), 16) / 255;
-    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-  });
-  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  return 1.05 / (luminance + 0.05) >= 4.5 ? '#FFFFFF' : '#1F2530';
-}
+export const PUZZLE_THEME_TEXT_COLOR = '#FFFFFF';

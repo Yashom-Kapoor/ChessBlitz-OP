@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { ratingFor, ThemeRatings } from '@/api/Ratings';
-import { PUZZLE_THEMES, PuzzleTheme, puzzleThemeTextColor } from '@/constants/PuzzleThemes';
+import { PUZZLE_THEMES, PuzzleTheme, PUZZLE_THEME_TEXT_COLOR } from '@/constants/PuzzleThemes';
 
 type Props = {
   ratings: ThemeRatings | null;
@@ -23,7 +23,7 @@ export default function ThemeRatingsList({ ratings, isTablet, onSelect }: Props)
     <View style={[styles.list, { gap: isTablet ? 20 : 14 }]}>
       {PUZZLE_THEMES.map(puzzle => {
         const rating = ratingFor(ratings, puzzle.key);
-        const foreground = puzzleThemeTextColor(puzzle.color);
+        const foreground = PUZZLE_THEME_TEXT_COLOR;
         return (
           <TouchableOpacity key={puzzle.key} accessibilityRole="button"
             accessibilityLabel={`${puzzle.title}, ${rating === null ? 'rating unavailable' : `rating ${rating}`}`}
