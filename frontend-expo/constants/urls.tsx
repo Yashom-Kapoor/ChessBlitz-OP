@@ -1,4 +1,14 @@
-export const LOCAL_API_URL = 'http://127.0.0.1:5050';
+import Constants from 'expo-constants';
+
+const apiUrl = new URL('http://127.0.0.1:5050');
+const devServerAddress = Constants.expoConfig?.hostUri;
+
+// On a phone, localhost is the phone itself. Use the Mac running Expo for the API.
+if (__DEV__ && devServerAddress) {
+  apiUrl.hostname = new URL(`http://${devServerAddress}`).hostname;
+}
+
+export const LOCAL_API_URL = apiUrl.origin;
 export const REMOTE_API_URL = 'https://chessblitzbackend-caz1.onrender.com';
 
 /**
