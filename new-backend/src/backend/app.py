@@ -106,6 +106,17 @@ def update_user_info(supabase, token, update_info):
 
 # -------- PUZZLES --------
 
+PUZZLE_THEMES = frozenset({
+    "fork", "pin", "promotion", "skewer", "backRankMate", "discoveredAttack",
+    "trappedPiece", "capturingDefender", "smotheredMate", "zugzwang",
+})
+
+
+def get_random_puzzle_by_themes(supabase, themes):
+    result = supabase.rpc("get_random_puzzle_by_themes", {"theme_filters": themes}).execute()
+    return result.data[0] if result.data else None
+
+
 # Get random puzzle
 def get_random_puzzle(supabase):
     try:
@@ -596,12 +607,21 @@ def get_my_ratings():
 @app.route("/puzzles/random/", methods=["GET"])
 @require_auth
 def random_puzzle_route():
+    # Repeated parameters mean OR: ?theme=fork&theme=pin matches either tag.
+    themes = list(dict.fromkeys(value.strip() for value in request.args.getlist("theme")))
+    if any(theme not in PUZZLE_THEMES for theme in themes):
+        return jsonify({"error": "Choose a valid puzzle theme."}), 400
+
     token = get_bearer_token(request)
     supabase = get_supabase_with_auth(token)
-    puzzle = get_random_puzzle(supabase)
+    try:
+        puzzle = get_random_puzzle_by_themes(supabase, themes) if themes else get_random_puzzle(supabase)
+    except Exception:
+        app.logger.exception("Random puzzle lookup failed")
+        return jsonify({"error": "Could not load a puzzle. Please try again."}), 500
 
     if not puzzle:
-        return jsonify({"error": "No puzzles found"}), 404
+        return jsonify({"error": "No puzzles found for this theme." if themes else "No puzzles found"}), 404
 
     return jsonify({
         "puzzleid": puzzle["PuzzleId"],

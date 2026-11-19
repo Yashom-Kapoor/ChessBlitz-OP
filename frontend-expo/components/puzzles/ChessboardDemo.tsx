@@ -38,6 +38,7 @@ interface ChessboardDemoProps {
     boardSize?: number;
     isTablet?: boolean;
     puzzleId?: string;
+    puzzleTheme?: string;
     renderPiece?: (piece: string) => React.ReactElement | null;
     playerBlack?: boolean; // Shows the board from black's side (black at the bottom)
 }
@@ -69,7 +70,7 @@ const ChessboardDemo = forwardRef<ChessboardDemoRef, ChessboardDemoProps>((props
 
         const getPuzzle = async () => {
             try {
-                const data = await (props.puzzleId ? fetchPuzzle(props.puzzleId) : fetchRandomPuzzle()); // Fetch the puzzle JSON
+                const data = await (props.puzzleId ? fetchPuzzle(props.puzzleId) : fetchRandomPuzzle(props.puzzleTheme)); // Fetch the puzzle JSON
 
                 if (!isActive) {
                     return;
@@ -92,7 +93,7 @@ const ChessboardDemo = forwardRef<ChessboardDemoRef, ChessboardDemoProps>((props
         return () => {
             isActive = false;
         };
-    }, [props.puzzleId]);
+    }, [props.puzzleId, props.puzzleTheme]);
 
     // Expose the chessboardRef and getPuzzle function to the parent component
     useImperativeHandle(ref, () => ({
@@ -187,7 +188,7 @@ const ChessboardDemo = forwardRef<ChessboardDemoRef, ChessboardDemoProps>((props
     if (error) {
         return (
             <View>
-                <Text>Error: {error}</Text>
+                <Text style={{ color: theme.primaryText }}>Error: {error}</Text>
             </View>
         );
     }

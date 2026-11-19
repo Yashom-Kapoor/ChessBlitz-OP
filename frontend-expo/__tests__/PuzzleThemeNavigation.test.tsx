@@ -43,7 +43,7 @@ beforeEach(() => {
 });
 afterEach(async () => { await act(async () => { root?.unmount(); }); });
 
-test.each(PUZZLE_THEMES)('$title opens its matching placeholder through a theme route', async puzzle => {
+test.each(PUZZLE_THEMES)('$title opens its category page and Play requests that theme on the puzzle screen', async puzzle => {
   await act(async () => { root = create(<PuzzlesScreen />); });
   const row = root.root.findAllByType(TouchableOpacity).find(b => b.props.accessibilityHint === `Open the ${puzzle.title} puzzle page`)!;
   await act(async () => { row.props.onPress(); });
@@ -55,6 +55,8 @@ test.each(PUZZLE_THEMES)('$title opens its matching placeholder through a theme 
   expect(root.root.findAllByType(Text).some(text => text.props.children === puzzle.description)).toBe(true);
   expect(root.root.findByType(ThemePuzzlePlaceholder).props).toEqual({ color: puzzle.color, title: puzzle.title });
   expect(getMyRatings).not.toHaveBeenCalled();
+  await act(async () => { button(`Play ${puzzle.title} puzzle`).props.onPress(); });
+  expect(mockRouter.push).toHaveBeenLastCalledWith({ pathname: '/puzzles/demo_puzzle', params: { theme: puzzle.key, isTablet: 'false' } });
 });
 
 test('keeps existing ratings, including zero, and does not invent missing scores', async () => {
@@ -98,6 +100,7 @@ test('an unknown theme gives a safe way back instead of showing the wrong puzzle
   mockParams = { theme: 'unknown-theme' };
   await act(async () => { root = create(<PuzzleThemeScreen />); });
   expect(root.root.findAllByType(ThemePuzzlePlaceholder)).toHaveLength(0);
+  expect(root.root.findAllByType(TouchableOpacity).filter(b => b.props.accessibilityLabel?.startsWith('Play '))).toHaveLength(0);
   expect(root.root.findAllByType(Text).some(text => text.props.children === 'Theme not found')).toBe(true);
   expect(button('Back to puzzles')).toBeDefined();
   expect(getMyRatings).not.toHaveBeenCalled();

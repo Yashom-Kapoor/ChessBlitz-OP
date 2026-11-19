@@ -66,9 +66,10 @@ export default function DemoPuzzle() {
     const boardSize = Math.floor(Math.max(8, Math.min(layoutSize.width, layoutSize.height - boardTop - (isTablet ? 220 : 190))) / 8) * 8;
     const styles = GlobalStyle(theme, isTablet);
 
-    // `?puzzle=<id>` loads a specific puzzle; without it ChessboardDemo serves a random one.
-    const puzzleParam = useLocalSearchParams().puzzle;
+    // A specific puzzle takes priority; theme pages request a random matching puzzle.
+    const { puzzle: puzzleParam, theme: themeParam } = useLocalSearchParams();
     const requestedPuzzleId = typeof puzzleParam === 'string' ? puzzleParam : undefined;
+    const requestedPuzzleTheme = typeof themeParam === 'string' ? themeParam : undefined;
 
     const chessboardRef = useRef<any>(null);
     const [chess] = useState(() => new Chess());
@@ -561,6 +562,7 @@ export default function DemoPuzzle() {
                     colors={{ black: theme.player2Square, white: theme.player1Square }}
                     isTablet={isTablet}
                     puzzleId={requestedPuzzleId}
+                    puzzleTheme={requestedPuzzleTheme}
                     onPuzzleLoaded={initializePuzzle}
                     onMove={handleMove}
                     gestureEnabled={gestureEnabled}

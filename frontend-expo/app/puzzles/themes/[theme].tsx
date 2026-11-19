@@ -45,6 +45,13 @@ export default function PuzzleThemeScreen() {
             <View style={{ marginTop: isTablet ? 64 : 40 }}>
               <ThemePuzzlePlaceholder color={puzzle.color} title={puzzle.title} />
             </View>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Play ${puzzle.title} puzzle`}
+              accessibilityHint={`Load a random ${puzzle.title} puzzle`}
+              onPress={() => router.push({ pathname: '/puzzles/demo_puzzle',
+                params: { theme: puzzle.key, isTablet: String(isTablet) } })}
+              style={[styles.playButton, { backgroundColor: puzzle.color, marginTop: isTablet ? 32 : 24 }]}>
+              <Text style={[styles.themeTitle, { color: PUZZLE_THEME_TEXT_COLOR, fontSize: isTablet ? 24 : 20 }]}>Play</Text>
+            </TouchableOpacity>
           </View>
         ) : (
           <View style={styles.content}>
@@ -68,4 +75,5 @@ const styles = StyleSheet.create({
   banner: { gap: 8 },
   themeTitle: { fontFamily: 'Nunito', fontWeight: '800' },
   description: { fontFamily: 'Nunito', fontWeight: '600' },
+  playButton: { minHeight: 56, borderRadius: 20, padding: 16, alignItems: 'center', justifyContent: 'center' },
 });
