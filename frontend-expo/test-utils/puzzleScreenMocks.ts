@@ -9,6 +9,11 @@ jest.mock('expo-router', () => ({
     useLocalSearchParams: () => ({}),
 }));
 
+// These screen tests run outside a navigator; provide its header layout value.
+jest.mock('expo-router/react-navigation', () => ({
+    useHeaderHeight: () => 64,
+}));
+
 jest.mock('react-native-reanimated', () => {
     const { View, Image } = require('react-native');
     return {
