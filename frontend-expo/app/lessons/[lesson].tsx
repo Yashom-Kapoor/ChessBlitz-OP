@@ -31,7 +31,8 @@ export default function Lesson() {
         const asset = lessonFiles[`lesson${lessonId}`];
         if (!asset) return;
 
-        const uri = Image.resolveAssetSource(asset).uri;
+        const uri = Image.resolveAssetSource(asset)?.uri;
+        if (!uri) return;
 
         fetch(uri)
             .then(res => res.text())

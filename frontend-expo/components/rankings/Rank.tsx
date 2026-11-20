@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, ImageBackground } from 'react-native';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useGlobalSearchParams } from 'expo-router';
 import GlobalStyle from '@/context/GlobalStyle';
@@ -56,41 +56,40 @@ export default function RankingItem({ rank, name, rating, icon, isYou}: RankingP
             justifyContent: 'center',
             marginLeft: 12,
         },
+        rankColumn: {
+            width: isTablet ? 60 : 44,
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
         rankNumber: {
             fontSize: isTablet ? 34 : 26,
             fontWeight: 'bold',
             color: theme.primaryText,
-            marginRight: 12,
+            textAlign: 'center',
         },
         crownIcon: {
-            width: isTablet ? 46 : 30,
-            height: 40,
-            marginLeft: isTablet ? -11 : -4,
-            marginBottom:isTablet ? -42 : -28,
-            backgroundRepeat: 'no-repeat',
-            resizeMode:'contain'
-        }
+            position: 'absolute',
+            // Sits just above the digit, centred in the rank column.
+            top: isTablet ? -30 : -22,
+            alignSelf: 'center',
+            // crown.png is square with transparent padding, so keep the box square.
+            width: isTablet ? 38 : 28,
+            height: isTablet ? 38 : 28,
+        },
     });
     return (
         <View style={rankingStyles.card}>
             <GlassBlurView theme={theme} isTablet={isTablet} color={theme.primaryButton} glass={'clear'} />
-            {/* <Text style={rankingStyles.rankNumber}>{rank}</Text> */}
-            {
-                rank === 1 || rank === 2 || rank === 3 ? (
-                    <View>
-                        <ImageBackground
-                            source={require('@/assets/images/crown.png')}
-                            style={rankingStyles.crownIcon}
-                            tintColor={GetColorFromRanking(rank)}>
-                        </ImageBackground>
-                        <Text style={rankingStyles.rankNumber}>{rank}</Text>
-                    </View>
-                    
-                    ) : 
-                (
+            <View style={rankingStyles.rankColumn}>
+                {rank <= 3 && (
+                    <Image
+                        source={require('@/assets/images/crown.png')}
+                        resizeMode="contain"
+                        style={[rankingStyles.crownIcon, { tintColor: GetColorFromRanking(rank) }]}
+                    />
+                )}
                 <Text style={rankingStyles.rankNumber}>{rank}</Text>
-                )
-            }
+            </View>
 
             {icon && <Image source={icon} style={rankingStyles.icon} />}
             <View style={rankingStyles.textContainer}>

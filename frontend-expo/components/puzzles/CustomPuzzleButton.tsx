@@ -8,7 +8,7 @@ import { useState } from "react";
 import GlobalStyle from "@/context/GlobalStyle";
 import { glassColorSchemeFor, useGlassAvailable } from "@/utils/Glass";
 
-export default function CustomPuzzleButton({ name, onPress, isTablet, icon }: any) {
+export default function CustomPuzzleButton({ name, onPress, isTablet, icon, disabled = false }: any) {
     const { theme } = useTheme();
     const title = name[0].toUpperCase() + name.slice(1);
     const [pressed, setPressed] = useState(false);
@@ -17,7 +17,8 @@ export default function CustomPuzzleButton({ name, onPress, isTablet, icon }: an
     const styles = GlobalStyle(theme, isTablet);
 
     return (
-        <TouchableOpacity style={{
+        <TouchableOpacity disabled={disabled} accessibilityRole="button" accessibilityLabel={title} accessibilityState={{ disabled }} style={{
+            opacity: disabled ? 0.35 : 1,
             justifyContent: 'center',
             alignItems: 'center',
             flex: 1,

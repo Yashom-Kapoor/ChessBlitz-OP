@@ -1,0 +1,51 @@
+{
+  "puzzle_id": "01F1N",
+  "placeholder": true,
+  "note": "PLACEHOLDER hints for Ticket 6 UI testing. Replace with Ticket 3's final hints; keep this shape.",
+  "moves": [
+    {
+      "move_index": 1,
+      "move_san": "Qc4+",
+      "tiers": [
+        {
+          "tier": 1,
+          "text": "Black's knight on d3 is deep in your camp. Is anything guarding it?"
+        },
+        {
+          "tier": 2,
+          "text": "Can you find a move that attacks two things at once?"
+        },
+        {
+          "tier": 3,
+          "text": "Your queen is the piece to use."
+        },
+        {
+          "tier": 4,
+          "text": "Play Qc4+."
+        },
+        {
+          "tier": 5,
+          "text": "Qc4+ checks the king and attacks the knight. Black can only save one!"
+        }
+      ]
+    },
+    {
+      "move_index": 2,
+      "move_san": "Qxd3",
+      "tiers": [
+        {
+          "tier": 1,
+          "text": "Black blocked the check. What else is your queen attacking?"
+        },
+        {
+          "tier": 2,
+          "text": "Play Qxd3."
+        },
+        {
+          "tier": 3,
+          "text": "Qxd3 takes the knight. That's the fork paying off!"
+        }
+      ]
+    }
+  ]
+}

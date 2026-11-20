@@ -1,10 +1,23 @@
+import { useHeaderHeight } from 'expo-router/react-navigation';
+import { getPuzzleActionAvailability } from '@/components/puzzles/puzzleActions';
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
-import { useGlobalSearchParams } from 'expo-router';
+import { useWindowDimensions, View, Text, StyleSheet, Pressable, Image } from 'react-native';
+import { useGlobalSearchParams, useLocalSearchParams } from 'expo-router';
 import ChessboardDemo from '@/components/puzzles/ChessboardDemo';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { secondsToHMS } from '@/utils/Time';
-import { fetchHint } from '@/api/GetHint';
+import { getHintTiers } from '@/api/GetHintTiers';
+import { getWrongMoveMessage, WRONG_MOVE_FALLBACK } from '@/api/WrongMove';
+import {
+    HintState,
+    NO_HINTS_MESSAGE,
+    NO_MORE_HINTS_MESSAGE,
+    hintButtonLabel,
+    initialHintState,
+    revealNext,
+    revealedHints,
+    withTiers,
+} from '@/utils/hintTiers';
 import { detectMoveFromFEN, getTurnFromFEN } from '@/utils/Notation';
 import { Chess } from 'chess.js';
 import { useTheme } from '@/context/ThemeContext';
@@ -15,6 +28,10 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import GlassBlurView from '@/components/GlassBlurView';
 import { postCompletedPuzzle } from '@/api/PostCompleted';
 import { supabase } from '@/api/SupabaseClient';
+import PuzzleDevHUD from '@/components/puzzles/PuzzleDevHUD';
+import WrongMovePrompt from '@/components/puzzles/WrongMovePrompt';
+import { opponentDelay, usePuzzleSettings } from '@/context/PuzzleSettingsContext';
+import * as Haptics from 'expo-haptics';
 
 type PuzzleData = {
     fen: string;
@@ -39,8 +56,19 @@ const toMoveNotation = (move: string): MoveNotation => ({
 
 export default function DemoPuzzle() {
     const { theme } = useTheme();
+    const { autoFlip, opponentSpeed, haptics, showTimer } = usePuzzleSettings();
     const isTablet = useGlobalSearchParams().isTablet === 'true';
+    const windowSize = useWindowDimensions();
+    const [layoutSize, setLayoutSize] = useState({ width: windowSize.width, height: windowSize.height });
+    const headerHeight = useHeaderHeight();
+    const hintTop = headerHeight + 12;
+    const boardTop = hintTop + (isTablet ? 150 : 110);
+    const boardSize = Math.floor(Math.max(8, Math.min(layoutSize.width, layoutSize.height - boardTop - (isTablet ? 220 : 190))) / 8) * 8;
     const styles = GlobalStyle(theme, isTablet);
+
+    // `?puzzle=<id>` loads a specific puzzle; without it ChessboardDemo serves a random one.
+    const puzzleParam = useLocalSearchParams().puzzle;
+    const requestedPuzzleId = typeof puzzleParam === 'string' ? puzzleParam : undefined;
 
     const chessboardRef = useRef<any>(null);
     const [chess] = useState(() => new Chess());
@@ -56,11 +84,27 @@ export default function DemoPuzzle() {
     const [hintsUsed, setHintsUsed] = useState(0);
     const [undosUsed, setUndosUsed] = useState(0);
     const [redosUsed, setRedosUsed] = useState(0);
+    // `hint` is the short message at the top of the bubble (wrong-move feedback, "Great job!", ...).
+    // The tiered hints for the current move live in `hintState` and are listed under it.
     const [hint, setHint] = useState<string | null>(null);
-    const [error, setError] = useState<string | null>(null);
+    const [hintState, setHintState] = useState<HintState>(() => initialHintState(1));
     const [loadingHint, setLoadingHint] = useState(false);
     const [expanded, setExpanded] = useState(false);
     const [isHintExpandable, setIsHintExpandable] = useState(false);
+    const [pendingMove, setPendingMove] = useState(false);
+    const [retryFen, setRetryFen] = useState<string | null>(null);
+    const actionAvailability = getPuzzleActionAvailability({
+        ready: Boolean(puzzleReady && currentPuzzle !== null && lastFEN && turn && chessboardRef.current?.board),
+        playerTurn: Boolean(lastFEN && turn && getTurnFromFEN(lastFEN) !== turn),
+        retrying: Boolean(retryFen),
+        completed: Boolean(puzzleCompleted),
+        loadingHint,
+        pendingMove,
+        moveNumber,
+        redoUnlocked: redoUnlocked ?? 1,
+        hasProgress: chess.history().length > 1,
+        hasRedoMove: Boolean(moves[moveNumber * 2 - 1]),
+    });
 
     const hintHeight = useSharedValue(55);
     const hintWidth = useSharedValue(200);
@@ -68,6 +112,16 @@ export default function DemoPuzzle() {
     const zIndex = useSharedValue(0);
     const openingMovePlayedRef = useRef(false);
     const completionSubmittedRef = useRef(false);
+    // Hints belong to one player move. After a correct move, undo or redo, `moveNumber` changes and
+    // the hints start again at tier 1 without needing an extra state update.
+    const activeHints = hintState.moveIndex === moveNumber ? hintState : initialHintState(moveNumber);
+    // Latest hint state, for async callbacks that finish after the player has moved on.
+    const hintStateRef = useRef(activeHints);
+    useEffect(() => {
+        hintStateRef.current = activeHints;
+    }, [activeHints]);
+    // Bumped on every move, undo and reset so a slow /wrong-move reply can't land on a later position.
+    const wrongMoveRequestRef = useRef(0);
 
     const hintAnimStyle = useAnimatedStyle(() => ({
         maxHeight: withTiming(hintHeight.value, { duration: 500 }),
@@ -84,7 +138,7 @@ export default function DemoPuzzle() {
     const bearHintStyle = useAnimatedStyle(() => ({
         position: 'absolute',
         left: isTablet ? '2%' : 0,
-        top: isTablet ? '8%' : '25%',
+        top: hintTop,
         width: isTablet ? 140 : 100,
         height: isTablet ? 140 : 100,
         zIndex: zIndex.value,
@@ -98,16 +152,20 @@ export default function DemoPuzzle() {
     const localStyles = StyleSheet.create({
         container: {
             flex: 1,
-            justifyContent: 'flex-end',
+            justifyContent: 'flex-start',
             alignItems: 'center',
             backgroundColor: theme.background,
-            paddingBottom: 150,
+            paddingTop: boardTop,
+            paddingBottom: 20,
+        },
+        boardWrapper: {
+            position: 'relative',
         },
         hintContainer: {
             position: 'absolute',
             flex: 1,
             left: isTablet ? '17%' : '20%',
-            top: isTablet ? '12%' : '29%',
+            top: hintTop + (isTablet ? 35 : 25),
             flexDirection: 'row',
             marginBottom: isTablet ? 0 : 20,
             alignItems: 'flex-start',
@@ -152,7 +210,8 @@ export default function DemoPuzzle() {
     });
 
     useEffect(() => {
-        hintHeight.value = expanded ? 300 : (isTablet ? 55 : 45);
+        // Expanded height leaves room for several hint tiers stacked under each other.
+        hintHeight.value = expanded ? (isTablet ? 520 : 420) : (isTablet ? 55 : 45);
         hintWidth.value = (expanded || !isHintExpandable) ? (isTablet ? 500 : 300) : (isTablet ? 100 : 70);
         hintOpacity.value = (expanded || !isHintExpandable) ? 1 : 0;
         zIndex.value = expanded ? 100 : 0;
@@ -215,12 +274,14 @@ export default function DemoPuzzle() {
         setRedoUnlocked(1);
         setPuzzleCompleted(false);
         setHint(null);
-        setError(null);
+        setHintState(initialHintState(1));
         setLoadingHint(false);
         setExpanded(false);
         setIsHintExpandable(false);
+        setRetryFen(null);
         setElapsedTime(0);
         setPuzzleReady(true);
+        wrongMoveRequestRef.current += 1;
 
         openingMovePlayedRef.current = false;
         completionSubmittedRef.current = false;
@@ -234,37 +295,65 @@ export default function DemoPuzzle() {
 
             setTimeout(async () => {
                 await chessboardRef.current?.board.move(openingMove);
-            }, 500);
+            }, opponentDelay(500, opponentSpeed));
         }
     };
 
+    // Each tap reveals the next tier for the current move. Tiers are loaded on the first tap.
     const handleGetHint = async () => {
-        if (!currentPuzzle || puzzleCompleted) {
+        if (!actionAvailability.hint || !currentPuzzle) {
             return;
         }
 
-        try {
-            setHint(null);
+        const forMove = activeHints.moveIndex;
+        let state = activeHints;
+
+        if (state.tiers === null) {
+            setLoadingHint(true);
             setIsHintExpandable(false);
             setExpanded(false);
-            setLoadingHint(true);
 
-            const fetchedHint = await fetchHint(currentPuzzle.puzzleid, 2 * moveNumber);
-            setHint(fetchedHint);
-            setHintsUsed((count) => count + 1);
-            setError(null);
-        } catch (err) {
-            setError((err as Error).message);
-            setHint(null);
-            setIsHintExpandable(false);
-        } finally {
-            setLoadingHint(false);
-            setIsHintExpandable(true);
-            setExpanded(true);
+            let tiers: string[] | null = null;
+            try {
+                tiers = await getHintTiers(currentPuzzle.puzzleid, forMove);
+            } catch (err) {
+                console.warn('Hint lookup failed:', err);
+            } finally {
+                setLoadingHint(false);
+            }
+
+            // The player moved, undid or reset while we were loading: drop this result.
+            if (hintStateRef.current.moveIndex !== forMove) {
+                return;
+            }
+
+            if (tiers === null) {
+                // Leave tiers unloaded so the next tap tries again.
+                setHint("Couldn't get a hint right now. Try again in a moment.");
+                setIsHintExpandable(true);
+                setExpanded(true);
+                return;
+            }
+
+            state = withTiers(hintStateRef.current, tiers);
         }
+
+        const next = revealNext(state);
+        setHintState(next);
+
+        if (next.revealed > state.revealed) {
+            setHint(null);
+            setHintsUsed((count) => count + 1);
+        } else {
+            setHint(next.tiers && next.tiers.length > 0 ? NO_MORE_HINTS_MESSAGE : NO_HINTS_MESSAGE);
+        }
+
+        setIsHintExpandable(true);
+        setExpanded(true);
     };
 
     const resetToStart = () => {
+        if (!actionAvailability.reset) return;
         if (!currentPuzzle || !chessboardRef.current?.board) {
             return;
         }
@@ -276,10 +365,12 @@ export default function DemoPuzzle() {
         setRedoUnlocked(1);
         setPuzzleCompleted(false);
         setHint(null);
-        setError(null);
+        setHintState(initialHintState(1));
         setIsHintExpandable(false);
         setExpanded(false);
+        setRetryFen(null);
         setLastFEN(currentPuzzle.fen);
+        wrongMoveRequestRef.current += 1;
         setElapsedTime(0);
         setTurn(getTurnFromFEN(currentPuzzle.fen));
 
@@ -293,15 +384,32 @@ export default function DemoPuzzle() {
 
             setTimeout(async () => {
                 await chessboardRef.current?.board.move(openingMove);
-            }, 500);
+            }, opponentDelay(500, opponentSpeed));
         }
     };
 
     const handleUndo = () => {
+        if (!actionAvailability.undo) return;
         if (!currentPuzzle || !chessboardRef.current?.board) {
             return;
         }
 
+        // Drop a slow /wrong-move reply so it cannot land after this undo.
+        wrongMoveRequestRef.current += 1;
+
+        if (retryFen) {
+            // Wrong moves only reach the displayed board; preserve the engine's undo history.
+            chessboardRef.current.board.resetBoard(chess.fen());
+            setLastFEN(chess.fen());
+            setRetryFen(null);
+            setHint(null);
+            setIsHintExpandable(false);
+            setExpanded(false);
+            setUndosUsed((count) => count + 1);
+            return;
+        }
+
+        setPuzzleCompleted(false);
         chess.undo();
 
         if (getTurnFromFEN(chess.fen()) === turn) {
@@ -314,34 +422,63 @@ export default function DemoPuzzle() {
         setIsHintExpandable(false);
         setExpanded(false);
 
-        if (moveNumber <= 1) {
-            resetToStart();
-            return;
-        }
-
         chessboardRef.current.board.resetBoard(chess.fen());
-        setTurn(getTurnFromFEN(chess.fen()));
+        setTurn(getTurnFromFEN(currentPuzzle.fen));
         setUndosUsed((count) => count + 1);
     };
 
     const handleRedo = () => {
-        if (!currentPuzzle || !chessboardRef.current?.board) {
-            return;
-        }
-
-        if (moveNumber >= redoUnlocked) {
-            return;
-        }
-
+        if (!actionAvailability.redo || !chessboardRef.current?.board) return;
         const redoMove = moves[moveNumber * 2 - 1];
-        if (!redoMove) {
+        if (!redoMove) return;
+
+        setPendingMove(true);
+        setTimeout(async () => {
+            try {
+                await chessboardRef.current?.board.move(toMoveNotation(redoMove));
+                setRedosUsed((count) => count + 1);
+            } finally {
+                setPendingMove(false);
+            }
+        }, 200);
+    };
+
+    // A wrong move: ask /wrong-move (Ticket 5, mocked for now) what kind of mistake it was, show a
+    // short message, and put the piece back so the player can try again. Earlier hints stay listed.
+    const handleWrongMove = (previousFen: string, playedMove: string | null) => {
+        const requestId = ++wrongMoveRequestRef.current;
+
+        setHint('Hmmm...');
+        setIsHintExpandable(false);
+        setExpanded(false);
+
+        setTimeout(() => {
+            if (requestId !== wrongMoveRequestRef.current) {
+                return;
+            }
+            chessboardRef.current?.board?.resetBoard(previousFen);
+            setLastFEN(previousFen);
+        }, 600);
+
+        const showMessage = (message: string) => {
+            if (requestId !== wrongMoveRequestRef.current) {
+                return;
+            }
+            setHint(message);
+            setIsHintExpandable(true);
+            setExpanded(true);
+        };
+
+        if (!currentPuzzle || !playedMove) {
+            showMessage(WRONG_MOVE_FALLBACK);
             return;
         }
 
-        setTimeout(async () => {
-            await chessboardRef.current?.board.move(toMoveNotation(redoMove));
-            setRedosUsed((count) => count + 1);
-        }, 200);
+        void getWrongMoveMessage({
+            puzzleId: currentPuzzle.puzzleid,
+            moveIndex: moveNumber,
+            move: playedMove,
+        }).then(showMessage);
     };
 
     const handleMove = ({ state }: { state: { fen: string } }) => {
@@ -360,13 +497,19 @@ export default function DemoPuzzle() {
         const expectedMove = moves[moveNumber * 2 - 1];
 
         if (!detectedMove || detectedMove !== expectedMove) {
-            setHint('Try again!');
-            setIsHintExpandable(false);
-            setExpanded(false);
+            if (haptics) void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            setRetryFen(previousFen);
+            handleWrongMove(previousFen, detectedMove);
             return;
         }
 
+        if (haptics) void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setRedoUnlocked((current) => Math.max(current, moveNumber + 1));
+        setRetryFen(null);
+        wrongMoveRequestRef.current += 1;
         chess.move(toMoveNotation(detectedMove));
+        // Clear this move's hints, including after the last move of the puzzle.
+        setHintState(initialHintState(moveNumber + 1));
         setHint(null);
         setIsHintExpandable(false);
         setExpanded(false);
@@ -390,34 +533,40 @@ export default function DemoPuzzle() {
         setTimeout(async () => {
             chess.move(followUpNotation);
             await chessboardRef.current?.board.move(followUpNotation);
-        }, 700);
+        }, opponentDelay(700, opponentSpeed));
     };
 
-    const gestureEnabled = Boolean(puzzleReady && lastFEN && turn && getTurnFromFEN(lastFEN) !== turn);
+    const gestureEnabled = Boolean(puzzleReady && !pendingMove && !retryFen && lastFEN && turn && getTurnFromFEN(lastFEN) !== turn);
     const bestMoveLabel = moves[2 * moveNumber - 1] ?? '...';
     const ratingLabel = currentPuzzle?.rating ?? '1000';
+    // The message (if any) first, then every tier revealed so far for this move.
+    const bubbleText = loadingHint
+        ? 'Hmmm...'
+        : [hint, ...revealedHints(activeHints)].filter(Boolean).join('\n\n') || 'Need a hint?';
 
     return (
-        <BackgroundContext theme={theme} style={localStyles.container}>
-            <Text style={{ color: theme.primaryText, position: 'absolute', textAlign: 'right', top: 55, right: 5, zIndex: 1000 }}>
-                {`BEST: ${bestMoveLabel}\n`}
-                {`ID: ${currentPuzzle?.puzzleid ?? 'N/A'}`}
-            </Text>
+        <BackgroundContext theme={theme} style={localStyles.container} onLayout={({ nativeEvent }: { nativeEvent: { layout: { width: number; height: number } } }) => setLayoutSize(nativeEvent.layout)}>
+            <PuzzleDevHUD puzzleId={currentPuzzle?.puzzleid} bestMove={bestMoveLabel} />
 
             <Animated.Image
                 source={require('@/assets/images/hints/bear.png')}
                 style={{ ...bearHintStyle }}
             />
 
-            <ChessboardDemo
-                playerBlack={currentPuzzle?.fen?.split(' ')[1] === 'w' || false}
-                ref={chessboardRef}
-                colors={{ black: theme.player2Square, white: theme.player1Square }}
-                isTablet={isTablet}
-                onPuzzleLoaded={initializePuzzle}
-                onMove={handleMove}
-                gestureEnabled={gestureEnabled}
-            />
+            <View style={localStyles.boardWrapper}>
+                <ChessboardDemo
+                    boardSize={boardSize}
+                    playerBlack={autoFlip && currentPuzzle?.fen?.split(' ')[1] === 'w'}
+                    ref={chessboardRef}
+                    colors={{ black: theme.player2Square, white: theme.player1Square }}
+                    isTablet={isTablet}
+                    puzzleId={requestedPuzzleId}
+                    onPuzzleLoaded={initializePuzzle}
+                    onMove={handleMove}
+                    gestureEnabled={gestureEnabled}
+                />
+                <WrongMovePrompt visible={Boolean(retryFen)} onTryAgain={handleUndo} isTablet={isTablet} />
+            </View>
 
             <Animated.View style={localStyles.hintContainer}>
                 <Pressable
@@ -433,7 +582,7 @@ export default function DemoPuzzle() {
                     <GlassBlurView theme={theme} isTablet={isTablet} color={theme.hintBubble} glass="clear" interactive />
                     <Animated.View style={hintAnimStyle}>
                         <Text style={{ ...styles.h4, color: theme.secondaryText, ...localStyles.hintSpeech }}>
-                            {loadingHint ? 'Hmmm...' : error ? error : hint ? hint : 'Need a hint?'}
+                            {bubbleText}
                         </Text>
                     </Animated.View>
                     <Animated.Image
@@ -453,7 +602,7 @@ export default function DemoPuzzle() {
                 </Pressable>
             </Animated.View>
 
-            <View style={[styles.hStack, { marginTop: isTablet ? -10 : 10, marginBottom: -30 }]}> 
+            <View style={[styles.hStack, { marginTop: 10, marginBottom: 0 }]}>
                 <View style={localStyles.ratingContainer}>
                     <IconSymbol size={isTablet ? 45 : 30} style={{ marginHorizontal: 5 }} name="puzzlepiece.extension.fill" color={theme.primaryText} />
                     <Text style={[styles.subtitle, { marginLeft: isTablet ? 5 : 0, color: theme.primaryText }]}> 
@@ -462,15 +611,15 @@ export default function DemoPuzzle() {
                     <IconSymbol size={isTablet ? 40 : 32} style={{ marginLeft: 'auto' }} name="chevron.up.circle.fill" color={theme.primaryText} />
                 </View>
 
-                <View style={localStyles.timeElapsed}>
+                {showTimer && <View style={localStyles.timeElapsed}>
                     <IconSymbol style={localStyles.clockIcon} size={isTablet ? 40 : 32} name="clock" color={theme.primaryText} />
                     <Text style={[styles.h2, { textAlign: 'right', color: theme.primaryText }]}>
                         {secondsToHMS(elapsedTime)}
                     </Text>
-                </View>
+                </View>}
             </View>
 
-            <PuzzleBar onHint={handleGetHint} onUndo={handleUndo} onRedo={handleRedo} onReset={resetToStart} onOptions={null} isTablet={isTablet} />
+            <PuzzleBar raised hintLabel={hintButtonLabel(activeHints)} onHint={handleGetHint} onUndo={handleUndo} onRedo={handleRedo} onReset={resetToStart} available={actionAvailability} isTablet={isTablet} />
         </BackgroundContext>
     );
 }

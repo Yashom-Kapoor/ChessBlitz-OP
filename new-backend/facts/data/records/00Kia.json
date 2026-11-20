@@ -1,6 +1,6 @@
 {
   "puzzle_id": "00Kia",
-  "schema_version": 1,
+  "schema_version": 2,
   "records": [
     {
       "puzzle_id": "00Kia",
@@ -33,7 +33,60 @@
         "Qxe1"
       ],
       "opponent_idea": {},
-      "engine": {}
+      "engine": {
+        "depth": 20,
+        "lines": [
+          {
+            "move": "Qe5+",
+            "score": 2.81,
+            "mate_in": null,
+            "line": [
+              "Qe5+",
+              "Kg8",
+              "Bd5+",
+              "Nxd5",
+              "Qxe1"
+            ],
+            "win_chance": 73.8
+          },
+          {
+            "move": "Qg4",
+            "score": -5.58,
+            "mate_in": null,
+            "line": [
+              "Qg4",
+              "Ng8",
+              "Bc6",
+              "Qf2",
+              "Kh3"
+            ],
+            "win_chance": 11.4
+          },
+          {
+            "move": "Qf3",
+            "score": null,
+            "mate_in": -15,
+            "line": [
+              "Qf3",
+              "Rxf3",
+              "Bxf3",
+              "g5+",
+              "Kxg5"
+            ],
+            "win_chance": 0.0
+          }
+        ],
+        "solution_is_top": true,
+        "gap": "+2.81 vs -5.58",
+        "gap_pawns": 8.39,
+        "one_clear_solution": true,
+        "engine_name": "Stockfish 17.1"
+      },
+      "outcome": {
+        "checkmate": false,
+        "material_change": 6,
+        "promotion": false
+      }
     },
     {
       "puzzle_id": "00Kia",
@@ -64,7 +117,60 @@
         "Qxe1"
       ],
       "opponent_idea": {},
-      "engine": {}
+      "engine": {
+        "depth": 20,
+        "lines": [
+          {
+            "move": "Bd5+",
+            "score": 2.37,
+            "mate_in": null,
+            "line": [
+              "Bd5+",
+              "Nxd5",
+              "Qxe1",
+              "Ne3",
+              "Qh1"
+            ],
+            "win_chance": 70.5
+          },
+          {
+            "move": "Kh3",
+            "score": -5.69,
+            "mate_in": null,
+            "line": [
+              "Kh3",
+              "Qf1+",
+              "Kh4",
+              "Qf6+",
+              "Qxf6"
+            ],
+            "win_chance": 11.0
+          },
+          {
+            "move": "Qe6+",
+            "score": -5.79,
+            "mate_in": null,
+            "line": [
+              "Qe6+",
+              "Rf7",
+              "c4",
+              "Qe2",
+              "Kh3"
+            ],
+            "win_chance": 10.6
+          }
+        ],
+        "solution_is_top": true,
+        "gap": "+2.37 vs -5.69",
+        "gap_pawns": 8.06,
+        "one_clear_solution": true,
+        "engine_name": "Stockfish 17.1"
+      },
+      "outcome": {
+        "checkmate": false,
+        "material_change": 6,
+        "promotion": false
+      }
     },
     {
       "puzzle_id": "00Kia",
@@ -93,7 +199,60 @@
         "Qxe1"
       ],
       "opponent_idea": {},
-      "engine": {}
+      "engine": {
+        "depth": 20,
+        "lines": [
+          {
+            "move": "Qxe1",
+            "score": 2.19,
+            "mate_in": null,
+            "line": [
+              "Qxe1",
+              "Ne3",
+              "Qh1",
+              "Rf6",
+              "Qa8+"
+            ],
+            "win_chance": 69.1
+          },
+          {
+            "move": "Qxd5+",
+            "score": -6.94,
+            "mate_in": null,
+            "line": [
+              "Qxd5+",
+              "Kg7",
+              "Qxd4+",
+              "Kh6",
+              "Qg4"
+            ],
+            "win_chance": 7.2
+          },
+          {
+            "move": "Qxd4",
+            "score": null,
+            "mate_in": -11,
+            "line": [
+              "Qxd4",
+              "Rf4+",
+              "Qxf4",
+              "Nxf4",
+              "Kg4"
+            ],
+            "win_chance": 0.0
+          }
+        ],
+        "solution_is_top": true,
+        "gap": "+2.19 vs -6.94",
+        "gap_pawns": 9.13,
+        "one_clear_solution": true,
+        "engine_name": "Stockfish 17.1"
+      },
+      "outcome": {
+        "checkmate": false,
+        "material_change": 9,
+        "promotion": false
+      }
     }
   ]
 }

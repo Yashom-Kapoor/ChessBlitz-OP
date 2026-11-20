@@ -1,0 +1,85 @@
+{
+  "puzzle_id": "00AhO",
+  "placeholder": true,
+  "note": "PLACEHOLDER hints for Ticket 6 UI testing. Replace with Ticket 3's final hints; keep this shape.",
+  "moves": [
+    {
+      "move_index": 1,
+      "move_san": "Bb7",
+      "tiers": [
+        {
+          "tier": 1,
+          "text": "White's queen is deep on your side of the board. Is it safe there?"
+        },
+        {
+          "tier": 2,
+          "text": "Can you attack the queen so it runs out of safe squares?"
+        },
+        {
+          "tier": 3,
+          "text": "Your bishop is the piece to use."
+        },
+        {
+          "tier": 4,
+          "text": "Play Bb7."
+        },
+        {
+          "tier": 5,
+          "text": "Bb7 attacks the queen. It has to run, and it doesn't have many places to go."
+        }
+      ]
+    },
+    {
+      "move_index": 2,
+      "move_san": "Ra8",
+      "tiers": [
+        {
+          "tier": 1,
+          "text": "The queen ran to a7. Which squares can it still go to?"
+        },
+        {
+          "tier": 2,
+          "text": "Attack the queen again. It is almost trapped!"
+        },
+        {
+          "tier": 3,
+          "text": "Your rook is the piece to use."
+        },
+        {
+          "tier": 4,
+          "text": "Play Ra8."
+        },
+        {
+          "tier": 5,
+          "text": "Ra8 attacks the queen and it has no safe square left. The best White can do is take your rook."
+        }
+      ]
+    },
+    {
+      "move_index": 3,
+      "move_san": "Bxa8",
+      "tiers": [
+        {
+          "tier": 1,
+          "text": "White's queen just took your rook. Can you take it back?"
+        },
+        {
+          "tier": 2,
+          "text": "Capture the piece that just took yours."
+        },
+        {
+          "tier": 3,
+          "text": "Your bishop is the piece to use."
+        },
+        {
+          "tier": 4,
+          "text": "Play Bxa8."
+        },
+        {
+          "tier": 5,
+          "text": "Bxa8 wins the queen. You gave up a rook (5) and won a queen (9)!"
+        }
+      ]
+    }
+  ]
+}

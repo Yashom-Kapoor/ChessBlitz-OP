@@ -9,6 +9,7 @@ import backgroundImages, { BackgroundContext } from "@/context/Backgrounds";
 import { BlurView } from "expo-blur";
 import getEquidistantSinePoints from "@/utils/EquidistantSinePoints";
 import LessonBubble from "@/components/lessons/LessonBubble";
+import { getApiUrl } from "@/constants/urls";
 
 type LessonData = {
   id: number
@@ -30,7 +31,6 @@ export default function LessonScreen() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false);
   const router = useRouter();
-  const API_URL = "http://127.0.0.1:5000/lessons";
 
   const [lessonBubble, setLessonBubble] = useState<number>(-1);
   const [completedLessons, setCompletedLessons] = useState<number>(0);
@@ -38,7 +38,7 @@ export default function LessonScreen() {
   useEffect(() => {
     const fetchLessons = async () => {
       try {
-        const response = await fetch(API_URL);
+        const response = await fetch(`${getApiUrl()}/lessons`);
         const data = await response.json();
         setLessons(data);
       } catch (error) {

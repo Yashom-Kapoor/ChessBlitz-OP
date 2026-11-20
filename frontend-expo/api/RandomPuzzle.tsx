@@ -1,10 +1,10 @@
-import { API_URL } from "@/constants/urls";
+import { getApiUrl } from "@/constants/urls";
 import { supabase } from "@/api/SupabaseClient";
 
 export async function fetchRandomPuzzle(): Promise<any> {
   try {
     const { data: { session } } = await supabase.auth.getSession();
-    const response = await fetch(`${API_URL}/puzzles/random/`, {
+    const response = await fetch(`${getApiUrl()}/puzzles/random/`, {
       headers: {
         Authorization: `Bearer ${session?.access_token}`,
       },

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import chess
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2  # 2: added `outcome`; `engine` filled by engine.py (Ticket 4)
 
 # Every record must have exactly these keys (checked by validate_record).
 REQUIRED_FIELDS = {
@@ -33,6 +33,7 @@ REQUIRED_FIELDS = {
     "solution_line": list,
     "opponent_idea": dict,
     "engine": dict,
+    "outcome": dict,
 }
 
 
@@ -132,7 +133,8 @@ def build_records(
             "captured_piece": _captured_piece(board, move),
             "solution_line": sans[i:],
             "opponent_idea": {},
-            "engine": {},
+            "engine": {},   # filled by engine.enrich_document
+            "outcome": {},  # filled by engine.enrich_document
         })
 
         board.push(move)

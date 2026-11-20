@@ -1,0 +1,73 @@
+{
+  "puzzle_id": "0cUVg",
+  "placeholder": true,
+  "note": "PLACEHOLDER hints for Ticket 6 UI testing. Replace with Ticket 3's final hints; keep this shape.",
+  "moves": [
+    {
+      "move_index": 1,
+      "move_san": "a7",
+      "tiers": [
+        {
+          "tier": 1,
+          "text": "Your pawns are close to the end of the board. How close?"
+        },
+        {
+          "tier": 2,
+          "text": "A pawn that reaches the last row becomes a queen."
+        },
+        {
+          "tier": 3,
+          "text": "Your a-pawn is the piece to move."
+        },
+        {
+          "tier": 4,
+          "text": "Play a7."
+        },
+        {
+          "tier": 5,
+          "text": "a7 is one step from becoming a queen. Black has to rush the king over to stop it."
+        }
+      ]
+    },
+    {
+      "move_index": 2,
+      "move_san": "Nd6+",
+      "tiers": [
+        {
+          "tier": 1,
+          "text": "Black's king is guarding a8. Can you chase it away?"
+        },
+        {
+          "tier": 2,
+          "text": "Give a check that makes the king move."
+        },
+        {
+          "tier": 3,
+          "text": "Your knight is the piece to use."
+        },
+        {
+          "tier": 4,
+          "text": "Play Nd6+."
+        },
+        {
+          "tier": 5,
+          "text": "Nd6+ checks the king and attacks the rook. The king has to move, and then it can't stop your pawn."
+        }
+      ]
+    },
+    {
+      "move_index": 3,
+      "move_san": "a8=Q",
+      "tiers": [
+        {
+          "tier": 1,
+          "text": "The way is clear. What should your pawn become?"
+        },
+        {
+          "tier": 2,
+          "text": "Play a8=Q. Your pawn becomes a queen!"
+        }
+      ]
+    }
+  ]
+}

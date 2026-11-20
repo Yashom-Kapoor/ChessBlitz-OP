@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { Dimensions, View, Text, StyleSheet, ImageBackground, TouchableOpacity } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { useWindowDimensions, View, Text, StyleSheet, ImageBackground, TouchableOpacity } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { useGlobalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useGlobalSearchParams, useRouter } from 'expo-router';
+import { getMyRatings, ratingFor, ThemeRatings } from '@/api/Ratings';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/context/ThemeContext';
 import { BackgroundContext } from '@/context/Backgrounds';
@@ -14,10 +15,24 @@ import Animated, {
   useScrollViewOffset,
 } from 'react-native-reanimated';
 
-const { width } = Dimensions.get('window');
+// `key` is the Lichess theme tag, which is also the column name in the Supabase `Ratings` table.
+const THEMES = [
+  { title: 'Fork', key: 'fork', icon: '⚔️', color: '#E76F51' },
+  { title: 'Pin', key: 'pin', icon: '📌', color: '#2A9D8F' },
+  { title: 'Promotion', key: 'promotion', icon: '👑', color: '#E9C46A' },
+  { title: 'Skewer', key: 'skewer', icon: '🍢', color: '#F4A261' },
+  { title: 'Back Rank', key: 'backRankMate', icon: '⏮️', color: '#264653' },
+  { title: 'Discovered Attack', key: 'discoveredAttack', icon: '🔎', color: '#3A86FF' },
+  { title: 'Trapped Piece', key: 'trappedPiece', icon: '🧱', color: '#6C757D' },
+  { title: 'Removing Defender', key: 'capturingDefender', icon: '💥', color: '#EF476F' },
+  { title: 'Smothered Mate', key: 'smotheredMate', icon: '💀', color: '#8D99AE' },
+  { title: 'Zugzwang', key: 'zugzwang', icon: '♟️', color: '#118AB2' },
+] as const;
+
 const IMG_HEIGHT = 300;
-const IMG_WIDTH = width * 1.5; // wider for more noticeable parallax
 const STICKY_TITLE_THRESHOLD = IMG_HEIGHT - 80;
+// The sticky "Puzzles" title is pulled up to sit over the lower part of the hero image.
+const TITLE_OVERLAP = IMG_HEIGHT * 0.9;
 
 // 🔹 Same InfoBox as in ProfileScreen
 const InfoBox = ({
@@ -62,13 +77,17 @@ export default function PuzzlesScreen() {
   const scrollOffset = useScrollViewOffset(scrollRef);
 
   const styles = GlobalStyle(theme, isTablet);
+  const { width } = useWindowDimensions();
+  const IMG_WIDTH = width * 1.5; // wider than the screen, cropped by the hero container
+  const heroHeight = isTablet ? IMG_HEIGHT + 60 : IMG_HEIGHT;
 
   const localStyles = StyleSheet.create({
     heroContainer: {
       position: 'relative',
       width,
-      height: isTablet ? IMG_HEIGHT + 60 : IMG_HEIGHT,
+      height: heroHeight,
       overflow: 'hidden',
+      opacity: 0.3,
     },
     heroImage: {
       position: 'absolute',
@@ -82,9 +101,9 @@ export default function PuzzlesScreen() {
     stickyTitleBar: {
       width: '100%',
       alignSelf: 'stretch',
-      marginTop: -IMG_HEIGHT*0.9,
+      marginTop: -TITLE_OVERLAP,
       marginBottom: 35 + (isTablet ? 56 : 44),
-      paddingTop: -20 + (isTablet ? 18 : 14),
+      paddingTop: 0,
       paddingBottom: isTablet ? 14 : 12,
       paddingHorizontal: 0,
       position: 'relative',
@@ -151,26 +170,21 @@ export default function PuzzlesScreen() {
     },
   });
 
-  const imageAnimatedStyle = useAnimatedStyle(() => {
+  // Stretchy parallax header: the whole hero moves, so pulling down past the top zooms the image
+  // to fill the gap (scale up to 2x), and scrolling up drifts it at a slower rate than the content.
+  const heroAnimatedStyle = useAnimatedStyle(() => {
     return {
       transform: [
         {
           translateY: interpolate(
             scrollOffset.value,
-            [-IMG_HEIGHT + IMG_HEIGHT, IMG_HEIGHT, IMG_HEIGHT + IMG_HEIGHT],
-            [-IMG_HEIGHT / 2, 0, IMG_HEIGHT * 0.75]
+            [-heroHeight, 0, heroHeight],
+            [-heroHeight / 2, 0, heroHeight * 0.75]
           ),
         },
         {
-          scale: interpolate(scrollOffset.value, [-IMG_HEIGHT, 0, IMG_HEIGHT], [1, 1, 1]),
+          scale: interpolate(scrollOffset.value, [-heroHeight, 0, heroHeight], [2, 1, 1], 'clamp'),
         },
-        {
-          translateX: interpolate(
-            0,
-            [-IMG_HEIGHT, -IMG_WIDTH/2, IMG_HEIGHT],
-            [IMG_WIDTH * 0.25, 0, -IMG_WIDTH * 0.25]
-          )
-        }
       ],
     };
   });
@@ -202,38 +216,26 @@ export default function PuzzlesScreen() {
     locked?: boolean;
   };
 
-  const [userData, setUserData] = useState({
-    name: 'Chess Master',
-    email: 'chessmaster@example.com',
-    password: '••••••••',
-    joinDate: 'June 2024',
-    totalPuzzlesSolved: 1247,
-    overallRating: 1842,
-    puzzleRatings: {
-      fork: 1890,
-      pin: 1820,
-      promotion: 1765,
-      skewer: 1950,
-      backRank: 1800,
-      discoveredAttack: 1825,
-      trappedPiece: 1780,
-      removingDefender: 1850,
-      smotheredMate: 1900,
-      zugzwang: 1750,
-    },
-  });
+  const [ratings, setRatings] = useState<ThemeRatings | null>(null);
+
+  // Refetch whenever the tab comes back into focus, so ratings update after solving a puzzle.
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      getMyRatings()
+        .then((data) => { if (active) setRatings(data); })
+        .catch((error) => console.log('Error loading theme ratings:', error));
+      return () => { active = false; };
+    }, [])
+  );
 
   const puzzleTypes: PuzzleType[] = [
-    { title: 'Fork', rating: userData.puzzleRatings.fork, icon: '⚔️', color: '#E76F51' },
-    { title: 'Pin', rating: userData.puzzleRatings.pin, icon: '📌', color: '#2A9D8F' },
-    { title: 'Promotion', rating: userData.puzzleRatings.promotion, icon: '👑', color: '#E9C46A' },
-    { title: 'Skewer', rating: userData.puzzleRatings.skewer, icon: '🍢', color: '#F4A261' },
-    { title: 'Back Rank', rating: userData.puzzleRatings.backRank, icon: '⏮️', color: '#264653' },
-    { title: 'Discovered Attack', rating: userData.puzzleRatings.discoveredAttack, icon: '🔎', color: '#3A86FF' },
-    { title: 'Trapped Piece', rating: userData.puzzleRatings.trappedPiece, icon: '🧱', color: '#6C757D' },
-    { title: 'Removing Defender', rating: userData.puzzleRatings.removingDefender, icon: '💥', color: '#EF476F' },
-    { title: 'Smothered Mate', rating: userData.puzzleRatings.smotheredMate, icon: '💀', color: '#8D99AE' },
-    { title: 'Zugzwang', rating: userData.puzzleRatings.zugzwang, icon: '♟️', color: '#118AB2' },
+    ...THEMES.map(({ title, key, icon, color }) => ({
+      title,
+      icon,
+      color,
+      rating: ratingFor(ratings, key) ?? '—',
+    })),
     { title: 'Coming Soon', rating: 'Locked', icon: '🔒', color: '#A0A0A0', locked: true },
   ];
 
@@ -262,13 +264,13 @@ export default function PuzzlesScreen() {
           // contentContainerStyle={styles.scrollContainer}
           stickyHeaderIndices={[1]}
         >
-          <View style={{ ...localStyles.heroContainer, opacity: 0.3 }}>
+          <Animated.View style={[localStyles.heroContainer, heroAnimatedStyle]}>
             <Animated.Image
               source={require('@/assets/images/auraknight.png')}
-              style={{ ...localStyles.heroImage, ...imageAnimatedStyle }}
+              style={localStyles.heroImage}
               resizeMode="cover"
             />
-          </View>
+          </Animated.View>
 
           <View style={localStyles.stickyTitleBar}>
             <Animated.View style={[localStyles.stickyTitleGradient, stickyGradientAnimatedStyle]}>

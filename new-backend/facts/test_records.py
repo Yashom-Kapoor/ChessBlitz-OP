@@ -21,7 +21,7 @@ EP_FEN = "4k3/3p4/8/4P3/8/8/8/4K3 b - - 0 1"
 
 def test_mate_in_one():
     doc = build_records("mate1", MATE_FEN, "g8f6 h5f7", "mate mateIn1 short", ["mate"])
-    assert doc["schema_version"] == 1
+    assert doc["schema_version"] == 2
     [r] = doc["records"]
     assert r["move_index"] == 1
     assert r["fen"] == "r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4"
@@ -34,7 +34,7 @@ def test_mate_in_one():
     assert r["solution_line"] == ["Qxf7#"]
     assert r["themes"] == ["mate", "mateIn1", "short"]
     assert r["teaching_themes"] == ["mate"]
-    assert r["opponent_idea"] == {} and r["engine"] == {}
+    assert r["opponent_idea"] == {} and r["engine"] == {} and r["outcome"] == {}
 
 
 def test_promotion():
@@ -118,8 +118,8 @@ def test_cli_and_api():
             "castle": {"fen": CASTLE_FEN, "moves": "e8d7 e1g1 d7e6 f1f6", "themes": "endgame"},
         }))
         out = tmp / "records"
-        assert generate_records.main(["mate1", "castle", "--fixture", str(fixture), "--out", str(out)]) == 0
-        assert generate_records.main(["missing", "--fixture", str(fixture), "--out", str(out)]) == 1
+        assert generate_records.main(["mate1", "castle", "--fixture", str(fixture), "--out", str(out), "--no-engine"]) == 0
+        assert generate_records.main(["missing", "--fixture", str(fixture), "--out", str(out), "--no-engine"]) == 1
 
         records_api.RECORDS_DIR = out
         app = Flask(__name__)

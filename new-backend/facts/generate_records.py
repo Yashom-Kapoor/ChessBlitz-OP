@@ -5,6 +5,11 @@ Usage:
     python generate_records.py 00AhO --out data/records
     python generate_records.py 00AhO --csv ../../data/content/mini-puzzles.csv   # offline
     python generate_records.py 00AhO --fixture puzzles.json                     # offline
+    python generate_records.py 00AhO --no-engine                                # skip Stockfish
+
+Every record gets `engine` and `outcome` (Ticket 4), which needs Stockfish:
+`brew install stockfish`, or set STOCKFISH_PATH. To add them to records that are
+already generated, without Supabase, use add_engine.py.
 
 Environment (for Supabase): SUPABASE_URL, SUPABASE_KEY, read from new-backend/.env
 if not already set.
@@ -20,7 +25,7 @@ import os
 import sys
 from pathlib import Path
 
-from records import PuzzleDataError, build_records
+from records import PuzzleDataError, build_records, validate_document
 
 # --- Supabase tables (match new-backend/src/backend/app.py and data/MiniPuzzleSet.ipynb)
 PUZZLES_TABLE = "Puzzles"
@@ -147,7 +152,18 @@ def main(argv=None) -> int:
     src = ap.add_mutually_exclusive_group()
     src.add_argument("--fixture", type=Path, help="read puzzles from a JSON file instead of Supabase")
     src.add_argument("--csv", type=Path, help="read from mini-puzzles.csv instead of Supabase (no full themes)")
+    ap.add_argument("--no-engine", action="store_true", help="leave `engine`/`outcome` empty (no Stockfish)")
+    ap.add_argument("--stockfish", help="path to the Stockfish binary (default: $STOCKFISH_PATH or PATH)")
+    ap.add_argument("--depth", type=int, default=None, help="search depth (default: engine.DEPTH)")
     args = ap.parse_args(argv)
+
+    analyzer = None
+    if not args.no_engine:
+        import engine
+        try:
+            analyzer = engine.Analyzer(args.stockfish, depth=args.depth or engine.DEPTH)
+        except FileNotFoundError as e:
+            sys.exit(f"{e}\n(or pass --no-engine to skip engine analysis)")
 
     if args.fixture:
         puzzles = fetch_from_fixture(args.fixture, args.puzzle_ids)
@@ -172,11 +188,17 @@ def main(argv=None) -> int:
             print(f"✗ {e}", file=sys.stderr)
             failed.append(pid)
             continue
+        if analyzer:
+            for w in engine.enrich_document(doc, analyzer):
+                print(f"! {w}", file=sys.stderr)
+            validate_document(doc)
         path = args.out / f"{pid}.json"
         path.write_text(json.dumps(doc, indent=2) + "\n")
         sans = " ".join(r["move_san"] for r in doc["records"])
         print(f"✓ {pid}: {len(doc['records'])} record(s) [{sans}] -> {path}")
 
+    if analyzer:
+        analyzer.close()
     if failed:
         print(f"\n{len(failed)} puzzle(s) failed: {' '.join(failed)}", file=sys.stderr)
         return 1

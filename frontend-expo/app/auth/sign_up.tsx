@@ -1,6 +1,5 @@
 import GlassBlurView from "@/components/GlassBlurView";
 import { Themes } from "@/constants/Themes";
-import { API_URL } from "@/constants/urls";
 import backgroundImages from "@/context/Backgrounds";
 import GlobalStyle from "@/context/GlobalStyle";
 import { DeviceType, getDeviceTypeAsync } from "expo-device";
@@ -81,7 +80,28 @@ export default function SignUpScreen() {
         return;
         }
 
+        // Insert row in Shop. Without this the account has no currency record, so /shop/me
+        // 404s and the shop tab cannot read a balance or unlock anything.
+        const { error: shopError } = await supabase
+        .from("Shop")
+        .insert([{
+            student_id: userId,
+            currency: 0
+        }]);
+
+        // Non-blocking: the auth user and Users row already exist, so refusing to finish
+        // sign-up over a secondary row would be worse than continuing without it. If this
+        // fails it is almost always a missing INSERT policy on Shop.
+        if (shopError) {
+        console.error('[sign up] could not create Shop row:', shopError.message);
+        Alert.alert(
+            'Account created',
+            `Your account is ready, but the shop could not be set up (${shopError.message}). Currency and unlocks will not work until that is fixed.`
+        );
+        } else {
         Alert.alert('Success', 'Signed up successfully!');
+        }
+
         router.push(`/(tabs)/puzzles?isTablet=${isTablet}`);
     } catch (err: unknown) {
         if (err instanceof Error) {

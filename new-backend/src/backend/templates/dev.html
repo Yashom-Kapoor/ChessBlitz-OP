@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ChessBlitz Dev Console</title>
+{% raw %}
+<style>
+  :root {
+    --bg: #25262e;
+    --card: #2B2D3B;
+    --accent: #C7C7C7;
+    --text: #efefef;
+    --muted: #efefef99;
+    --faint: #efefef60;
+    --line: #efefef22;
+    --light-square: #FFF37E;
+    --dark-square: #454A64;
+    --ok: #4ade80;
+    --bad: #ff6b6b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.5 ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  header {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 14px 20px; border-bottom: 1px solid var(--line);
+  }
+  header h1 { font-size: 16px; margin: 0; font-weight: 700; letter-spacing: .3px; }
+  header .who { margin-left: auto; color: var(--muted); font-size: 13px; }
+  .tag {
+    font-size: 11px; font-weight: 700; letter-spacing: .5px;
+    background: var(--accent); color: var(--card);
+    padding: 3px 7px; border-radius: 6px;
+  }
+  main { padding: 20px; display: grid; gap: 20px; grid-template-columns: 1fr; max-width: 1180px; }
+  @media (min-width: 940px) { main { grid-template-columns: minmax(0,1fr) minmax(0,1fr); } }
+  .card { background: var(--card); border-radius: 14px; padding: 18px; }
+  .card h2 { font-size: 15px; margin: 0 0 4px; }
+  .card p.sub { margin: 0 0 14px; color: var(--muted); font-size: 13px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+  button {
+    font: inherit; font-weight: 600; font-size: 14px;
+    padding: 9px 14px; border-radius: 10px; border: 0;
+    background: var(--accent); color: var(--card); cursor: pointer;
+  }
+  button.muted { background: transparent; color: var(--text); border: 1px solid var(--line); }
+  button:disabled { opacity: .4; cursor: default; }
+  input {
+    font: inherit; padding: 9px 12px; border-radius: 10px;
+    border: 1px solid var(--line); background: #00000033; color: var(--text); min-width: 0;
+  }
+  input::placeholder { color: var(--faint); }
+  .grow { flex: 1 1 120px; }
+  .status { font-size: 13px; min-height: 20px; color: var(--muted); }
+  .status.err { color: var(--bad); }
+  .status.ok { color: var(--ok); }
+
+  /* board */
+  .board-wrap { display: grid; grid-template-columns: auto 1fr; gap: 4px; margin-bottom: 12px; }
+  .ranks { display: grid; grid-template-rows: repeat(8, 1fr); }
+  .ranks span, .files span {
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: var(--faint);
+  }
+  .files { display: grid; grid-template-columns: repeat(8, 1fr); height: 16px; grid-column: 2; }
+  .board {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    /* Explicit rows matter: without them a rank holding no pieces has no content to size
+       against and collapses, squashing the board. */
+    grid-template-rows: repeat(8, 1fr);
+    aspect-ratio: 1; width: 100%; border-radius: 8px; overflow: hidden;
+  }
+  .sq {
+    position: relative; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; user-select: none; min-width: 0; min-height: 0;
+  }
+  .sq.light { background: var(--light-square); }
+  .sq.dark  { background: var(--dark-square); }
+  .sq.from, .sq.to { box-shadow: inset 0 0 0 3px #2f80ed; }
+  .sq.sel { box-shadow: inset 0 0 0 3px #ffffffcc; }
+  .sq .dot {
+    position: absolute; width: 26%; height: 26%; border-radius: 50%;
+    background: #00000055; pointer-events: none;
+  }
+  .sq.occupied .dot { width: 86%; height: 86%; background: transparent; border: 3px solid #00000055; }
+  .pc { pointer-events: none; width: 88%; height: 88%; display: block; }
+
+  dl.info { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0 0 12px; font-size: 13px; }
+  dl.info dt { color: var(--faint); }
+  dl.info dd { margin: 0; word-break: break-word; }
+  .moves { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; }
+  .moves .mv {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+    padding: 3px 7px; border-radius: 6px; background: #00000033; color: var(--muted);
+    border: 1px solid transparent;
+  }
+  .moves .mv.player { background: #ffffff14; color: var(--text); }
+  .moves .mv.done { opacity: .45; }
+  .moves .mv.next { border-color: var(--accent); color: var(--text); }
+  .fen { width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
+
+  #auth { max-width: 360px; margin: 60px auto; }
+  #auth .row { margin-bottom: 12px; }
+  #auth input { width: 100%; }
+  .hidden { display: none !important; }
+</style>
+{% endraw %}
+</head>
+<body>
+
+<!-- Chess pieces from frontend-expo/assets/pieces/weird/*.svg, so the console matches the
+     app. Each body path there is filled with a linearGradient; those are flattened to a
+     solid white/dark fill here and the <defs> dropped, which keeps the pieces plainly
+     black-and-white. The black outline and white highlight paths are kept as-is.
+     Inlined rather than served from /static/ so the whole console stays behind the gate. -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <symbol id="pc-wK" viewBox="0 0 189 189">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M94.5109 14.6191C87.6964 14.9971 82.3106 19.2831 82.3106 24.5139C82.3106 26.6494 83.2328 30.7275 84.9298 32.4396H63.137V51.7379H86.9707L77.1061 62.4453L87.2088 70.6355C66.1039 72.0037 41.7789 76.8453 37.4929 85.7423C32.7005 95.7127 60.9827 144.703 60.9827 144.703H127.994C127.994 144.703 156.28 95.7089 151.483 85.7423C147.201 76.834 122.782 71.9848 101.673 70.628L111.916 62.4453L102.051 51.7379H125.885V32.4396H104.088C105.785 30.7275 106.707 26.6532 106.707 24.5139C106.707 19.2831 101.322 14.9971 94.5071 14.6191H94.5109Z" fill="#FFFFFF" stroke="#323232" stroke-width="6.04724" stroke-linejoin="round"/>
+<path opacity="0.1" fill-rule="evenodd" clip-rule="evenodd" d="M118.258 144.692L127.982 144.673C127.982 144.673 156.261 97.7008 151.468 87.7342C135.836 73.2813 101.654 70.6318 101.654 70.6318C143.418 81.2977 149.344 89.6353 118.258 144.692Z" fill="black"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M50.0484 144.703C44.6173 144.703 40.1196 149.299 40.1196 154.851V156.911L40.1688 167.055H148.826L148.872 156.911V154.851C148.872 149.303 144.374 144.703 138.943 144.703H94.4957H50.0484Z" fill="#FFFFFF" stroke="#323232" stroke-width="6.04724" stroke-linecap="round" stroke-linejoin="round"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M50.2035 117.687C50.2035 117.687 38.5852 92.9121 40.1273 87.103C41.6693 81.2976 62.7553 76.7622 62.7553 76.7622C38.2413 87.0047 44.6665 93.9893 50.2035 117.687ZM66.2212 48.6954V35.3915L72.0114 35.3499C68.6438 35.3764 66.2212 43.4646 66.2212 48.6954ZM93.7248 17.6504C93.7248 17.6504 83.8451 21.1276 87.9421 30.9619C87.2693 30.9354 79.8463 20.6816 93.7248 17.6504Z" fill="white"/>
+  </symbol>
+  <symbol id="pc-wQ" viewBox="0 0 189 189">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M94.4881 23.1382C84.5291 23.1382 76.456 31.0676 76.456 40.8453C76.4635 47.8563 80.6815 54.2021 87.2125 57.033C85.8179 65.673 81.5054 85.5987 69.5243 87.3032C60.6235 88.5656 54.9543 82.439 51.0802 75.4204C53.1351 73.9639 54.8129 72.0382 55.9744 69.8033C57.1359 67.5684 57.7476 65.0887 57.7587 62.57C57.7587 53.775 50.4982 46.6431 41.5407 46.6431C32.5832 46.6431 25.319 53.775 25.3228 62.57C25.3228 70.6657 31.5212 77.4727 39.719 78.3798L58.5146 144.673H130.462L149.257 78.3798C157.455 77.4727 163.646 70.6657 163.653 62.57C163.653 53.775 156.389 46.6431 147.432 46.6431C138.474 46.6431 131.218 53.775 131.218 62.57C131.228 65.0884 131.839 67.5679 133 69.8028C134.161 72.0377 135.838 73.9635 137.892 75.4204C134.018 82.439 128.349 88.5656 119.448 87.3032C107.467 85.6024 103.158 65.673 101.76 57.0292C108.295 54.2021 112.513 47.8563 112.52 40.8453C112.52 31.0676 104.443 23.1382 94.4881 23.1382Z" fill="#FFFFFF" stroke="#323232" stroke-width="6.04724" stroke-linejoin="round"/>
+<path opacity="0.1" fill-rule="evenodd" clip-rule="evenodd" d="M147.409 46.647C145.383 46.6516 143.375 47.0309 141.487 47.7657C159.405 54.1078 156.14 73.4854 143.72 75.4167L114.95 144.68H130.824L149.231 78.3837C157.432 77.4728 163.623 70.6659 163.631 62.5701C163.631 53.7752 156.367 46.6432 147.409 46.647Z" fill="black"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M49.9918 144.703C44.5606 144.703 40.063 149.299 40.063 154.851V156.911L40.1121 167.055H148.762L148.811 156.911V154.851C148.811 149.303 144.314 144.703 138.883 144.703H94.4353H49.9918Z" fill="#FFFFFF" stroke="#323232" stroke-width="6.04724" stroke-linecap="round" stroke-linejoin="round"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M35.9622 50.982C32.9612 55.404 29.4387 61.062 30.0888 69.0444C30.0888 69.0444 24.0264 57.668 35.9622 50.982ZM89.4198 27.3259C86.1959 30.6292 80.4623 38.4151 81.3581 47.6371C80.5757 47.3196 74.8195 32.9234 89.4198 27.3259ZM45.5887 88.1688L65.4085 141.502L60.9864 141.589L45.5887 88.1688Z" fill="white"/>
+  </symbol>
+  <symbol id="pc-wR" viewBox="0 0 189 189">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M48.5859 39.2429V68.2054C48.5859 80.5569 73.2663 82.4694 73.2663 82.4694C71.9359 119.751 54.2326 144.779 54.2326 144.779L135.22 144.631C135.22 144.631 117.642 119.611 116.323 82.4732C116.323 82.4732 142.386 80.5569 142.386 68.2092V39.2467H124.547C124.547 39.2467 126.282 47.7506 122.771 51.568C118.859 55.8237 113.632 55.8237 109.716 51.568C106.209 47.7506 107.94 39.2467 107.94 39.2467H83.0326C83.0326 39.2467 84.7674 47.7506 81.2562 51.568C77.0155 56.179 71.0552 56.179 66.8184 51.568C63.3072 47.7506 65.042 39.2467 65.042 39.2467L48.5859 39.2429Z" fill="#FFFFFF" stroke="#323232" stroke-width="6.04724" stroke-linejoin="round"/>
+<path opacity="0.1" fill-rule="evenodd" clip-rule="evenodd" d="M141.895 39.5415L141.948 68.2092C142.942 81.362 49.0469 76.2785 49.2623 72.1021C57.1918 81.6719 66.0623 81.978 73.2699 82.4732C100.83 84.3554 110.309 116.073 123.56 144.631H134.785C134.785 144.631 117.211 119.611 115.888 82.4732C125.514 80.9802 127.053 79.4042 131.146 78.4744H131.214L131.206 78.4593C135.073 77.5673 141.827 73.2587 141.948 68.2054V39.2429L141.895 39.5415Z" fill="black"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M50.0372 144.703C44.606 144.703 40.1084 149.299 40.1084 154.851V156.907L40.1575 167.055H148.819L148.864 156.907V154.851C148.864 149.299 144.367 144.703 138.935 144.703H94.4882H50.0372Z" fill="#FFFFFF" stroke="#323232" stroke-width="6.04724" stroke-linecap="round" stroke-linejoin="round"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M51.6133 42.2098V63.1484C53.4275 56.092 52.7434 47.6977 57.4867 42.2098H51.6133ZM86.4643 42.1909C86.6722 45.5774 85.8823 48.7975 85.4476 52.0782C87.2618 45.0256 92.3377 42.1909 92.3377 42.1909H86.4643ZM64.0517 133.463C67.3588 129.143 77.6693 94.4089 76.2709 83.4067C78.9166 84.8807 78.7578 121.417 64.0517 133.463ZM127.986 42.3648C128.005 44.6249 127.778 46.9985 127.279 49.9994C129.094 42.943 132.174 42.2892 132.174 42.2892L127.986 42.3648Z" fill="white"/>
+  </symbol>
+  <symbol id="pc-wB" viewBox="0 0 189 189">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M101.556 31.079C79.646 22.3936 75.2806 40.6298 83.913 53.227C46.5033 93.29 41.382 115.306 60.4989 144.707H128.493C151.487 118.583 138.161 89.8468 110.264 60.4232C99.3675 75.9911 97.8897 88.2027 95.3499 102.493L81.668 102.225C79.1735 79.525 110.476 45.0027 101.552 31.0827L101.556 31.079Z" fill="#FFFFFF" stroke="#323232" stroke-width="6.04724" stroke-linejoin="round"/>
+<path opacity="0.1" fill-rule="evenodd" clip-rule="evenodd" d="M94.2349 28.9285C91.8727 29.0041 93.4526 29.673 91.3209 31.0715C91.3209 31.0828 91.3587 31.0941 91.3587 31.1017C104.897 29.9263 82.405 75.5943 78.531 102.512C80.5568 91.1206 83.5389 81.0444 90.1795 69.5357C97.7499 53.091 106.193 36.7256 101.548 31.1017C99.9949 29.6655 97.2208 28.8302 94.2349 28.9285ZM110.26 60.4422C107.992 63.6774 108.306 62.9744 106.586 65.9678C129.279 88.8302 139.574 118.076 118.292 144.726H128.481C151.48 118.602 138.161 89.8658 110.26 60.4422Z" fill="black"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M50.0409 144.703C44.6097 144.703 40.1121 149.299 40.1121 154.851V156.911L40.1612 167.055H148.819L148.864 156.911V154.851C148.864 149.303 144.367 144.703 138.935 144.703H94.4881H50.0409Z" fill="#FFFFFF" stroke="#323232" stroke-width="6.04724" stroke-linecap="round" stroke-linejoin="round"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M56.2961 129.74C53.59 124.464 43.9522 103.994 73.3531 70.2539C65.4161 88.6224 50.8347 103.098 56.2961 129.74Z" fill="white"/>
+  </symbol>
+  <symbol id="pc-wN" viewBox="0 0 189 189">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M98.2186 88.9928L54.4063 93.1389L48.9109 73.4249L103.593 47.6674L110.256 32.9272L148.808 77.8734L133.251 144.688H55.7103C56.6362 102.009 92.1449 114.074 98.2186 88.9928Z" fill="#FFFFFF" stroke="#323232" stroke-width="6.04724" stroke-linejoin="round"/>
+<path opacity="0.1" fill-rule="evenodd" clip-rule="evenodd" d="M110.26 32.9575L106.938 40.3087L108.548 36.7446C118.723 50.812 129.744 64.2558 140.485 77.8961L120.51 144.684H133.255L148.815 77.8961L110.26 32.9575Z" fill="black"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M50.0409 144.703C44.6097 144.703 40.1121 149.299 40.1121 154.851V156.911L40.1612 167.055H148.815L148.864 156.911V154.851C148.864 149.303 144.367 144.703 138.935 144.703H94.4881H50.0409Z" fill="#FFFFFF" stroke="#323232" stroke-width="6.04724" stroke-linecap="round" stroke-linejoin="round"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M59.0363 142.235C59.6372 125.333 67.1434 115.888 91.7935 105.056C88.0631 109.24 67.5856 113.511 59.0363 142.235ZM54.4933 81.9024L52.5166 75.0879L105.94 49.9276L110.54 39.481L108.004 52.9285L53.7676 75.3071L54.4933 81.9024Z" fill="white"/>
+  </symbol>
+  <symbol id="pc-wP" viewBox="0 0 189 189">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M94.4881 46.3522C81.033 46.3522 70.1215 56.3868 70.1215 68.7648C70.1215 75.2089 73.1413 81.3355 78.3986 85.5837H72.1019C67.1432 85.5837 63.0311 89.28 63.0311 93.7399V95.3953C63.0311 99.8552 67.1432 103.548 72.1019 103.548H81.0821C81.0821 131.112 45.7737 127.952 48.2418 166.968L94.4881 166.93L140.734 166.961C143.202 127.945 107.894 131.108 107.894 103.544H116.874C121.833 103.544 125.945 99.8476 125.945 95.3915V93.7361C125.945 89.2763 121.837 85.5837 116.874 85.5837H110.578C115.835 81.3317 118.855 75.2013 118.855 68.7648C118.855 56.383 107.947 46.3522 94.4919 46.3484L94.4881 46.3522Z" fill="#FFFFFF" stroke="#323232" stroke-width="6.04724" stroke-linejoin="round"/>
+<path opacity="0.15" fill-rule="evenodd" clip-rule="evenodd" d="M94.4843 46.3522C92.5152 46.3522 90.599 46.5714 88.7659 46.9796C112.414 49.595 117.774 71.418 107.35 81.8344C99.7303 88.2218 78.3911 85.5874 78.3911 85.5874C88.0667 87.2618 97.1754 92.9726 105.8 94.9909C82.9984 138.21 142.462 129.105 140.731 166.964C144.491 126.932 111.73 136.169 107.89 103.544H116.874C121.833 103.544 125.938 99.8514 125.938 95.3953V93.7399C125.938 89.28 121.833 85.5837 116.874 85.5837H110.574C115.831 81.3317 118.855 75.2051 118.851 68.7685C118.851 56.3868 107.943 46.3484 94.4843 46.3484V46.3522Z" fill="black"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M86.7742 50.6494C80.0845 56.7042 75.5566 64.3011 73.6366 74.0447C73.6366 74.0447 69.2523 58.0384 86.7742 50.6494ZM50.4265 164.103C51.4583 143.992 60.1475 140.731 78.9166 120.888C75.0237 134.366 50.9972 143.066 50.4265 164.103Z" fill="white"/>
+  </symbol>
+  <symbol id="pc-bK" viewBox="0 0 189 189">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M94.5109 14.6191C87.6964 14.9971 82.3106 19.2831 82.3106 24.5139C82.3106 26.6494 83.2328 30.7275 84.9298 32.4396H63.137V51.7379H86.9707L77.1061 62.4453L87.2088 70.6355C66.1039 72.0037 41.7789 76.8453 37.4929 85.7423C32.7005 95.7127 60.9827 144.703 60.9827 144.703H127.994C127.994 144.703 156.28 95.7089 151.483 85.7423C147.201 76.834 122.782 71.9848 101.673 70.628L111.916 62.4453L102.051 51.7379H125.885V32.4396H104.088C105.785 30.7275 106.707 26.6532 106.707 24.5139C106.707 19.2831 101.322 14.9971 94.5071 14.6191H94.5109Z" fill="#2B2B2B" stroke="#1E1E1E" stroke-width="6.04724" stroke-linejoin="round"/>
+<path opacity="0.15" fill-rule="evenodd" clip-rule="evenodd" d="M118.258 144.692L127.982 144.673C127.982 144.673 156.261 97.7008 151.468 87.7342C135.836 73.2813 101.654 70.6318 101.654 70.6318C143.418 81.2977 149.344 89.6353 118.258 144.692Z" fill="black"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M50.0484 144.703C44.6173 144.703 40.1196 149.299 40.1196 154.851V156.911L40.1688 167.055H148.826L148.872 156.911V154.851C148.872 149.303 144.374 144.703 138.943 144.703H94.4957H50.0484Z" fill="#2B2B2B" stroke="#1E1E1E" stroke-width="6.04724" stroke-linecap="round" stroke-linejoin="round"/>
+<path opacity="0.25" fill-rule="evenodd" clip-rule="evenodd" d="M50.2035 117.687C50.2035 117.687 38.5852 92.9121 40.1273 87.103C41.6693 81.2976 62.7553 76.7622 62.7553 76.7622C38.2413 87.0047 44.6665 93.9893 50.2035 117.687ZM66.2212 48.6954V35.3915L72.0114 35.3499C68.6438 35.3764 66.2212 43.4646 66.2212 48.6954ZM93.7248 17.6504C93.7248 17.6504 83.8451 21.1276 87.9421 30.9619C87.2693 30.9354 79.8463 20.6816 93.7248 17.6504Z" fill="white"/>
+  </symbol>
+  <symbol id="pc-bQ" viewBox="0 0 189 189">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M94.4881 23.1382C84.5291 23.1382 76.456 31.0676 76.456 40.8453C76.4635 47.8563 80.6815 54.2021 87.2125 57.033C85.8179 65.673 81.5054 85.5987 69.5243 87.3032C60.6235 88.5656 54.9543 82.439 51.0802 75.4204C53.1351 73.9639 54.8129 72.0382 55.9744 69.8033C57.1359 67.5684 57.7476 65.0887 57.7587 62.57C57.7587 53.775 50.4982 46.6431 41.5407 46.6431C32.5832 46.6431 25.319 53.775 25.3228 62.57C25.3228 70.6657 31.5212 77.4727 39.719 78.3798L58.5146 144.673H130.462L149.257 78.3798C157.455 77.4727 163.646 70.6657 163.653 62.57C163.653 53.775 156.389 46.6431 147.432 46.6431C138.474 46.6431 131.218 53.775 131.218 62.57C131.228 65.0884 131.839 67.5679 133 69.8028C134.161 72.0377 135.838 73.9635 137.892 75.4204C134.018 82.439 128.349 88.5656 119.448 87.3032C107.467 85.6024 103.158 65.673 101.76 57.0292C108.295 54.2021 112.513 47.8563 112.52 40.8453C112.52 31.0676 104.443 23.1382 94.4881 23.1382Z" fill="#2B2B2B" stroke="#1E1E1E" stroke-width="6.04724" stroke-linejoin="round"/>
+<path opacity="0.15" fill-rule="evenodd" clip-rule="evenodd" d="M147.409 46.647C145.383 46.6516 143.375 47.0309 141.487 47.7657C159.405 54.1078 156.14 73.4854 143.72 75.4167L114.95 144.68H130.824L149.231 78.3837C157.432 77.4728 163.623 70.6659 163.631 62.5701C163.631 53.7752 156.367 46.6432 147.409 46.647Z" fill="black"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M49.9918 144.703C44.5606 144.703 40.063 149.299 40.063 154.851V156.911L40.1121 167.055H148.762L148.811 156.911V154.851C148.811 149.303 144.314 144.703 138.883 144.703H94.4353H49.9918Z" fill="#2B2B2B" stroke="#1E1E1E" stroke-width="6.04724" stroke-linecap="round" stroke-linejoin="round"/>
+<path opacity="0.25" fill-rule="evenodd" clip-rule="evenodd" d="M35.9622 50.982C32.9612 55.404 29.4387 61.062 30.0888 69.0444C30.0888 69.0444 24.0264 57.668 35.9622 50.982ZM89.4198 27.3259C86.1959 30.6292 80.4623 38.4151 81.3581 47.6371C80.5757 47.3196 74.8195 32.9234 89.4198 27.3259ZM45.5887 88.1688L65.4085 141.502L60.9864 141.589L45.5887 88.1688Z" fill="white"/>
+  </symbol>
+  <symbol id="pc-bR" viewBox="0 0 189 189">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M48.5859 39.2429V68.2054C48.5859 80.5569 73.2663 82.4694 73.2663 82.4694C71.9359 119.751 54.2326 144.779 54.2326 144.779L135.22 144.631C135.22 144.631 117.642 119.611 116.323 82.4732C116.323 82.4732 142.386 80.5569 142.386 68.2092V39.2467H124.547C124.547 39.2467 126.282 47.7506 122.771 51.568C118.859 55.8237 113.632 55.8237 109.716 51.568C106.209 47.7506 107.94 39.2467 107.94 39.2467H83.0326C83.0326 39.2467 84.7674 47.7506 81.2562 51.568C77.0155 56.179 71.0552 56.179 66.8184 51.568C63.3072 47.7506 65.042 39.2467 65.042 39.2467L48.5859 39.2429Z" fill="#2B2B2B" stroke="#1E1E1E" stroke-width="6.04724" stroke-linejoin="round"/>
+<path opacity="0.15" fill-rule="evenodd" clip-rule="evenodd" d="M141.895 39.5415L141.948 68.2092C142.942 81.362 49.0469 76.2785 49.2623 72.1021C57.1918 81.6719 66.0623 81.978 73.2699 82.4732C100.83 84.3554 110.309 116.073 123.56 144.631H134.785C134.785 144.631 117.211 119.611 115.888 82.4732C125.514 80.9802 127.053 79.4042 131.146 78.4744H131.214L131.206 78.4593C135.073 77.5673 141.827 73.2587 141.948 68.2054V39.2429L141.895 39.5415Z" fill="black"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M50.0372 144.703C44.606 144.703 40.1084 149.299 40.1084 154.851V156.907L40.1575 167.055H148.819L148.864 156.907V154.851C148.864 149.299 144.367 144.703 138.935 144.703H94.4882H50.0372Z" fill="#2B2B2B" stroke="#1E1E1E" stroke-width="6.04724" stroke-linecap="round" stroke-linejoin="round"/>
+<path opacity="0.25" fill-rule="evenodd" clip-rule="evenodd" d="M51.6133 42.2098V63.1484C53.4275 56.092 52.7434 47.6977 57.4867 42.2098H51.6133ZM86.4643 42.1909C86.6722 45.5774 85.8823 48.7975 85.4476 52.0782C87.2618 45.0256 92.3377 42.1909 92.3377 42.1909H86.4643ZM64.0517 133.463C67.3588 129.143 77.6693 94.4089 76.2709 83.4067C78.9166 84.8807 78.7578 121.417 64.0517 133.463ZM127.986 42.3648C128.005 44.6249 127.778 46.9985 127.279 49.9994C129.094 42.943 132.174 42.2892 132.174 42.2892L127.986 42.3648Z" fill="white"/>
+  </symbol>
+  <symbol id="pc-bB" viewBox="0 0 189 189">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M101.556 31.079C79.646 22.3936 75.2806 40.6298 83.913 53.227C46.5033 93.29 41.382 115.306 60.4989 144.707H128.493C151.487 118.583 138.161 89.8468 110.264 60.4232C99.3675 75.9911 97.8897 88.2027 95.3499 102.493L81.668 102.225C79.1735 79.525 110.476 45.0027 101.552 31.0827L101.556 31.079Z" fill="#2B2B2B" stroke="#1E1E1E" stroke-width="6.04724" stroke-linejoin="round"/>
+<path opacity="0.15" fill-rule="evenodd" clip-rule="evenodd" d="M94.2349 28.9285C91.8727 29.0041 93.4526 29.673 91.3209 31.0715C91.3209 31.0828 91.3587 31.0941 91.3587 31.1017C104.897 29.9263 82.405 75.5943 78.531 102.512C80.5568 91.1206 83.5389 81.0444 90.1795 69.5357C97.7499 53.091 106.193 36.7256 101.548 31.1017C99.9949 29.6655 97.2208 28.8302 94.2349 28.9285ZM110.26 60.4422C107.992 63.6774 108.306 62.9744 106.586 65.9678C129.279 88.8302 139.574 118.076 118.292 144.726H128.481C151.48 118.602 138.161 89.8658 110.26 60.4422Z" fill="black"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M50.0409 144.703C44.6097 144.703 40.1121 149.299 40.1121 154.851V156.911L40.1612 167.055H148.819L148.864 156.911V154.851C148.864 149.303 144.367 144.703 138.935 144.703H94.4881H50.0409Z" fill="#2B2B2B" stroke="#1E1E1E" stroke-width="6.04724" stroke-linecap="round" stroke-linejoin="round"/>
+<path opacity="0.25" fill-rule="evenodd" clip-rule="evenodd" d="M56.2961 129.74C53.59 124.464 43.9522 103.994 73.3531 70.2539C65.4161 88.6224 50.8347 103.098 56.2961 129.74Z" fill="white"/>
+  </symbol>
+  <symbol id="pc-bN" viewBox="0 0 189 189">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M98.2186 88.9928L54.4063 93.1389L48.9109 73.4249L103.593 47.6674L110.256 32.9272L148.808 77.8734L133.251 144.688H55.7103C56.6362 102.009 92.1449 114.074 98.2186 88.9928Z" fill="#2B2B2B" stroke="#1E1E1E" stroke-width="6.04724" stroke-linejoin="round"/>
+<path opacity="0.15" fill-rule="evenodd" clip-rule="evenodd" d="M110.26 32.9575L106.938 40.3087L108.548 36.7446C118.723 50.812 129.744 64.2558 140.485 77.8961L120.51 144.684H133.255L148.815 77.8961L110.26 32.9575Z" fill="black"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M50.0409 144.703C44.6097 144.703 40.1121 149.299 40.1121 154.851V156.911L40.1612 167.055H148.815L148.864 156.911V154.851C148.864 149.303 144.367 144.703 138.935 144.703H94.4881H50.0409Z" fill="#2B2B2B" stroke="#1E1E1E" stroke-width="6.04724" stroke-linecap="round" stroke-linejoin="round"/>
+<path opacity="0.25" fill-rule="evenodd" clip-rule="evenodd" d="M59.0363 142.235C59.6372 125.333 67.1434 115.888 91.7935 105.056C88.0631 109.24 67.5856 113.511 59.0363 142.235ZM54.4933 81.9024L52.5166 75.0879L105.94 49.9276L110.54 39.481L108.004 52.9285L53.7676 75.3071L54.4933 81.9024Z" fill="white"/>
+  </symbol>
+  <symbol id="pc-bP" viewBox="0 0 189 189">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M94.4881 46.3522C81.033 46.3522 70.1215 56.3868 70.1215 68.7648C70.1215 75.2089 73.1413 81.3355 78.3986 85.5837H72.1019C67.1432 85.5837 63.0311 89.28 63.0311 93.7399V95.3953C63.0311 99.8552 67.1432 103.548 72.1019 103.548H81.0821C81.0821 131.112 45.7737 127.952 48.2418 166.968L94.4881 166.93L140.734 166.961C143.202 127.945 107.894 131.108 107.894 103.544H116.874C121.833 103.544 125.945 99.8476 125.945 95.3915V93.7361C125.945 89.2763 121.837 85.5837 116.874 85.5837H110.578C115.835 81.3317 118.855 75.2013 118.855 68.7648C118.855 56.383 107.947 46.3522 94.4919 46.3484L94.4881 46.3522Z" fill="#2B2B2B" stroke="#1E1E1E" stroke-width="6.04724" stroke-linejoin="round"/>
+<path opacity="0.15" fill-rule="evenodd" clip-rule="evenodd" d="M94.4843 46.3522C92.5152 46.3522 90.599 46.5714 88.7659 46.9796C112.414 49.595 117.774 71.418 107.35 81.8344C99.7303 88.2218 78.3911 85.5874 78.3911 85.5874C88.0667 87.2618 97.1754 92.9726 105.8 94.9909C82.9984 138.21 142.462 129.105 140.731 166.964C144.491 126.932 111.73 136.169 107.89 103.544H116.874C121.833 103.544 125.938 99.8514 125.938 95.3953V93.7399C125.938 89.28 121.833 85.5837 116.874 85.5837H110.574C115.831 81.3317 118.855 75.2051 118.851 68.7685C118.851 56.3868 107.943 46.3484 94.4843 46.3484V46.3522Z" fill="black"/>
+<path opacity="0.25" fill-rule="evenodd" clip-rule="evenodd" d="M86.7742 50.6494C80.0845 56.7042 75.5566 64.3011 73.6366 74.0447C73.6366 74.0447 69.2523 58.0384 86.7742 50.6494ZM50.4265 164.103C51.4583 143.992 60.1475 140.731 78.9166 120.888C75.0237 134.366 50.9972 143.066 50.4265 164.103Z" fill="white"/>
+  </symbol>
+</svg>
+
+<header>
+  <span class="tag">DEV</span>
+  <h1>ChessBlitz Dev Console</h1>
+  <span class="who" id="who"></span>
+  <button class="muted hidden" id="signout">Sign out</button>
+</header>
+
+<!-- Sign-in -->
+<section id="auth" class="card hidden">
+  <h2>Sign in</h2>
+  <p class="sub">Uses your own ChessBlitz account. Everything below acts as that user.</p>
+  <form id="auth-form">
+    <div class="row"><input id="email" type="email" placeholder="Email" autocomplete="username" required /></div>
+    <div class="row"><input id="password" type="password" placeholder="Password" autocomplete="current-password" required /></div>
+    <div class="row"><button id="signin" type="submit">Sign in</button></div>
+    <div class="status" id="auth-status"></div>
+  </form>
+</section>
+
+<main id="console" class="hidden">
+
+  <!-- Puzzle -->
+  <section class="card">
+    <h2>Puzzle</h2>
+    <p class="sub">Load one by ID, step through the solution, or play the moves yourself.</p>
+
+    <div class="row">
+      <input id="pid" class="grow" placeholder="00AhO" maxlength="5" autocapitalize="off" autocorrect="off" spellcheck="false" />
+      <button id="load">Load</button>
+      <button id="random" class="muted">Random</button>
+    </div>
+
+    <div class="board-wrap">
+      <div class="ranks" id="ranks"></div>
+      <div class="board" id="board"></div>
+      <div></div>
+      <div class="files" id="files"></div>
+    </div>
+
+    <div class="row">
+      <button class="muted" id="first" title="Start">&laquo;</button>
+      <button class="muted" id="prev" title="Back">&lsaquo;</button>
+      <button class="muted" id="next" title="Forward">&rsaquo;</button>
+      <button class="muted" id="last" title="End">&raquo;</button>
+      <button class="muted" id="flip">Flip</button>
+      <button class="muted" id="hint">Hint</button>
+    </div>
+    <div class="status" id="puzzle-status"></div>
+
+    <dl class="info">
+      <dt>ID</dt><dd id="i-id">—</dd>
+      <dt>Rating</dt><dd id="i-rating">—</dd>
+      <dt>Themes</dt><dd id="i-themes">—</dd>
+      <dt>To move</dt><dd id="i-turn">—</dd>
+      <dt>Ply</dt><dd id="i-ply">—</dd>
+    </dl>
+
+    <div class="moves" id="movelist"></div>
+    <input class="fen" id="fen" readonly />
+  </section>
+
+  <!-- Currency -->
+  <section class="card">
+    <h2>Currency &amp; shop</h2>
+    <p class="sub" id="shop-sub">—</p>
+
+    <div class="row">
+      <input id="amount" class="grow" type="number" inputmode="numeric" placeholder="Set to…" />
+      <button id="set">Set</button>
+    </div>
+    <div class="row">
+      <button class="muted" id="add1k">+1,000</button>
+      <button class="muted" id="add10k">+10,000</button>
+    </div>
+    <div class="row">
+      <button class="muted" id="unlock">Unlock all</button>
+      <button class="muted" id="relock">Re-lock all</button>
+      <button class="muted" id="refresh">Refresh</button>
+    </div>
+    <div class="status" id="shop-status"></div>
+  </section>
+
+</main>
+
+<script>
+  window.__DEV_CONFIG__ = {
+    supabaseUrl: {{ supabase_url|tojson }},
+    supabaseKey: {{ supabase_key|tojson }}
+  };
+</script>
+
+{% raw %}
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.86.2/+esm';
+import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.4.0/+esm';
+
+const cfg = window.__DEV_CONFIG__;
+// detectSessionInUrl makes supabase-js inspect and rewrite the address bar looking for OAuth
+// params. This page signs in with a password, so turn it off and leave the URL alone.
+const sb = createClient(cfg.supabaseUrl, cfg.supabaseKey, {
+  auth: { detectSessionInUrl: false },
+});
+const $ = (id) => document.getElementById(id);
+
+/* ---------------------------------------------------------------- helpers */
+
+function setStatus(el, message, kind) {
+  el.textContent = message || '';
+  el.className = 'status' + (kind ? ' ' + kind : '');
+}
+
+/** Every call to the Flask API. Same origin, so the token is the only header that matters. */
+async function api(path, init) {
+  const { data } = await sb.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) { showAuth(); throw new Error('Not signed in'); }
+
+  const res = await fetch(path, {
+    ...init,
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token, ...(init?.headers || {}) },
+  });
+
+  const text = await res.text();
+  let body = null;
+  try { body = text ? JSON.parse(text) : null; } catch { /* non-JSON error page */ }
+
+  if (res.status === 401) { showAuth(); throw new Error(body?.error ?? 'Session expired — sign in again'); }
+  if (res.status === 404 && !body?.error) throw new Error('404 — is the server running with DEV_TOOLS=1?');
+  if (!res.ok) throw new Error(body?.error ?? (res.status + ': ' + text.slice(0, 200)));
+  return body;
+}
+
+/** Runs an action with its button disabled, reporting to a status line. */
+async function run(button, statusEl, label, fn) {
+  const before = button?.disabled;
+  if (button) button.disabled = true;
+  setStatus(statusEl, label + '…');
+  try {
+    await fn();
+  } catch (err) {
+    setStatus(statusEl, err.message || String(err), 'err');
+  } finally {
+    if (button) button.disabled = before ?? false;
+  }
+}
+
+/* ------------------------------------------------------------------- auth */
+
+function showAuth() {
+  const form = $('auth');
+  // Once signed in the form is removed outright (see showConsole), so there is nothing left to
+  // reveal — a reload is the clean way back to it.
+  if (!form) { location.reload(); return; }
+  form.classList.remove('hidden');
+  $('console').classList.add('hidden');
+  $('signout').classList.add('hidden');
+  $('who').textContent = '';
+}
+
+async function showConsole(session) {
+  // Removed, not hidden: Safari anchors the iCloud Passwords popover to the password input and
+  // it survives `display: none`, leaving the overlay floating over the console. Dropping the
+  // node — after blurring, so focus never sits on a detached element — dismisses it.
+  const form = $('auth');
+  if (form) {
+    document.activeElement?.blur?.();
+    form.remove();
+  }
+  $('console').classList.remove('hidden');
+  $('signout').classList.remove('hidden');
+  $('who').textContent = session.user.email ?? session.user.id;
+
+  // Isolated: an account with no Shop row 404s here, and that must not stop the rest of the
+  // console (the puzzle board in particular) from coming up. Either dev write creates the row.
+  try {
+    await loadShop();
+  } catch (err) {
+    $('shop-sub').textContent = 'Could not read the shop';
+    setStatus($('shop-status'), err.message, 'err');
+  }
+}
+
+$('auth-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  await run($('signin'), $('auth-status'), 'Signing in', async () => {
+    const { data, error } = await sb.auth.signInWithPassword({
+      email: $('email').value.trim(),
+      password: $('password').value,
+    });
+    if (error) throw error;
+    $('password').value = '';
+    await showConsole(data.session);
+  });
+});
+
+$('signout').addEventListener('click', async () => {
+  await sb.auth.signOut();
+  // Reload rather than re-render: the sign-in form is gone from the DOM, and this also clears
+  // any puzzle or shop state belonging to the account being signed out of.
+  location.reload();
+});
+
+/* ------------------------------------------------------------- shop panel */
+
+async function loadShop() {
+  const [shop, prices] = await Promise.all([api('/shop/me'), api('/shop/prices')]);
+  const items = Object.keys(prices || {});
+  const unlocked = items.filter((name) => shop?.[name]).length;
+  $('shop-sub').textContent =
+    'Balance: ' + (shop?.currency ?? '?') + ' · ' + unlocked + '/' + items.length + ' items unlocked';
+}
+
+const shopAction = (button, label, fn) =>
+  run(button, $('shop-status'), label, async () => {
+    const result = await fn();
+    await loadShop();
+    setStatus($('shop-status'), label + ' — done' + (result ? ' (' + result + ')' : ''), 'ok');
+  });
+
+$('set').addEventListener('click', () => {
+  const value = Number($('amount').value.trim());
+  if ($('amount').value.trim() === '' || !Number.isFinite(value)) {
+    return setStatus($('shop-status'), 'Enter a number first', 'err');
+  }
+  shopAction($('set'), 'Set currency to ' + value, async () => {
+    const body = await api('/dev/currency', { method: 'POST', body: JSON.stringify({ set: value }) });
+    $('amount').value = '';
+    return 'now ' + body.currency;
+  });
+});
+
+const addCurrency = (button, delta) =>
+  shopAction(button, 'Add ' + delta.toLocaleString(), async () => {
+    const body = await api('/dev/currency', { method: 'POST', body: JSON.stringify({ add: delta }) });
+    return 'now ' + body.currency;
+  });
+
+$('add1k').addEventListener('click', () => addCurrency($('add1k'), 1000));
+$('add10k').addEventListener('click', () => addCurrency($('add10k'), 10000));
+
+const setItems = (button, unlocked, label) =>
+  shopAction(button, label, async () => {
+    const body = await api('/dev/items', { method: 'PUT', body: JSON.stringify({ unlocked }) });
+    return (body.items?.length ?? 0) + ' items';
+  });
+
+$('unlock').addEventListener('click', () => setItems($('unlock'), true, 'Unlock all items'));
+$('relock').addEventListener('click', () => setItems($('relock'), false, 'Re-lock all items'));
+$('refresh').addEventListener('click', () =>
+  run($('refresh'), $('shop-status'), 'Refreshing', async () => {
+    await loadShop();
+    setStatus($('shop-status'), '');
+  }));
+
+/* ----------------------------------------------------------- puzzle panel */
+
+const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+
+/** chess.js gives {type:'k', color:'w'}; sprite ids follow the app's filenames, e.g. "wK". */
+const pieceHref = (piece) => '#pc-' + piece.color + piece.type.toUpperCase();
+
+/** `moves[0]` is the opponent's setup move; the player answers on odd indices. */
+const splitMoves = (moves) => (moves || '').trim().split(/\s+/).filter(Boolean);
+const toMove = (uci) => ({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci.slice(4) || undefined });
+
+const state = {
+  puzzle: null,   // { puzzleid, fen, moves, rating, themes }
+  moves: [],      // UCI strings
+  ply: 0,         // how many of them are applied
+  chess: null,
+  flipped: false,
+  selected: null, // square the user has picked up
+  legal: [],      // legal destinations for `selected`
+};
+
+/** Rebuild the position from the puzzle FEN by replaying `ply` moves. */
+function rebuild() {
+  const game = new Chess(state.puzzle.fen);
+  for (let i = 0; i < state.ply; i++) game.move(toMove(state.moves[i]));
+  state.chess = game;
+  state.selected = null;
+  state.legal = [];
+}
+
+function renderCoords() {
+  const ranks = state.flipped ? [1, 2, 3, 4, 5, 6, 7, 8] : [8, 7, 6, 5, 4, 3, 2, 1];
+  const files = state.flipped ? [...FILES].reverse() : FILES;
+  $('ranks').innerHTML = ranks.map((r) => '<span>' + r + '</span>').join('');
+  $('files').innerHTML = files.map((f) => '<span>' + f + '</span>').join('');
+}
+
+function renderBoard() {
+  const board = $('board');
+  if (!state.chess) { board.innerHTML = ''; return; }
+
+  const grid = state.chess.board();              // rank 8 -> 1, file a -> h
+  const rows = state.flipped ? [...grid].reverse() : grid;
+  const lastUci = state.ply > 0 ? state.moves[state.ply - 1] : null;
+  const last = lastUci ? { from: lastUci.slice(0, 2), to: lastUci.slice(2, 4) } : null;
+
+  const cells = [];
+  rows.forEach((row, r) => {
+    const cols = state.flipped ? [...row].reverse() : row;
+    cols.forEach((piece, c) => {
+      const rank = state.flipped ? r + 1 : 8 - r;
+      const file = state.flipped ? FILES[7 - c] : FILES[c];
+      const square = file + rank;
+
+      const classes = ['sq', (r + c) % 2 === 0 ? 'light' : 'dark'];
+      if (last && square === last.from) classes.push('from');
+      if (last && square === last.to) classes.push('to');
+      if (state.selected === square) classes.push('sel');
+      if (piece) classes.push('occupied');
+
+      const dot = state.legal.includes(square) ? '<i class="dot"></i>' : '';
+      const art = piece
+        ? '<svg class="pc" viewBox="0 0 189 189"><use href="' + pieceHref(piece) + '"></use></svg>'
+        : '';
+      cells.push('<div class="' + classes.join(' ') + '" data-sq="' + square + '">' + art + dot + '</div>');
+    });
+  });
+  board.innerHTML = cells.join('');
+}
+
+function renderInfo() {
+  const p = state.puzzle;
+  $('i-id').textContent = p?.puzzleid ?? '—';
+  $('i-rating').textContent = p?.rating ?? '—';
+  const themes = Array.isArray(p?.themes) ? p.themes.join(', ') : (p?.themes ?? '—');
+  $('i-themes').textContent = themes === '' || themes == null ? '—' : themes;
+  $('i-turn').textContent = state.chess ? (state.chess.turn() === 'w' ? 'white' : 'black') : '—';
+  $('i-ply').textContent = state.puzzle ? state.ply + ' / ' + state.moves.length : '—';
+  $('fen').value = state.chess ? state.chess.fen() : '';
+
+  $('movelist').innerHTML = state.moves
+    .map((uci, i) => {
+      const classes = ['mv'];
+      if (i % 2 === 1) classes.push('player');   // odd indices are the player's answers
+      if (i < state.ply) classes.push('done');
+      if (i === state.ply) classes.push('next');
+      return '<span class="' + classes.join(' ') + '">' + uci + '</span>';
+    })
+    .join('');
+}
+
+function render() {
+  renderCoords();
+  renderBoard();
+  renderInfo();
+}
+
+function goTo(ply) {
+  if (!state.puzzle) return;
+  state.ply = Math.max(0, Math.min(state.moves.length, ply));
+  rebuild();
+  render();
+}
+
+function setPuzzle(puzzle) {
+  if (!puzzle?.fen) throw new Error('Response had no FEN — check the backend returns lowercase keys');
+  state.puzzle = puzzle;
+  state.moves = splitMoves(puzzle.moves);
+  state.ply = 0;
+  rebuild();
+  render();
+  setStatus($('puzzle-status'), 'Loaded ' + puzzle.puzzleid, 'ok');
+}
+
+$('load').addEventListener('click', () => {
+  const id = $('pid').value.trim();
+  if (!/^[A-Za-z0-9]{5}$/.test(id)) {
+    return setStatus($('puzzle-status'), '"' + id + '" is not a 5-character puzzle id', 'err');
+  }
+  run($('load'), $('puzzle-status'), 'Loading ' + id, async () => {
+    setPuzzle(await api('/puzzles/' + encodeURIComponent(id) + '/'));
+  });
+});
+
+$('pid').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('load').click(); });
+
+$('random').addEventListener('click', () =>
+  run($('random'), $('puzzle-status'), 'Loading a random puzzle', async () => {
+    const puzzle = await api('/puzzles/random/');
+    $('pid').value = puzzle.puzzleid ?? '';
+    setPuzzle(puzzle);
+  }));
+
+$('first').addEventListener('click', () => goTo(0));
+$('prev').addEventListener('click', () => goTo(state.ply - 1));
+$('next').addEventListener('click', () => goTo(state.ply + 1));
+$('last').addEventListener('click', () => goTo(state.moves.length));
+$('flip').addEventListener('click', () => { state.flipped = !state.flipped; render(); });
+
+$('hint').addEventListener('click', () => {
+  if (!state.puzzle) return setStatus($('puzzle-status'), 'Load a puzzle first', 'err');
+  if (state.ply >= state.moves.length) return setStatus($('puzzle-status'), 'No move left to hint', 'err');
+  // The endpoint is 1-indexed: move_number N replays moves[:N-1] and describes moves[N-1].
+  run($('hint'), $('puzzle-status'), 'Asking for a hint', async () => {
+    const body = await api('/puzzles/' + encodeURIComponent(state.puzzle.puzzleid) + '/hints/' + (state.ply + 1));
+    setStatus($('puzzle-status'), body.hint ?? 'No hint returned');
+  });
+});
+
+/* click-to-move: legality from chess.js, then checked against the solution */
+$('board').addEventListener('click', (e) => {
+  const cell = e.target.closest('.sq');
+  if (!cell || !state.chess) return;
+  const square = cell.dataset.sq;
+
+  if (state.selected && state.legal.includes(square)) {
+    attemptMove(state.selected, square);
+    return;
+  }
+
+  const piece = state.chess.get(square);
+  if (piece && piece.color === state.chess.turn()) {
+    state.selected = square;
+    state.legal = state.chess.moves({ square, verbose: true }).map((m) => m.to);
+  } else {
+    state.selected = null;
+    state.legal = [];
+  }
+  renderBoard();
+});
+
+function attemptMove(from, to) {
+  const options = state.chess.moves({ square: from, verbose: true }).filter((m) => m.to === to);
+  if (!options.length) return;
+
+  let promotion;
+  if (options.some((m) => m.promotion)) {
+    const answer = (prompt('Promote to? q, r, b or n', 'q') || '').trim().toLowerCase();
+    if (!['q', 'r', 'b', 'n'].includes(answer)) {
+      setStatus($('puzzle-status'), 'Promotion cancelled');
+      state.selected = null; state.legal = []; renderBoard();
+      return;
+    }
+    promotion = answer;
+  }
+
+  const played = from + to + (promotion || '');
+  const expected = state.moves[state.ply];
+
+  state.selected = null;
+  state.legal = [];
+
+  if (!expected) {
+    setStatus($('puzzle-status'), 'Solution is already complete', 'err');
+    renderBoard();
+    return;
+  }
+
+  // A legal-but-wrong move is rejected rather than played, so the board stays in step with
+  // the solution. Use the arrows to explore instead.
+  if (played !== expected) {
+    setStatus($('puzzle-status'), '✗ ' + played + ' — expected ' + expected, 'err');
+    renderBoard();
+    return;
+  }
+
+  goTo(state.ply + 1);
+  setStatus($('puzzle-status'), '✓ ' + played, 'ok');
+}
+
+/* ------------------------------------------------------------------- boot */
+
+try {
+  const { data: initial } = await sb.auth.getSession();
+  if (initial.session) { await showConsole(initial.session); } else { showAuth(); }
+} catch {
+  showAuth();
+}
+render();
+</script>
+{% endraw %}
+</body>
+</html>
