@@ -2,37 +2,39 @@
 
 ## Instruction
 
-Look at those two kings staring each other down. It’s Black’s turn… but every square the king can go to makes things worse. When it’s your turn and every move hurts you, that’s called zugzwang. Can you find the move that forces Black to crack?
+Let’s take a look at that king. He’s stuck next to the other king, and it’s his turn to move. But wait… every square he can go to looks bad for him. When it’s your turn and every move hurts you, that’s called zugzwang. Can you make him move so we can win the pawn?
 
 **PUZZLE**
 wAalE
 
 ## Feedback
 
-See? Black had to step aside, and White scooped up the pawn. Zugzwang isn’t a flashy checkmate trick — it’s making the other side move when they’d rather stay put.
+Look! He had to step away, and now we get the pawn. He didn’t want to move at all — but he had to, because it was his turn!
 
 # Zugzwang — Explanation
 
 ## Instruction
 
-You know the idea now: leave your opponent with no good moves. Sometimes you even give up a piece to put them in that spot. Here, how can you force Black into a position where whatever they do, you win material or the game?
+You know the trick now. This is called “zugzwang.”
+
+It means the other player has to move, even though moving makes things worse for them. How can you use what you’ve learned to leave them with no good moves?
 
 **PUZZLE**
 JQ3TP
 
 ## Feedback
 
-Nice. You stripped away Black’s useful options until they had to give something up. Remember: in zugzwang, the problem isn’t that they’re in check — it’s that they have to move at all.
+Yes! You took away their good options, so whatever they did helped you. Remember, in zugzwang they aren’t even in check — they just hate that it’s their turn.
 
 # Zugzwang — Challenge
 
 ## Instruction
 
-This is the tough one. The kings and pawns look locked… until someone has to blink. How do you shoulder the enemy king into a spot where every reply loses? Take your time and calculate.
+This is the ultimate test. Before, it was easier to see. How can you force the other king into a spot where every move he makes loses? Are there any quiet moves that make him run out of good squares?
 
 **PUZZLE**
 QOPNV
 
 ## Feedback
 
-Great job! That was a real squeeze. Next time a quiet endgame feels “stuck,” ask yourself: whose turn is the problem? If it’s theirs, you might already be winning with zugzwang.
+Good job! That was a tough one. You really have mastered zugzwang. Try to find it in your next endgame!
