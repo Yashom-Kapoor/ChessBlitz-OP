@@ -678,6 +678,15 @@ lessons = [
         'content': '',
         'icon': 'default'
     },
+    {
+        'id': 3,
+        'slug': 'zugzwang',
+        'puzzleTheme': 'zugzwang',
+        'name': 'Zugzwang',
+        'desc': 'Force your opponent to move when every option makes their position worse.',
+        'content': '',
+        'icon': 'default'
+    },
 ]
 
 def _find_lesson(lesson_key):

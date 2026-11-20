@@ -9,6 +9,11 @@ export const lessonPackages = {
     puzzleTheme: 'backRankMate',
     name: 'Back Rank Mate',
   },
+  zugzwang: {
+    slug: 'zugzwang',
+    puzzleTheme: 'zugzwang',
+    name: 'Zugzwang',
+  },
 } as const;
 
 export type LessonPackageSlug = keyof typeof lessonPackages;
@@ -16,6 +21,7 @@ export type LessonPackageSlug = keyof typeof lessonPackages;
 export const lessonFiles: Record<string, any> = {
   skewer: require('@/lessons/skewer/skewer.md'),
   back_rank_mate: require('@/lessons/back_rank_mate/back_rank_mate.md'),
+  zugzwang: require('@/lessons/zugzwang/zugzwang.md'),
   lesson1: require('@/lessons/lesson1.md'),
   lesson2: require('@/lessons/lesson2.md'),
   lesson3: require('@/lessons/lesson3.md'),
