@@ -10,15 +10,17 @@ interface LessonBubbleProps {
     description: string;
     offset: any;
     available: boolean;
+    slug?: string;
 }
 
-export default function LessonBubble({ id, name, description, offset, available }: LessonBubbleProps) {
+export default function LessonBubble({ id, name, description, offset, available, slug }: LessonBubbleProps) {
     const { theme } = useTheme();
     const isTablet = useGlobalSearchParams().isTablet === 'true';
     const router = useRouter();
 
     const onPress = () => {
-        router.push(`/lessons/${id}?isTablet=${isTablet}`)
+        const path = slug || String(id);
+        router.push(`/lessons/${path}?isTablet=${isTablet}&lessonId=${id}`)
     }
 
     const styles = GlobalStyle(theme, isTablet);

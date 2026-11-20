@@ -28,12 +28,13 @@ interface LessonPuzzleProps {
     pageForward: () => void;
     pageBack: () => void;
     puzzleId: string;
+    puzzleTheme?: string;
     length: number;
     pagePrevPuzzle: boolean;
     pageNextPuzzle: boolean;
 }
 
-export default function LessonPuzzle({ length, page, pageBack, pageForward, pagePrevPuzzle, pageNextPuzzle, puzzleId }: LessonPuzzleProps) {
+export default function LessonPuzzle({ length, page, pageBack, pageForward, pagePrevPuzzle, pageNextPuzzle, puzzleId, puzzleTheme }: LessonPuzzleProps) {
     const { theme } = useTheme();
     const { autoFlip, opponentSpeed, haptics } = usePuzzleSettings();
     const isTablet = useGlobalSearchParams().isTablet === 'true';
@@ -425,6 +426,8 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
                         isTablet={isTablet}
                         onMove={handleMove}
                         gestureEnabled={!pendingMove && !retryFen && Boolean(lastFEN && turn && getTurnFromFEN(lastFEN) !== turn)}
+                        puzzleId={puzzleId}
+                        puzzleTheme={puzzleTheme}
                     />
                 ) : (
                     <ChessboardDemo
@@ -434,6 +437,8 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
                         colors={{ black: theme.player2Square, white: theme.player1Square }}
                         isTablet={isTablet}
                         gestureEnabled={false}
+                        puzzleId={puzzleId}
+                        puzzleTheme={puzzleTheme}
                     />
                 )}
 
