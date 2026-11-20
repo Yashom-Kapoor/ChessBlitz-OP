@@ -1,14 +1,25 @@
 import GlassBlurView from "@/components/GlassBlurView";
-import { lessonFiles } from "@/components/lessons/Lessons";
+import { lessonFiles, puzzleThemeForSlug } from "@/components/lessons/Lessons";
 import { BackgroundContext } from "@/context/Backgrounds";
 import GlobalStyle from "@/context/GlobalStyle";
 import { useTheme } from "@/context/ThemeContext";
+import { lessonStepCount, parseLessonMarkdown } from "@/utils/parseLessonMarkdown";
 import { useGlobalSearchParams, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
-import { use, useEffect, useLayoutEffect, useState } from "react";
-import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { useLayoutEffect, useState } from "react";
+import { ActivityIndicator, Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Markdown from 'react-native-markdown-display';
 import LessonPuzzle from "@/components/puzzles/LessonPuzzle";
+
+function resolveLessonAsset(lessonKey: string) {
+  if (lessonFiles[lessonKey]) {
+    return lessonFiles[lessonKey];
+  }
+  if (/^\d+$/.test(lessonKey) && lessonFiles[`lesson${lessonKey}`]) {
+    return lessonFiles[`lesson${lessonKey}`];
+  }
+  return null;
+}
 
 export default function Lesson() {
     const router = useRouter();
@@ -18,30 +29,66 @@ export default function Lesson() {
     const { theme } = useTheme();
     const [content, setContent] = useState<string[]>([]);
     const [page, setPage] = useState<number>(1);
+    const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-    const lessonId = params.lesson as string;
-    const dynamicTitle = `Lesson: ${params.lesson}`;
+    const lessonKey = String(params.lesson ?? '');
+    const queryLessonId = params.lessonId != null ? String(params.lessonId) : undefined;
+    const dynamicTitle = `Lesson: ${lessonKey || '…'}`;
     const isTablet = global.isTablet === 'true';
+    const puzzleTheme = puzzleThemeForSlug(lessonKey);
+    const stepCount = lessonStepCount(content);
 
     useLayoutEffect(() => {
         navigation.setOptions({
             title: dynamicTitle,
         });
 
-        const asset = lessonFiles[`lesson${lessonId}`];
-        if (!asset) return;
+        let cancelled = false;
+        setLoadState('loading');
+        setErrorMessage(null);
+        setPage(1);
+
+        const asset = resolveLessonAsset(lessonKey);
+        if (!asset) {
+            setContent(parseLessonMarkdown(''));
+            setErrorMessage(`Lesson "${lessonKey}" was not found.`);
+            setLoadState('error');
+            return;
+        }
 
         const uri = Image.resolveAssetSource(asset)?.uri;
-        if (!uri) return;
+        if (!uri) {
+            setContent(parseLessonMarkdown(''));
+            setErrorMessage('Could not resolve lesson asset.');
+            setLoadState('error');
+            return;
+        }
 
         fetch(uri)
-            .then(res => res.text())
-            .then(text => {
-            const splitContent = text.split(/(\*\*\*PAGE\*\*\*|\*\*\*PUZZLE\*\*\*)/);
-            setContent(splitContent);
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(`Failed to load lesson (${res.status})`);
+                }
+                return res.text();
             })
-            .catch(err => console.log('md load error', err));
-    }, [router, dynamicTitle]); // Run whenever navigation or title changes
+            .then(text => {
+                if (cancelled) return;
+                setContent(parseLessonMarkdown(text));
+                setLoadState('ready');
+            })
+            .catch(err => {
+                if (cancelled) return;
+                console.log('md load error', err);
+                setContent(parseLessonMarkdown(''));
+                setErrorMessage(err instanceof Error ? err.message : 'Failed to load lesson');
+                setLoadState('error');
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [navigation, dynamicTitle, lessonKey]);
 
     function pageBack() {
         if (page > 1) {
@@ -50,17 +97,57 @@ export default function Lesson() {
     }
 
     function pageForward() {
-        if (page < (content.length - 1) / 2) {
+        if (page < stepCount) {
             setPage(page + 1);
-        } else if (page === (content.length - 1) / 2) {
+        } else if (page === stepCount) {
             router.back();
-            router.setParams({ lessonCompleted: parseInt(lessonId) });
+            if (queryLessonId) {
+                router.setParams({ lessonCompleted: queryLessonId });
+            }
         }
     }
 
     const styles = GlobalStyle(theme, isTablet);
 
-    if (content[page * 2 - 1] === '***PAGE***') {
+    if (loadState === 'loading') {
+        return (
+            <GestureHandlerRootView style={{ flex: 1, backgroundColor: theme.background }}>
+                <BackgroundContext theme={theme}>
+                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                        <ActivityIndicator size="large" color={theme.primaryText} />
+                        <Text style={{ ...styles.p, color: theme.primaryText, marginTop: 12 }}>
+                            Loading lesson…
+                        </Text>
+                    </View>
+                </BackgroundContext>
+            </GestureHandlerRootView>
+        );
+    }
+
+    if (loadState === 'error' || stepCount < 1) {
+        return (
+            <GestureHandlerRootView style={{ flex: 1, backgroundColor: theme.background }}>
+                <BackgroundContext theme={theme}>
+                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+                        <Text style={{ ...styles.h3, color: theme.titleText, textAlign: 'center' }}>
+                            {errorMessage || 'This lesson has no content.'}
+                        </Text>
+                        <TouchableOpacity style={{ marginTop: 20 }} onPress={() => router.back()}>
+                            <GlassBlurView theme={theme} isTablet={isTablet} color={theme.secondaryButton} glass={'clear'} />
+                            <Text style={{ ...styles.h4, color: theme.secondaryText, textAlign: 'center', padding: 15 }}>
+                                Go back
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                </BackgroundContext>
+            </GestureHandlerRootView>
+        );
+    }
+
+    const marker = content[page * 2 - 1];
+    const body = content[page * 2] ?? '';
+
+    if (marker === '***PAGE***') {
         return (
             <GestureHandlerRootView style={{ flex: 1, backgroundColor: theme.background }}>
                 <BackgroundContext theme={theme}>
@@ -84,7 +171,7 @@ export default function Lesson() {
                             thead: {backgroundColor: theme.secondaryButton, color: theme.secondaryText},
                             tbody: {color: theme.primaryText},
                         }}>
-                            {String(content[page * 2])}
+                            {String(body)}
                         </Markdown>
 
                         <View style={{...styles.hStack, gap: isTablet ? 30 : 20}}>
@@ -103,7 +190,7 @@ export default function Lesson() {
                                 }}>
                                 <GlassBlurView theme={theme} isTablet={isTablet} color={theme.secondaryButton} glass={'clear'} />
                                 <Text style={{...styles.h4, color: theme.secondaryText, textAlign: 'center', padding: 15}}>
-                                    {page < (content.length - 1) / 2 ? 'Next' : 'Complete'}
+                                    {page < stepCount ? 'Next' : 'Complete'}
                                 </Text>
                             </TouchableOpacity>
                         </View>
@@ -112,19 +199,39 @@ export default function Lesson() {
             </GestureHandlerRootView>
         );
     }
-    if (content[page * 2 - 1] === '***PUZZLE***') {
+
+    if (marker === '***PUZZLE***') {
         return (
             <LessonPuzzle
-                key={`puzzle-${page}`}
+                key={`puzzle-${page}-${body.trim()}`}
                 length={content.length}
                 page={page}
                 pageBack={pageBack}
                 pageForward={pageForward}
                 pagePrevPuzzle={page > 1 && content[page * 2 - 3] === '***PUZZLE***'}
-                pageNextPuzzle={page < (content.length - 1) / 2 && content[page * 2 + 1] === '***PUZZLE***'}
-                puzzleId={content[page * 2].trim()}
+                pageNextPuzzle={page < stepCount && content[page * 2 + 1] === '***PUZZLE***'}
+                puzzleId={body.trim()}
+                puzzleTheme={puzzleTheme}
             />
         );
     }
 
+    // Unknown segment — never blank the screen.
+    return (
+        <GestureHandlerRootView style={{ flex: 1, backgroundColor: theme.background }}>
+            <BackgroundContext theme={theme}>
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+                    <Text style={{ ...styles.h3, color: theme.titleText, textAlign: 'center' }}>
+                        Unexpected lesson step.
+                    </Text>
+                    <TouchableOpacity style={{ marginTop: 20 }} onPress={() => pageForward()}>
+                        <GlassBlurView theme={theme} isTablet={isTablet} color={theme.secondaryButton} glass={'clear'} />
+                        <Text style={{ ...styles.h4, color: theme.secondaryText, textAlign: 'center', padding: 15 }}>
+                            Continue
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            </BackgroundContext>
+        </GestureHandlerRootView>
+    );
 }

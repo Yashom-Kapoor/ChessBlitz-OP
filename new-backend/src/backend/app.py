@@ -106,16 +106,47 @@ def update_user_info(supabase, token, update_info):
 
 # -------- PUZZLES --------
 
-# Get random puzzle
-def get_random_puzzle(supabase):
+# Get random puzzle. When theme is set (e.g. skewer, backRankMate), prefer puzzles
+# tagged with that Themes value — try a contains filter first, then fall back to
+# client-side filtering via puzzle_theme_names.
+def get_random_puzzle(supabase, theme=None):
     try:
+        if theme:
+            puzzles = None
+            try:
+                filtered = (
+                    supabase.table("Puzzles")
+                    .select("*")
+                    .contains("Themes", [theme])
+                    .execute()
+                )
+                if filtered.data:
+                    puzzles = filtered.data
+            except Exception as filter_err:
+                print(f"Theme contains filter unavailable, falling back: {filter_err}")
+                puzzles = None
+
+            if not puzzles:
+                all_res = supabase.table("Puzzles").select("*").execute()
+                needle = str(theme).lower()
+                puzzles = [
+                    p for p in (all_res.data or [])
+                    if needle in [t.lower() for t in puzzle_theme_names(p.get("Themes"))]
+                ]
+
+            if not puzzles:
+                return None
+            return random.choice(puzzles)
+
         ids_res = supabase.table("Puzzles").select("PuzzleId").execute()
         ids = [p["PuzzleId"] for p in ids_res.data]
+        if not ids:
+            return None
         chosen_id = random.choice(ids)
 
         puzzle_res = supabase.table("Puzzles").select("*").eq("PuzzleId", chosen_id).execute()
-        return puzzle_res.data[0]
-    
+        return puzzle_res.data[0] if puzzle_res.data else None
+
     except Exception as e:
         print(f"Error fetching random puzzle: {e}")
         return None
@@ -548,7 +579,8 @@ def get_my_ratings():
 def random_puzzle_route():
     token = get_bearer_token(request)
     supabase = get_supabase_with_auth(token)
-    puzzle = get_random_puzzle(supabase)
+    theme = request.args.get("theme")
+    puzzle = get_random_puzzle(supabase, theme=theme)
 
     if not puzzle:
         return jsonify({"error": "No puzzles found"}), 404
@@ -625,86 +657,70 @@ def completed_puzzle_route():
         "theme_ratings": theme_updates
     }), 201
 
-# -------- LESSONS (CONTENT SUBTEAM) -------- THIS WHOLE BLACK IS OLD AND TEMPORARY, JUST FOR TESTING PURPOSES.
-    
+# -------- LESSONS (CONTENT SUBTEAM) --------
+
 lessons = [
     {
         'id': 1,
-        'name': 'Introduction to Chess',
-        'desc': 'Learn the basics of chess, including piece movements and rules.',
-        'content': 'Chess is a two-player strategy board game played on a checkered board...',
+        'slug': 'skewer',
+        'puzzleTheme': 'skewer',
+        'name': 'Skewer',
+        'desc': 'Learn how to attack a valuable piece so the one behind it hangs — classic skewer tactics.',
+        'content': '',
         'icon': 'default'
     },
     {
         'id': 2,
-        'name': 'Opening Principles',
-        'desc': 'Understand the fundamental principles of chess openings.',
-        'content': 'In the opening phase of chess, it is important to control the center...',
+        'slug': 'back_rank_mate',
+        'puzzleTheme': 'backRankMate',
+        'name': 'Back Rank Mate',
+        'desc': 'Trap the king on the back rank and deliver mate when it has nowhere to run.',
+        'content': '',
         'icon': 'default'
     },
     {
         'id': 3,
-        'name': 'Basic Tactics',
-        'desc': 'Learn essential chess tactics like forks, pins, and skewers.',
-        'content': 'Tactics are short-term tactical patterns that can be used to gain an advantage in a game of chess.',
-        'icon': 'default'
-    },
-    {
-        'id': 4,
-        'name': 'Endgame Strategies',
-        'desc': 'Master key endgame concepts and techniques.',
-        'content': 'The endgame is the final phase of a chess game where there are few pieces left on the board...',
-        'icon': 'default'
-    },
-    {
-        'id': 5,
-        'name': 'Advanced Tactics',
-        'desc': 'Explore advanced tactical motifs and combinations.',
-        'content': 'Advanced tactics involve more complex patterns and combinations that can lead to decisive advantages...',
-        'icon': 'default'
-    },
-    {
-        'id': 6,
-        'name': 'Positional Play',
-        'desc': 'Learn how to improve your position and control key squares.',
-        'content': 'Positional play focuses on long-term strategic advantages rather than immediate tactical gains...',
-        'icon': 'default'
-    },
-    {
-        'id': 7,
-        'name': 'Pawn Structures',
-        'desc': 'Understand different pawn structures and their implications.',
-        'content': 'Pawn structures play a crucial role in determining the strategic plans for both sides...',
-        'icon': 'default'
-    },
-    {
-        'id': 8,
-        'name': 'lesson 8',
-        'desc': 'Understand different pawn structures and their implications.',
-        'content': 'Pawn structures play a crucial role in determining the strategic plans for both sides...',
+        'slug': 'zugzwang',
+        'puzzleTheme': 'zugzwang',
+        'name': 'Zugzwang',
+        'desc': 'Force your opponent to move when every option makes their position worse.',
+        'content': '',
         'icon': 'default'
     },
 ]
+
+def _find_lesson(lesson_key):
+    """Match a lesson by slug or display name."""
+    key = (lesson_key or '').strip()
+    return next(
+        (
+            l for l in lessons
+            if l.get('slug') == key or l.get('name') == key
+        ),
+        None,
+    )
 
 # Get all lessons
 @app.route('/lessons', methods=['GET'])
 def get_lessons():
     return jsonify(lessons)
 
-# Get a specific lesson by name
+# Get a specific lesson by slug or name
 @app.route('/lessons/<string:lesson_name>', methods=['GET'])
 def get_lesson(lesson_name):
-    lesson = next((l for l in lessons if l['name'] == lesson_name), None)
+    lesson = _find_lesson(lesson_name)
     if lesson:
         return jsonify(lesson)
     return jsonify({'error': 'Lesson not found'}), 404
 
-# Create a new lesson            
+# Create a new lesson
 @app.route('/lessons', methods=['POST'])
 def create_lesson():
-    data = request.get_json()
+    data = request.get_json() or {}
     new_lesson = {
         'id': lessons[-1]['id'] + 1 if lessons else 1,
+        'slug': data.get('slug'),
+        'puzzleTheme': data.get('puzzleTheme'),
         'name': data.get('name'),
         'desc': data.get('desc'),
         'content': data.get('content'),
@@ -716,21 +732,25 @@ def create_lesson():
 # Update a lesson
 @app.route('/lessons/<string:lesson_name>', methods=['PUT'])
 def update_lesson(lesson_name):
-    data = request.get_json()
-    lesson = next((l for l in lessons if l['name'] == lesson_name), None)
+    data = request.get_json() or {}
+    lesson = _find_lesson(lesson_name)
     if lesson:
         lesson['name'] = data.get('name', lesson['name'])
         lesson['desc'] = data.get('desc', lesson['desc'])
         lesson['content'] = data.get('content', lesson['content'])
         lesson['icon'] = data.get('icon', lesson['icon'])
+        if 'slug' in data:
+            lesson['slug'] = data.get('slug')
+        if 'puzzleTheme' in data:
+            lesson['puzzleTheme'] = data.get('puzzleTheme')
         return jsonify(lesson)
     return jsonify({'error': 'Lesson not found'}), 404
 
-# Delete a lesson             
+# Delete a lesson
 @app.route('/lessons/<string:lesson_name>', methods=['DELETE'])
 def delete_lesson(lesson_name):
     global lessons
-    lessons = [l for l in lessons if l['name'] != lesson_name]
+    lessons = [l for l in lessons if l.get('name') != lesson_name and l.get('slug') != lesson_name]
     return jsonify({'message': 'Lesson deleted'}), 200
 
 # -------- HINTS (LLM SUBTEAM) --------

@@ -16,6 +16,8 @@ type LessonData = {
   name: string;
   desc: string;
   icon?: string;
+  slug?: string;
+  puzzleTheme?: string;
 }
 
 const LESSON_ICONS: Record<string, any> = {
@@ -90,7 +92,11 @@ export default function LessonScreen() {
           {getEquidistantSinePoints(isTablet ? 220 : 130, 2.5, lessons.length * 7, lessons.length * (isTablet ? 300 : 250), isTablet ? 60 : 35).map((point, i) => {
             if (i % 7 == 0) {
               const lesson = lessons[Math.floor(i / 7)];
+              if (!lesson) {
+                return null;
+              }
               const isAvailable = Math.floor(i / 7) < completedLessons + 1;
+              const activeLesson = lessons.find((l) => l.id === lessonBubble) ?? null;
               return (
                 <View key={i} style={{position: 'static'}}>
                   <Lesson
@@ -102,12 +108,13 @@ export default function LessonScreen() {
                     available={isAvailable}
                     onPress={() => setLessonBubble(lesson.id)}
                   />
-                  {(lessonBubble == lesson.id) && (
+                  {(lessonBubble == lesson.id) && activeLesson && (
                     <LessonBubble
-                      id={lesson.id}
-                      name={lessons[lessonBubble - 1].name} 
-                      description={lessons[lessonBubble - 1].desc} 
-                      offset={{ x: point.y / (isTablet ? 2 : 5), y: point.x }} 
+                      id={activeLesson.id}
+                      name={activeLesson.name}
+                      description={activeLesson.desc}
+                      slug={activeLesson.slug}
+                      offset={{ x: point.y / (isTablet ? 2 : 5), y: point.x }}
                       available={isAvailable}
                     />
                   )}
