@@ -162,6 +162,26 @@ export default function ProfileScreen() {
   };
 
   const [isEditing, setIsEditing] = useState(false);
+  const [firstName, ...restOfName] = userData.name.trim().split(' ');
+  const lastName = restOfName.join(' ');
+  const [birthday, setBirthday] = useState('');
+
+  const handleEditPress = async () => {
+    if (isEditing) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { error } = await supabase
+          .from('Users')
+          .update({ name: userData.name })
+          .eq('user_id', user.id);
+        if (error) {
+          console.log('Error saving profile:', error.message);
+          return;
+        }
+      }
+    }
+    setIsEditing(!isEditing);
+  };
 
   const [notifications, setNotifications] = useState({
   lessonReminders: true,
@@ -316,7 +336,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={localStyles.editButton}
-              onPress={() => setIsEditing(!isEditing)}
+              onPress={handleEditPress}
             >
               <GlassBlurView
                 theme={theme}
@@ -344,15 +364,54 @@ export default function ProfileScreen() {
             <View style={localStyles.infoRow}>
               <Text style={localStyles.icon}>👤</Text>
               <View style={localStyles.infoContent}>
-                <Text style={[styles.h6, { color: `${theme.primaryText}60` }]}>Name</Text>
+                <Text style={[styles.h6, { color: `${theme.primaryText}60` }]}>First Name</Text>
+                {isEditing ? (
+                  <TextInput
+             style={[styles.h5, localStyles.input]}
+                    // value={userData.name}
+                    value={firstName}
+                    // onChangeText={(text) => updateUserData({ name: text })}
+                    onChangeText={(text) => updateUserData({ name: `${text} ${lastName}`.trim() })}
+                  />
+                ) : (
+                  // <Text style={[styles.h5, localStyles.infoValue]}>{userData.name}</Text>
+                  <Text style={[styles.h5, localStyles.infoValue]}>{firstName}</Text>
+                )}
+              </View>
+            </View>
+
+            {/* NEW: Last Name row */}
+            <View style={localStyles.infoRow}>
+              <Text style={localStyles.icon}>🏷️</Text>
+              <View style={localStyles.infoContent}>
+                <Text style={[styles.h6, { color: `${theme.primaryText}60` }]}>Last Name</Text>
                 {isEditing ? (
                   <TextInput
                     style={[styles.h5, localStyles.input]}
-                    value={userData.name}
-                    onChangeText={(text) => updateUserData({ name: text })}
+                    value={lastName}
+                    onChangeText={(text) => updateUserData({ name: `${firstName} ${text}`.trim() })}
                   />
                 ) : (
-                  <Text style={[styles.h5, localStyles.infoValue]}>{userData.name}</Text>
+                  <Text style={[styles.h5, localStyles.infoValue]}>{lastName}</Text>
+                )}
+              </View>
+            </View>
+
+            <View style={localStyles.infoRow}>
+              <Text style={localStyles.icon}>🎂</Text>
+              <View style={localStyles.infoContent}>
+                <Text style={[styles.h6, { color: `${theme.primaryText}60` }]}>Birthday</Text>
+                {isEditing ? (
+                  <TextInput
+                    style={[styles.h5, localStyles.input]}
+                    value={birthday}
+                    onChangeText={setBirthday}
+                    placeholder="MM-DD-YYYY"
+                    placeholderTextColor={`${theme.primaryText}40`}
+                    keyboardType="numbers-and-punctuation"
+                  />
+                ) : (
+                  <Text style={[styles.h5, localStyles.infoValue]}>{birthday || 'Not set'}</Text>
                 )}
               </View>
             </View>
@@ -365,7 +424,8 @@ export default function ProfileScreen() {
                   <TextInput
                     style={[styles.h5, localStyles.input]}
                     value={userData.email}
-                    onChangeText={(text) => updateUserData({ email: text })}
+                    // onChangeText={(text) => updateUserData({ email: text })}
+                    editable={false}
                     keyboardType="email-address"
                   />
                 ) : (
