@@ -2,6 +2,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import React, { useCallback, useRef, useState } from 'react';
 import { ScrollView, View, ActivityIndicator, StyleSheet, Text, RefreshControl } from 'react-native';
 import RankingItem from '@/components/rankings/Rank';
+import PageHeading from '@/components/PageHeading';
 import { useFocusEffect } from 'expo-router';
 import { useTheme } from '@/context/ThemeContext';
 import GlobalStyle from '@/context/GlobalStyle';
@@ -67,9 +68,10 @@ export default function ClassroomScreen() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: theme.background }}>
       <BackgroundContext theme={theme}>
-        <ScrollView contentContainerStyle={{ ...styles.gapContainer, marginTop: 0 }}
+        <ScrollView contentContainerStyle={{ ...styles.gapContainer, marginTop: 0, paddingTop: isTablet ? 40 : 24 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { void fetchRankings(true); }}
             tintColor={theme.primaryText} colors={[theme.primaryText]} />}>
+          <PageHeading tab="classroom" />
           {error && (
             <Text style={{ ...styles.b, color: theme.primaryText }}>
               Could not load rankings. Pull down to try again.

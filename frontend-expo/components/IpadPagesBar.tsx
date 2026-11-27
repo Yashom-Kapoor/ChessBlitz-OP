@@ -6,18 +6,9 @@ import { Platform, StyleSheet } from "react-native";
 import { IconSymbol } from "./ui/IconSymbol";
 import CustomTabButton from "./CustomTabButton";
 import { glassColorSchemeFor, useGlassAvailable } from "@/utils/Glass";
+import { TAB_INFO, TAB_ROUTES, tabColor } from "@/constants/tabs";
 
 const ICON_SIZE = 52;
-
-// Order must match TAB_ROUTES in constants/tabs.ts.
-const TABS = [
-    { name: 'lessons', title: 'Lessons', icon: 'book', selectedIcon: 'book.fill', color: { dark: '#94CFFF', light: '#2e75c6' } },
-    { name: 'puzzles', title: 'Puzzles', icon: 'puzzlepiece.extension', selectedIcon: 'puzzlepiece.extension.fill', color: { dark: '#93FF8F', light: '#29be31' } },
-    { name: 'home', title: 'Home', icon: 'house', selectedIcon: 'house.fill', color: { dark: '#C9A7FF', light: '#8a4fd8' } },
-    // Classroom keeps the trophy icon for now.
-    { name: 'classroom', title: 'Classroom', icon: 'trophy', selectedIcon: 'trophy.fill', color: { dark: '#FFF37E', light: '#ffa90a' } },
-    { name: 'shop', title: 'Shop', icon: 'cart', selectedIcon: 'cart.fill', color: { dark: '#6bddcd', light: '#0aa3a5' } },
-] as const;
 
 export default function IpadPagesBar({ }) {
     const { theme } = useTheme();
@@ -88,16 +79,16 @@ export default function IpadPagesBar({ }) {
                     )
             }}
         >
-            {TABS.map((tab) => (
+            {TAB_ROUTES.map((name) => (
                 <Tabs.Screen
-                    key={tab.name}
-                    name={tab.name}
+                    key={name}
+                    name={name}
                     options={{
-                        title: tab.title,
+                        title: TAB_INFO[name].title,
                         tabBarIcon: ({ color, focused }) =>
-                            <IconSymbol size={ICON_SIZE} name={focused ? tab.selectedIcon : tab.icon} color={color} />,
-                        tabBarActiveTintColor: theme.dark ? tab.color.dark : tab.color.light,
-                        tabBarButton: (props) => <CustomTabButton {...props} routeName={tab.name} />,
+                            <IconSymbol size={ICON_SIZE} name={focused ? TAB_INFO[name].selectedIcon : TAB_INFO[name].icon} color={color} />,
+                        tabBarActiveTintColor: tabColor(name, theme.dark),
+                        tabBarButton: (props) => <CustomTabButton {...props} routeName={name} />,
                     }}
                 />
             ))}

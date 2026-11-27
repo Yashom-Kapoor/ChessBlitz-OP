@@ -6,6 +6,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { getMyRatings, ThemeRatings } from '@/api/Ratings';
 import ThemeRatingsList from '@/components/puzzles/ThemeRatingsList';
 import ThemePuzzleGrid from '@/components/puzzles/ThemePuzzleGrid';
+import PageHeading from '@/components/PageHeading';
 import { usePuzzleBoard } from '@/context/PuzzleBoardContext';
 import { useUnlockedThemes } from '@/hooks/useUnlockedThemes';
 import { darken } from '@/constants/PuzzleThemes';
@@ -63,16 +64,7 @@ export default function PuzzlesScreen() {
           paddingBottom: insets.bottom + 40,
         }}>
           <View style={localStyles.content}>
-            <Text accessibilityRole="header" style={[localStyles.heading, {
-              color: theme.primaryText, fontSize: isTablet ? 48 : 36, lineHeight: isTablet ? 58 : 44,
-            }]}>
-              {RATED_PUZZLES_TITLE}
-            </Text>
-            <Text style={[localStyles.subheading, {
-              color: theme.primaryText, fontSize: isTablet ? 22 : 17, lineHeight: isTablet ? 30 : 24,
-            }]}>
-              {RATED_PUZZLES_SUBTITLE}
-            </Text>
+            <PageHeading tab="puzzles" title={RATED_PUZZLES_TITLE} subtitle={RATED_PUZZLES_SUBTITLE} />
 
             <View style={{ marginTop: isTablet ? 32 : 24 }}>
               {board?.status === 'ready' ? (
@@ -125,8 +117,6 @@ export default function PuzzlesScreen() {
 
 const localStyles = StyleSheet.create({
   content: { width: '100%', maxWidth: 760, alignSelf: 'center' },
-  heading: { fontFamily: 'Nunito', fontWeight: '900', textAlign: 'center' },
-  subheading: { fontFamily: 'Nunito', fontWeight: '700', textAlign: 'center', marginTop: 6, opacity: 0.85 },
   progress: { fontFamily: 'Nunito', fontWeight: '900', textAlign: 'center', marginTop: 18 },
   status: { minHeight: 280, justifyContent: 'center' },
   statusText: { fontFamily: 'Nunito', fontSize: 17, fontWeight: '700', textAlign: 'center', marginTop: 12 },
