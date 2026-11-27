@@ -37,7 +37,7 @@ beforeEach(async () => {
 });
 afterEach(async () => { await act(async () => { root.unmount(); }); });
 test('logout removes protected screens without remounting the navigator', async () => {
-  expect(screens()).toEqual(expect.arrayContaining(['(tabs)', 'puzzles/demo_puzzle', 'puzzles/themes/[theme]', 'lessons/[lesson]']));
+  expect(screens()).toEqual(expect.arrayContaining(['(tabs)', 'puzzles/demo_puzzle', 'lessons/[lesson]']));
   mockAuth = { authUserId: null, authReady: true };
   await act(async () => { root.update(<RootLayout />); });
   expect(screens()).toEqual(['index', 'auth/sign_up', 'auth/log_in', '+not-found']);

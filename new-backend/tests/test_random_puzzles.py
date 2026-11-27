@@ -64,9 +64,9 @@ class RandomPuzzleRoutesTest(unittest.TestCase):
         original.assert_called_once_with(self.database)
         self.database.rpc.assert_not_called()
 
-    def test_set_requires_authentication_and_one_valid_theme(self):
+    def test_set_requires_authentication_and_valid_themes(self):
         self.assertEqual(self.client.get('/puzzles/random-set/?theme=pin').status_code, 401)
-        for query in ['', '?theme=', '?theme=pinning', '?theme=pin&theme=fork', '?theme=pin&' + '&'.join('exclude=x' for _ in range(10))]:
+        for query in ['', '?theme=', '?theme=pinning', '?theme=pin&theme=unknown', '?theme=pin&' + '&'.join('exclude=x' for _ in range(10))]:
             self.assertEqual(self.client.get('/puzzles/random-set/' + query, headers=self.headers).status_code, 400)
         self.database.rpc.assert_not_called()
 
@@ -78,7 +78,16 @@ class RandomPuzzleRoutesTest(unittest.TestCase):
                 response = self.client.get(f'/puzzles/random-set/?theme={theme}&exclude=old-id', headers=self.headers)
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual([p['puzzleid'] for p in response.json], [p['PuzzleId'] for p in rows])
-                self.database.rpc.assert_called_with('get_random_puzzle_set', {'theme_filter': theme, 'excluded_ids': ['old-id']})
+                self.database.rpc.assert_called_with('get_random_puzzle_set_by_themes', {'theme_filters': [theme], 'excluded_ids': ['old-id']})
+
+    def test_set_mixes_every_requested_theme_in_one_sql_draw(self):
+        rows = [{**self.puzzle, 'PuzzleId': f'puzzle-{i}'} for i in range(9)]
+        self.database.rpc.return_value.execute.return_value = SimpleNamespace(data=rows)
+        themes = sorted(fixtures.backend.PUZZLE_THEMES)
+        query = '&'.join(f'theme={theme}' for theme in themes + themes[:2])
+        response = self.client.get('/puzzles/random-set/?' + query, headers=self.headers)
+        self.assertEqual(response.status_code, 200)
+        self.database.rpc.assert_called_once_with('get_random_puzzle_set_by_themes', {'theme_filters': themes, 'excluded_ids': []})
 
     def test_set_does_not_pad_an_incomplete_draw_with_unrelated_puzzles(self):
         response = self.client.get('/puzzles/random-set/?theme=pin', headers=self.headers)

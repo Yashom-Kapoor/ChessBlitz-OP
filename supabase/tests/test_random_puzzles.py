@@ -6,6 +6,7 @@ import test_leaderboard_sync as fixtures
 
 MIGRATION = Path(__file__).resolve().parents[1] / 'migrations' / '20261118000300_random_puzzles_by_theme.sql'
 SET_MIGRATION = MIGRATION.with_name('20261118000400_theme_puzzle_sets.sql')
+MIXED_MIGRATION = MIGRATION.with_name('20261126000100_puzzle_set_by_themes.sql')
 
 
 class RandomPuzzleTests(unittest.TestCase):
@@ -28,6 +29,7 @@ class RandomPuzzleTests(unittest.TestCase):
         ''')
         self.sql(MIGRATION.read_text())
         self.sql(SET_MIGRATION.read_text())
+        self.sql(MIXED_MIGRATION.read_text())
 
     def sample(self, themes, count=1):
         array = 'array[' + ','.join("'" + theme.replace("'", "''") + "'" for theme in themes) + ']::text[]'
@@ -105,3 +107,38 @@ class RandomPuzzleTests(unittest.TestCase):
         self.sql(SET_MIGRATION.read_text())
         self.assertEqual(self.sql('select count(*) from public."Puzzles";'), '9')
         self.assertEqual(len(self.sample(['fork'])), 1)
+
+    def mixed(self, themes, exclude=()):
+        def arr(items):
+            return 'array[' + ','.join("'" + item.replace("'", "''") + "'" for item in items) + ']::text[]'
+        rows = self.sql(f"set role authenticated; select row_to_json(p) from public.get_random_puzzle_set_by_themes({arr(themes)}, {arr(exclude)}) p;")
+        return [json.loads(row) for row in rows.splitlines() if row]
+
+    def test_mixed_set_draws_nine_distinct_puzzles_from_only_the_requested_themes(self):
+        self.sql('''insert into public."Puzzles" select 'fork-' || n, 'middlegame fork' from generate_series(1, 30) n;
+          insert into public."Puzzles" select 'pin-' || n, 'pin short' from generate_series(1, 30) n;
+          insert into public."Puzzles" select 'skewer-' || n, 'skewer' from generate_series(1, 30) n;''')
+        seen = set()
+        previous = []
+        for _ in range(20):
+            rows = self.mixed(['fork', 'pin'], previous)
+            current = [row['PuzzleId'] for row in rows]
+            self.assertEqual(len(set(current)), 9)
+            self.assertFalse(set(current) & set(previous))
+            self.assertTrue(all({'fork', 'pin'} & set(row['Themes'].split()) for row in rows))
+            seen.update(row['PuzzleId'].split('-')[0] for row in rows)
+            previous = current
+        self.assertIn('fork', seen)
+        self.assertIn('pin', seen)
+        self.assertNotIn('skewer', seen)
+
+    def test_mixed_set_with_no_themes_or_unknown_themes_is_empty(self):
+        self.assertEqual(self.mixed([]), [])
+        self.assertEqual(self.mixed(['missing', "pin' OR true --"]), [])
+        self.assertEqual({row['PuzzleId'] for row in self.mixed(['backRankMate', 'skewer'])}, {'camel', 'other'})
+
+    def test_mixed_set_respects_permissions_and_row_level_security(self):
+        self.assertEqual(self.sql("select has_function_privilege('anon', 'public.get_random_puzzle_set_by_themes(text[],text[])', 'EXECUTE');"), 'f')
+        self.sql('''alter table public."Puzzles" enable row level security;
+          create policy visible on public."Puzzles" to authenticated using ("PuzzleId" = 'pin-only');''')
+        self.assertEqual(self.mixed(['fork', 'pin']), [{'PuzzleId': 'pin-only', 'Themes': 'pin'}])

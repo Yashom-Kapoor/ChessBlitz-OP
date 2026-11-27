@@ -634,17 +634,18 @@ def random_puzzle_route():
 @app.route("/puzzles/random-set/", methods=["GET"])
 @require_auth
 def random_puzzle_set_route():
-    themes = request.args.getlist("theme")
+    # Repeated theme parameters are the player's unlocked themes; the set mixes all of them.
+    themes = list(dict.fromkeys(request.args.getlist("theme")))
     excluded_ids = request.args.getlist("exclude")
-    if len(themes) != 1 or themes[0] not in PUZZLE_THEMES:
+    if not themes or any(theme not in PUZZLE_THEMES for theme in themes):
         return jsonify({"error": "Choose a valid puzzle theme."}), 400
     if len(excluded_ids) > 9 or any(not value or len(value) > 100 for value in excluded_ids):
         return jsonify({"error": "Invalid previous puzzle set."}), 400
 
     client = get_supabase_with_auth(get_bearer_token(request))
     try:
-        puzzles = client.rpc("get_random_puzzle_set", {
-            "theme_filter": themes[0], "excluded_ids": excluded_ids,
+        puzzles = client.rpc("get_random_puzzle_set_by_themes", {
+            "theme_filters": themes, "excluded_ids": excluded_ids,
         }).execute().data or []
     except Exception:
         app.logger.exception("Puzzle set lookup failed")

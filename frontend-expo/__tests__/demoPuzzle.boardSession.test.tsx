@@ -3,17 +3,17 @@ import React, { act } from 'react';
 import { create, ReactTestRenderer } from 'react-test-renderer';
 import { Chess } from 'chess.js';
 import DemoPuzzle from '@/app/puzzles/demo_puzzle';
-import { ThemePuzzleSessionProvider, useThemePuzzleSessions } from '@/context/ThemePuzzleSessionContext';
+import { PuzzleBoardProvider, usePuzzleBoard } from '@/context/PuzzleBoardContext';
 import { fetchRandomPuzzleSet } from '@/api/RandomPuzzleSet';
 import { PUZZLES, fakeBoard, toSupabasePuzzle } from '@/test-utils/puzzleScreen';
 
 jest.mock('@/api/RandomPuzzleSet', () => ({ fetchRandomPuzzleSet: jest.fn() }));
 let root: ReactTestRenderer;
-let context: NonNullable<ReturnType<typeof useThemePuzzleSessions>>;
+let context: NonNullable<ReturnType<typeof usePuzzleBoard>>;
 const dismissTo = jest.fn();
 let params: Record<string, string>;
-function Capture() { context = useThemePuzzleSessions()!; return null; }
-const tree = (play = false) => <ThemePuzzleSessionProvider><Capture />{play && <DemoPuzzle />}</ThemePuzzleSessionProvider>;
+function Capture() { context = usePuzzleBoard()!; return null; }
+const tree = (play = false) => <PuzzleBoardProvider><Capture />{play && <DemoPuzzle />}</PuzzleBoardProvider>;
 const wait = async (ms = 1000) => { await act(async () => { await jest.advanceTimersByTimeAsync(ms); }); };
 beforeEach(async () => {
   jest.useFakeTimers();
@@ -25,8 +25,8 @@ beforeEach(async () => {
   fakeBoard.puzzle = toSupabasePuzzle(PUZZLES[0]);
   (fetchRandomPuzzleSet as jest.Mock).mockResolvedValue([fakeBoard.puzzle.puzzleid, ...Array.from({ length: 8 }, (_, i) => `other-${i}`)]);
   await act(async () => { root = create(tree()); });
-  await act(async () => { context.ensure('fork'); });
-  params = { puzzle: fakeBoard.puzzle.puzzleid, theme: 'fork', themeSession: context.sessions.fork!.id };
+  await act(async () => { context.ensure(); });
+  params = { puzzle: fakeBoard.puzzle.puzzleid, boardSession: context.board!.id };
 });
 afterEach(async () => {
   await act(async () => { root.unmount(); });
@@ -42,23 +42,24 @@ async function solve() {
   }
 }
 
-test('only a solved puzzle checks its piece and returns to its category, while normal completion is still submitted', async () => {
+test('only a solved puzzle checks its piece and returns to the Puzzles tab, while completion is still submitted', async () => {
   const supabase = jest.requireMock('@/api/SupabaseClient').supabase;
   jest.spyOn(supabase.auth, 'getUser').mockResolvedValue({ data: { user: { id: 'alice' } } });
   const submit = jest.spyOn(jest.requireMock('@/api/PostCompleted'), 'postCompletedPuzzle');
   await act(async () => { root.update(tree(true)); });
   await wait(600);
+  expect(fakeBoard.props.puzzleId).toBe(fakeBoard.puzzle.puzzleid);
   const expected = fakeBoard.puzzle.moves.split(' ')[1];
   const wrong = new Chess(fakeBoard.game.fen()).moves({ verbose: true })
     .map(move => move.from + move.to + (move.promotion ?? '')).find(move => move !== expected)!;
   await act(async () => { fakeBoard.userMove(wrong); });
   await wait();
-  expect(context.sessions.fork!.completedIds).toEqual([]);
+  expect(context.board!.completedIds).toEqual([]);
   expect(dismissTo).not.toHaveBeenCalled();
   await solve();
-  expect(context.sessions.fork!.completedIds).toEqual([fakeBoard.puzzle.puzzleid]);
+  expect(context.board!.completedIds).toEqual([fakeBoard.puzzle.puzzleid]);
   expect(dismissTo).toHaveBeenCalledTimes(1);
-  expect(dismissTo).toHaveBeenCalledWith({ pathname: '/puzzles/themes/[theme]', params: { theme: 'fork', isTablet: 'false' } });
+  expect(dismissTo).toHaveBeenCalledWith({ pathname: '/(tabs)/puzzles', params: { isTablet: 'false' } });
   expect(submit).toHaveBeenCalledTimes(1);
   expect(submit).toHaveBeenCalledWith(expect.objectContaining({ puzzleid: fakeBoard.puzzle.puzzleid, completed: true }));
   await wait();
@@ -69,15 +70,15 @@ test('leaving an unfinished puzzle does not complete its piece', async () => {
   await act(async () => { root.update(tree(true)); });
   await wait(600);
   await act(async () => { root.update(tree(false)); });
-  expect(context.sessions.fork!.completedIds).toEqual([]);
+  expect(context.board!.completedIds).toEqual([]);
   expect(dismissTo).not.toHaveBeenCalled();
 });
 
-test.each(['practice', 'expired set'])('%s completion never checks a piece or forces a return', async kind => {
-  params = kind === 'practice' ? {} : { ...params, themeSession: 'expired' };
+test.each(['random', 'expired board'])('%s completion never checks a piece or forces a return', async kind => {
+  params = kind === 'random' ? {} : { ...params, boardSession: 'expired' };
   await act(async () => { root.update(tree(true)); });
   await wait(600);
   await solve();
-  expect(context.sessions.fork!.completedIds).toEqual([]);
+  expect(context.board!.completedIds).toEqual([]);
   expect(dismissTo).not.toHaveBeenCalled();
 });

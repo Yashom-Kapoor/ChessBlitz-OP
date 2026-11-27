@@ -3,7 +3,7 @@ import { getPuzzleActionAvailability } from '@/components/puzzles/puzzleActions'
 import React, { useEffect, useRef, useState } from 'react';
 import { useWindowDimensions, View, Text, StyleSheet, Pressable, Image } from 'react-native';
 import { useGlobalSearchParams, useLocalSearchParams, useRouter } from 'expo-router';
-import { useThemePuzzleSessions } from '@/context/ThemePuzzleSessionContext';
+import { usePuzzleBoard } from '@/context/PuzzleBoardContext';
 import ChessboardDemo from '@/components/puzzles/ChessboardDemo';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { secondsToHMS } from '@/utils/Time';
@@ -67,11 +67,10 @@ export default function DemoPuzzle() {
     const boardSize = Math.floor(Math.max(8, Math.min(layoutSize.width, layoutSize.height - boardTop - (isTablet ? 220 : 190))) / 8) * 8;
     const styles = GlobalStyle(theme, isTablet);
 
-    // Theme pieces open their assigned ID; ordinary practice keeps its random loader.
-    const { puzzle: puzzleParam, theme: themeParam, themeSession } = useLocalSearchParams();
+    // Board pieces open their assigned ID; with no params the random loader still works.
+    const { puzzle: puzzleParam, boardSession } = useLocalSearchParams();
     const requestedPuzzleId = typeof puzzleParam === 'string' ? puzzleParam : undefined;
-    const requestedPuzzleTheme = typeof themeParam === 'string' ? themeParam : undefined;
-    const completeThemePuzzle = useThemePuzzleSessions()?.complete;
+    const completeBoardPuzzle = usePuzzleBoard()?.complete;
     const router = useRouter();
 
     const chessboardRef = useRef<any>(null);
@@ -265,14 +264,13 @@ export default function DemoPuzzle() {
         };
 
         void submitCompletion();
-        // Session checkmarks don't depend on the separate rating/statistics request finishing.
-        if (requestedPuzzleTheme && typeof themeSession === 'string' && requestedPuzzleId === currentPuzzle.puzzleid &&
-            completeThemePuzzle?.(requestedPuzzleTheme, themeSession, currentPuzzle.puzzleid)) {
-            router.dismissTo({ pathname: '/puzzles/themes/[theme]',
-                params: { theme: requestedPuzzleTheme, isTablet: String(isTablet) } });
+        // Board checkmarks don't depend on the separate rating/statistics request finishing.
+        if (typeof boardSession === 'string' && requestedPuzzleId === currentPuzzle.puzzleid &&
+            completeBoardPuzzle?.(boardSession, currentPuzzle.puzzleid)) {
+            router.dismissTo({ pathname: '/(tabs)/puzzles', params: { isTablet: String(isTablet) } });
         }
     }, [currentPuzzle, elapsedTime, hintsUsed, puzzleCompleted, redosUsed, undosUsed,
-        completeThemePuzzle, requestedPuzzleId, requestedPuzzleTheme, themeSession, router, isTablet]);
+        completeBoardPuzzle, requestedPuzzleId, boardSession, router, isTablet]);
 
     const initializePuzzle = (puzzle: PuzzleData) => {
         const nextMoves = splitMoves(puzzle.moves);
@@ -572,7 +570,6 @@ export default function DemoPuzzle() {
                     colors={{ black: theme.player2Square, white: theme.player1Square }}
                     isTablet={isTablet}
                     puzzleId={requestedPuzzleId}
-                    puzzleTheme={requestedPuzzleTheme}
                     onPuzzleLoaded={initializePuzzle}
                     onMove={handleMove}
                     gestureEnabled={gestureEnabled}

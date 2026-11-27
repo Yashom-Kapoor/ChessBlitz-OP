@@ -17,20 +17,21 @@ afterEach(async () => {
   jest.restoreAllMocks();
 });
 
-test.each(['pin', 'fork', 'backRankMate'])('passes the %s category to the existing board loader', async theme => {
-  jest.spyOn(jest.requireMock('expo-router'), 'useLocalSearchParams').mockReturnValue({ theme });
-  await act(async () => { root = create(<DemoPuzzle />); });
-  expect(fakeBoard.props.puzzleTheme).toBe(theme);
-  expect(fakeBoard.props.puzzleId).toBeUndefined();
-});
-
-test('keeps specific puzzle links and ordinary Practice Puzzle working', async () => {
-  const params = jest.spyOn(jest.requireMock('expo-router'), 'useLocalSearchParams').mockReturnValue({ puzzle: 'example-id' });
+test('a board piece opens its assigned puzzle, and no params still loads a random one', async () => {
+  const params = jest.spyOn(jest.requireMock('expo-router'), 'useLocalSearchParams')
+    .mockReturnValue({ puzzle: 'example-id', boardSession: 'board-1' });
   await act(async () => { root = create(<DemoPuzzle />); });
   expect(fakeBoard.props.puzzleId).toBe('example-id');
   expect(fakeBoard.props.puzzleTheme).toBeUndefined();
   params.mockReturnValue({});
   await act(async () => { root.update(<DemoPuzzle />); });
+  expect(fakeBoard.props.puzzleTheme).toBeUndefined();
+  expect(fakeBoard.props.puzzleId).toBeUndefined();
+});
+
+test('old theme links no longer filter the random loader', async () => {
+  jest.spyOn(jest.requireMock('expo-router'), 'useLocalSearchParams').mockReturnValue({ theme: 'pin' });
+  await act(async () => { root = create(<DemoPuzzle />); });
   expect(fakeBoard.props.puzzleTheme).toBeUndefined();
   expect(fakeBoard.props.puzzleId).toBeUndefined();
 });

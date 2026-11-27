@@ -7,7 +7,7 @@ import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { UserProvider, useUser } from '@/context/UserContext';
 import { ShopProvider } from '@/context/ShopContext';
 import { PuzzleSettingsProvider } from '@/context/PuzzleSettingsContext';
-import { ThemePuzzleSessionProvider } from '@/context/ThemePuzzleSessionContext';
+import { PuzzleBoardProvider } from '@/context/PuzzleBoardContext';
 import { getFocusedRouteNameFromRoute } from "expo-router/react-navigation";
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import GlobalStyle from '@/context/GlobalStyle';
@@ -59,9 +59,9 @@ function SessionRoot({ isTablet }: { isTablet: boolean }) {
   if (!authReady) return null;
   return (
     <ShopProvider>
-      <ThemePuzzleSessionProvider key={authUserId ?? 'signed-out'}>
+      <PuzzleBoardProvider key={authUserId ?? 'signed-out'}>
         <ThemedRoot isTablet={isTablet} />
-      </ThemePuzzleSessionProvider>
+      </PuzzleBoardProvider>
     </ShopProvider>
   );
 }
@@ -156,13 +156,9 @@ function ThemedRoot({ isTablet }: { isTablet: boolean }) {
             }}
           />
           <Stack.Screen
-            name="puzzles/themes/[theme]"
-            options={{ headerShown: false, animation: 'ios_from_right' }}
-          />
-          <Stack.Screen
             name="puzzles/demo_puzzle"
             options={() => ({
-              title: 'Demo Puzzle',
+              title: 'Rated Puzzle',
               animation: 'ios_from_right',
               headerShown: true,
               headerBackVisible: true,
