@@ -419,6 +419,7 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
             <View style={localStyles.boardWrapper}>
                 {chessboardRef.current?.getPuzzle() ? (
                     <ChessboardDemo
+                        puzzleId={puzzleId}
                         boardSize={boardSize}
                         playerBlack={autoFlip && chessboardRef.current?.getPuzzle()?.fen?.split(' ')[1] === 'w'}
                         ref={chessboardRef}
@@ -429,6 +430,7 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
                     />
                 ) : (
                     <ChessboardDemo
+                        puzzleId={puzzleId}
                         boardSize={boardSize}
                         playerBlack={false}
                         ref={chessboardRef}
