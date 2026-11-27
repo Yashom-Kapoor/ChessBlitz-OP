@@ -7,6 +7,18 @@ import { IconSymbol } from "./ui/IconSymbol";
 import CustomTabButton from "./CustomTabButton";
 import { glassColorSchemeFor, useGlassAvailable } from "@/utils/Glass";
 
+const ICON_SIZE = 52;
+
+// Order must match TAB_ROUTES in constants/tabs.ts.
+const TABS = [
+    { name: 'lessons', title: 'Lessons', icon: 'book', selectedIcon: 'book.fill', color: { dark: '#94CFFF', light: '#2e75c6' } },
+    { name: 'puzzles', title: 'Puzzles', icon: 'puzzlepiece.extension', selectedIcon: 'puzzlepiece.extension.fill', color: { dark: '#93FF8F', light: '#29be31' } },
+    { name: 'home', title: 'Home', icon: 'house', selectedIcon: 'house.fill', color: { dark: '#C9A7FF', light: '#8a4fd8' } },
+    // Classroom keeps the trophy icon for now.
+    { name: 'classroom', title: 'Classroom', icon: 'trophy', selectedIcon: 'trophy.fill', color: { dark: '#FFF37E', light: '#ffa90a' } },
+    { name: 'shop', title: 'Shop', icon: 'cart', selectedIcon: 'cart.fill', color: { dark: '#6bddcd', light: '#0aa3a5' } },
+] as const;
+
 export default function IpadPagesBar({ }) {
     const { theme } = useTheme();
     const glassAvailable = useGlassAvailable();
@@ -22,7 +34,7 @@ export default function IpadPagesBar({ }) {
                 tabBarStyle: Platform.select({
                     ios: {
                         position: 'absolute',
-                        height: 80,
+                        height: 104,
                         flexDirection: 'row',
                         justifyContent: 'space-evenly',
                         borderRadius: 50,
@@ -39,15 +51,12 @@ export default function IpadPagesBar({ }) {
                 sceneStyle: {
                     backgroundColor: theme.background,
                 },
-                tabBarLabelStyle: {
-                    fontSize: 16,
-                    fontWeight: 500,
-                    paddingLeft: 5,
-                    pointerEvents: 'none',
-                    fontFamily: "Nunito",
-                },
+                // Icons only, sized for little hands. Each screen's title is still its VoiceOver label.
+                tabBarShowLabel: false,
                 tabBarIconStyle: {
                     pointerEvents: 'none',
+                    width: ICON_SIZE + 4,
+                    height: ICON_SIZE + 4,
                 },
                 tabBarItemStyle: {
                     paddingBottom: 0,
@@ -79,51 +88,19 @@ export default function IpadPagesBar({ }) {
                     )
             }}
         >
-            <Tabs.Screen
-                name="puzzles"
-                options={{
-                    title: 'Puzzles',
-                    tabBarIcon: ({ color, focused }) => <IconSymbol size={30} name={focused ? "puzzlepiece.extension.fill" : "puzzlepiece.extension"} color={color} />,
-                    tabBarActiveTintColor: theme.dark ? '#93FF8F' : '#29be31',
-                    tabBarButton: (props) => <CustomTabButton {...props} routeName="puzzles" />,
-                }}
-            />
-            <Tabs.Screen
-                name="lessons"
-                options={{
-                    title: 'Lessons',
-                    tabBarIcon: ({ color, focused }) => <IconSymbol size={30} name={focused ? "book.fill" : "book"} color={color} />,
-                    tabBarActiveTintColor: theme.dark ? '#94CFFF' : '#2e75c6',
-                    tabBarButton: (props) => <CustomTabButton {...props} routeName="lessons" />,
-                }}
-            />
-            <Tabs.Screen
-                name="ranking"
-                options={{
-                    title: 'Ranking',
-                    tabBarIcon: ({ color, focused }) => <IconSymbol size={30} name={focused ? "trophy.fill" : "trophy"} color={color} />,
-                    tabBarActiveTintColor: theme.dark ? '#FFF37E' : '#ffa90a',
-                    tabBarButton: (props) => <CustomTabButton {...props} routeName="ranking" />,
-                }}
-            />
-            <Tabs.Screen
-                name="shop"
-                options={{
-                    title: 'Shop',
-                    tabBarIcon: ({ color, focused }) => <IconSymbol size={30} name={focused ? "cart.fill" : "cart"} color={color} />,
-                    tabBarActiveTintColor: theme.dark ? '#6bddcd' : '#0aa3a5',
-                    tabBarButton: (props) => <CustomTabButton {...props} routeName="shop" />,
-                }}
-            />
-            <Tabs.Screen
-                name="profile"
-                options={{
-                    title: 'Profile',
-                    tabBarIcon: ({ color, focused }) => <IconSymbol size={30} name={focused ? "person.fill" : "person"} color={color} />,
-                    tabBarActiveTintColor: theme.dark ? '#FF7E7E' : '#dc4141',
-                    tabBarButton: (props) => <CustomTabButton {...props} routeName="profile" />,
-                }}
-            />
+            {TABS.map((tab) => (
+                <Tabs.Screen
+                    key={tab.name}
+                    name={tab.name}
+                    options={{
+                        title: tab.title,
+                        tabBarIcon: ({ color, focused }) =>
+                            <IconSymbol size={ICON_SIZE} name={focused ? tab.selectedIcon : tab.icon} color={color} />,
+                        tabBarActiveTintColor: theme.dark ? tab.color.dark : tab.color.light,
+                        tabBarButton: (props) => <CustomTabButton {...props} routeName={tab.name} />,
+                    }}
+                />
+            ))}
         </Tabs>
     );
 }

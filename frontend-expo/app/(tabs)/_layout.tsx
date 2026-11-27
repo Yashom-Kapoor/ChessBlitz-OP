@@ -10,6 +10,9 @@ import { useUser } from '@/context/UserContext';
 import { useShop } from '@/context/ShopContext';
 import { useIsTablet } from '@/hooks/useIsTablet';
 
+// Fallbacks and redirects inside the tabs land on Home.
+export const unstable_settings = { initialRouteName: 'home' };
+
 export default function TabLayout() {
   const isTablet = useIsTablet();
   const { loadUser } = useUser();

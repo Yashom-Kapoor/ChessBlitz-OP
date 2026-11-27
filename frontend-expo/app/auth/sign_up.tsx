@@ -96,7 +96,7 @@ export default function SignUpScreen() {
         Alert.alert('Success', 'Signed up successfully!');
         }
 
-        router.push('/(tabs)/puzzles');
+        router.push('/(tabs)/home');
     } catch (err: unknown) {
         if (err instanceof Error) {
             Alert.alert('Error', err.message);

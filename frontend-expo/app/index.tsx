@@ -75,7 +75,7 @@ export default function HomeScreen() {
               console.error('[guest login] signInAnonymously failed:', error.message);
               return;
             }
-            router.push('/(tabs)/puzzles');
+            router.push('/(tabs)/home');
           }}
         >
           <Text style={[styles.link, { color: theme.primaryText, textAlign: 'right' }]}>

@@ -60,7 +60,7 @@ export default function LogInScreen() {
       }
 
       Alert.alert('Success', 'Logged in successfully!');
-      router.push('/(tabs)/puzzles');
+      router.push('/(tabs)/home');
     } catch (err: unknown) {
       if (err instanceof Error) {
         Alert.alert('Error', err.message);

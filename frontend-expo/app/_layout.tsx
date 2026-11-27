@@ -140,13 +140,13 @@ function ThemedRoot({ isTablet }: { isTablet: boolean }) {
             name="(tabs)"
             options={({ route }) => {
               // derive active tab from nested tab navigator state
-              const focused = getFocusedRouteNameFromRoute(route) ?? 'puzzles';
+              const focused = getFocusedRouteNameFromRoute(route) ?? 'home';
               // map route names to friendly titles if desired
               const titleMap: Record<string, string> = {
-                puzzles: 'Puzzles',
                 lessons: 'Lessons',
-                ranking: 'Ranking',
-                profile: 'Profile',
+                puzzles: 'Puzzles',
+                home: 'Home',
+                classroom: 'Classroom',
                 shop: 'Shop',
               };
               return {
@@ -169,6 +169,16 @@ function ThemedRoot({ isTablet }: { isTablet: boolean }) {
           <Stack.Screen
             name="lessons/[lesson]"
             options={() => ({
+              animation: 'ios_from_right',
+              headerShown: true,
+              headerBackVisible: true,
+              headerBackButtonDisplayMode: 'minimal'
+            })}
+          />
+          <Stack.Screen
+            name="profile"
+            options={() => ({
+              title: 'Profile',
               animation: 'ios_from_right',
               headerShown: true,
               headerBackVisible: true,

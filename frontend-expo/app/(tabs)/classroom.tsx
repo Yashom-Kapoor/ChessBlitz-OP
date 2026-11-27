@@ -11,7 +11,8 @@ import { useIsTablet } from '@/hooks/useIsTablet';
 
 type RankingData = Awaited<ReturnType<typeof getRankings>>['rankings'][number];
 
-export default function RankingsScreen() {
+// Still shows the rankings; this tab is becoming the classroom.
+export default function ClassroomScreen() {
   const { theme } = useTheme();
   const isTablet = useIsTablet();
   const [rankings, setRankings] = useState<RankingData[]>([]);

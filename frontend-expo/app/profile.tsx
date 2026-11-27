@@ -293,7 +293,7 @@ export default function ProfileScreen() {
     <GestureHandlerRootView style={styles.contentContainer}>
       <BackgroundContext theme={theme}>
         <ScrollView 
-          contentContainerStyle={{ ...styles.scrollContainer, marginTop: 0 }}
+          contentContainerStyle={styles.scrollContainer}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}

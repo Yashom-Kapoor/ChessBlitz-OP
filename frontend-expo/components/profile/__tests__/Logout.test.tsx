@@ -2,7 +2,7 @@
 import React, { act } from 'react';
 import { create, ReactTestRenderer } from 'react-test-renderer';
 import { Alert, Text, TouchableOpacity } from 'react-native';
-import ProfileScreen from '@/app/(tabs)/profile';
+import ProfileScreen from '@/app/profile';
 import { supabase } from '@/api/SupabaseClient';
 
 jest.mock('@/api/SupabaseClient', () => ({ supabase: { auth: { signOut: jest.fn() } } }));

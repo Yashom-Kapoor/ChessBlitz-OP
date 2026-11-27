@@ -2,7 +2,7 @@
  * The main tabs, in the order the tab bars show them.
  * Keep in sync with the screen order in IpadPagesBar and NativePagesBar.
  */
-export const TAB_ROUTES = ['puzzles', 'lessons', 'ranking', 'shop', 'profile'] as const;
+export const TAB_ROUTES = ['lessons', 'puzzles', 'home', 'classroom', 'shop'] as const;
 
 /**
  * Where a tab sits in the visible tab bar, or -1 if it isn't one of the main tabs.
