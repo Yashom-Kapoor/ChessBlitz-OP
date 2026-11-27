@@ -30,14 +30,14 @@ export default function TopBar() {
   const glassAvailable = useGlassAvailable();
 
   const displayName = userData.leaderboardName || userData.name;
-  const fontSize = isTablet ? 20 : 16;
-  const iconSize = isTablet ? 24 : 20;
+  const fontSize = isTablet ? 28 : 21;
+  const iconSize = isTablet ? 34 : 27;
   const textStyle = [styles.text, { color: theme.primaryText, fontSize }];
 
   return (
     <View testID="top-bar" style={[styles.bar, {
-      paddingTop: insets.top + 6,
-      paddingHorizontal: isTablet ? 32 : 16,
+      paddingTop: insets.top + 10,
+      paddingHorizontal: isTablet ? 36 : 20,
       borderBottomColor: theme.dark ? '#ffffff14' : '#00000014',
     }]}>
       {glassAvailable ? (
@@ -62,7 +62,7 @@ export default function TopBar() {
         onPress={() => router.navigate('/profile')}
         style={({ pressed }) => [styles.profile, pressed && { opacity: 0.6 }]}>
         <Text style={[textStyle, styles.name]} numberOfLines={1}>{displayName}</Text>
-        <Avatar name={displayName} uri={userData.avatarUrl} size={isTablet ? 40 : 32} />
+        <Avatar name={displayName} uri={userData.avatarUrl} size={isTablet ? 56 : 44} />
       </Pressable>
     </View>
   );
@@ -73,14 +73,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingBottom: 8,
+    paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
     zIndex: 1,
   },
-  stats: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  stat: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  stats: { flexDirection: 'row', alignItems: 'center', gap: 22 },
+  stat: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   text: { fontFamily: 'Nunito', fontWeight: '800' },
-  profile: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1, marginLeft: 16 },
+  profile: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1, marginLeft: 20, minHeight: 48 },
   name: { flexShrink: 1 },
 });
