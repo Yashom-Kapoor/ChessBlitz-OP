@@ -643,9 +643,16 @@ def random_puzzle_set_route():
         return jsonify({"error": "Invalid previous puzzle set."}), 400
 
     client = get_supabase_with_auth(get_bearer_token(request))
+    # Draw near the player's overall rating; SQL widens the window if too few puzzles are close.
+    try:
+        rating = (get_user_info(client) or {}).get("rating")
+    except Exception:
+        app.logger.exception("Rating lookup failed; drawing the puzzle set without it")
+        rating = None
+    target_rating = round(rating) if isinstance(rating, (int, float)) and not isinstance(rating, bool) else None
     try:
         puzzles = client.rpc("get_random_puzzle_set_by_themes", {
-            "theme_filters": themes, "excluded_ids": excluded_ids,
+            "theme_filters": themes, "excluded_ids": excluded_ids, "target_rating": target_rating,
         }).execute().data or []
     except Exception:
         app.logger.exception("Puzzle set lookup failed")

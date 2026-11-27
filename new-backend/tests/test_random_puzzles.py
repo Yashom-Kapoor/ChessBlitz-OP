@@ -78,7 +78,7 @@ class RandomPuzzleRoutesTest(unittest.TestCase):
                 response = self.client.get(f'/puzzles/random-set/?theme={theme}&exclude=old-id', headers=self.headers)
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual([p['puzzleid'] for p in response.json], [p['PuzzleId'] for p in rows])
-                self.database.rpc.assert_called_with('get_random_puzzle_set_by_themes', {'theme_filters': [theme], 'excluded_ids': ['old-id']})
+                self.database.rpc.assert_called_with('get_random_puzzle_set_by_themes', {'theme_filters': [theme], 'excluded_ids': ['old-id'], 'target_rating': None})
 
     def test_set_mixes_every_requested_theme_in_one_sql_draw(self):
         rows = [{**self.puzzle, 'PuzzleId': f'puzzle-{i}'} for i in range(9)]
@@ -87,7 +87,7 @@ class RandomPuzzleRoutesTest(unittest.TestCase):
         query = '&'.join(f'theme={theme}' for theme in themes + themes[:2])
         response = self.client.get('/puzzles/random-set/?' + query, headers=self.headers)
         self.assertEqual(response.status_code, 200)
-        self.database.rpc.assert_called_once_with('get_random_puzzle_set_by_themes', {'theme_filters': themes, 'excluded_ids': []})
+        self.database.rpc.assert_called_once_with('get_random_puzzle_set_by_themes', {'theme_filters': themes, 'excluded_ids': [], 'target_rating': None})
 
     def test_set_does_not_pad_an_incomplete_draw_with_unrelated_puzzles(self):
         response = self.client.get('/puzzles/random-set/?theme=pin', headers=self.headers)
@@ -100,3 +100,22 @@ class RandomPuzzleRoutesTest(unittest.TestCase):
             response = self.client.get('/puzzles/random-set/?theme=pin', headers=self.headers)
         self.assertEqual(response.status_code, 500)
         self.assertIn('try again', response.json['error'])
+
+    def test_set_draws_near_the_players_overall_rating(self):
+        rows = [{**self.puzzle, 'PuzzleId': f'puzzle-{i}'} for i in range(9)]
+        self.database.rpc.return_value.execute.return_value = SimpleNamespace(data=rows)
+        for rating, expected in [(1234, 1234), (1187.6, 1188), (None, None), ('1200', None), (True, None)]:
+            with self.subTest(rating=rating), patch.object(fixtures.backend, 'get_user_info', return_value={'rating': rating}):
+                self.assertEqual(self.client.get('/puzzles/random-set/?theme=pin', headers=self.headers).status_code, 200)
+                self.database.rpc.assert_called_with('get_random_puzzle_set_by_themes', {
+                    'theme_filters': ['pin'], 'excluded_ids': [], 'target_rating': expected})
+
+    def test_set_still_loads_when_the_rating_lookup_fails(self):
+        rows = [{**self.puzzle, 'PuzzleId': f'puzzle-{i}'} for i in range(9)]
+        self.database.rpc.return_value.execute.return_value = SimpleNamespace(data=rows)
+        with patch.object(fixtures.backend, 'get_user_info', side_effect=RuntimeError('down')), \
+                self.assertLogs(fixtures.backend.app.logger, level='ERROR'):
+            response = self.client.get('/puzzles/random-set/?theme=pin', headers=self.headers)
+        self.assertEqual(response.status_code, 200)
+        self.database.rpc.assert_called_once_with('get_random_puzzle_set_by_themes', {
+            'theme_filters': ['pin'], 'excluded_ids': [], 'target_rating': None})
