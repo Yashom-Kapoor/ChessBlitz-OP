@@ -1,3 +1,4 @@
+import { visibleTabIndex } from "@/constants/tabs";
 import { useTheme } from "@/context/ThemeContext";
 import { useNavigationState } from "expo-router/react-navigation";
 import { BlurView } from "expo-blur";
@@ -13,11 +14,10 @@ import Animated, {
 export default function CustomTabButton({ routeName, onPress, children, style, ...rest }: any) {
     const { theme } = useTheme();
     const navigationState = useNavigationState((state) => state);
-    const routes = navigationState?.routes ?? [];
-    const activeIndex = navigationState?.index ?? 0;
-    const active = routes[activeIndex]?.name;
-    const ownIndex = routes.findIndex((route: any) => route?.name === routeName);
-    const isThumbHost = ownIndex === 0;
+    const active = navigationState?.routes?.[navigationState.index]?.name;
+    // Position by the visible tabs, not the navigator state, which also holds hidden routes.
+    const activeIndex = Math.max(visibleTabIndex(active), 0);
+    const isThumbHost = visibleTabIndex(routeName) === 0;
     const [segmentWidth, setSegmentWidth] = useState(0);
     const thumbX = useSharedValue(0);
     const thumbOpacity = useSharedValue(0);
