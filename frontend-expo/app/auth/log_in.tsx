@@ -1,10 +1,10 @@
-import GlassBlurView from "@/components/GlassBlurView";
+import { AuthButton, AuthCard, AuthField, AuthTitle } from "@/components/AuthForm";
 import { Themes } from "@/constants/Themes";
 import backgroundImages from "@/context/Backgrounds";
 import GlobalStyle from "@/context/GlobalStyle";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Alert, Image, ImageBackground, StyleSheet, Text, TextInput, TouchableOpacity } from "react-native";
+import { Alert, Image, ImageBackground, StyleSheet, Text, TouchableOpacity } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { supabase } from "@/api/SupabaseClient";
 import { useIsTablet } from '@/hooks/useIsTablet';
@@ -76,9 +76,6 @@ export default function LogInScreen() {
   const localStyles = StyleSheet.create({
     landingContainer: { gap: 20, flexDirection: 'column', marginBottom: 300, alignItems: 'center', justifyContent: 'center' },
     backgroundImg: { height: 1350 / (isTablet ? 1.7 : 3), width: 1139 / (isTablet ? 1.7 : 3), bottom: 0, left: 0, position: 'absolute', opacity: 0.3 },
-    button: { borderRadius: isTablet ? 30 : 20, width: '70%', alignItems: 'center', boxShadow: `0 7 0 ${theme.buttonShadow}` },
-    input: { width: '100%', padding: 20, paddingHorizontal: 25, lineHeight: 0 },
-    submit: { width: '100%', padding: 20, paddingHorizontal: 25, lineHeight: 0, textAlign: 'center' },
   });
 
     return (
@@ -90,45 +87,15 @@ export default function LogInScreen() {
 
             <SafeAreaProvider style={localStyles.landingContainer}>
 
-                <Text style={[styles.title, { color: theme.primaryText, textAlign: 'center' }]}>
-                    Log in to your{'\n'}ChessBlitz account
-                </Text>
-
-                <TouchableOpacity style={[localStyles.button]}>
-                    <GlassBlurView theme={theme} isTablet={isTablet} color={theme.primaryButton} glass={'clear'} />
-                    <TextInput
-                            placeholderTextColor={`${theme.primaryText}30`}
-                            placeholder={'Email'}
-                            value={email}
-                            onChangeText={setEmail}
-                            autoCapitalize={'none'}
-                            autoCorrect={false}
-                            style={{...styles.h4, ...localStyles.input, color: theme.primaryText }}
-                    ></TextInput>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={[localStyles.button]}>
-                    <GlassBlurView theme={theme} isTablet={isTablet} color={theme.primaryButton} glass={'clear'} />
-                    <TextInput
-                            placeholderTextColor={`${theme.primaryText}30`}
-                            placeholder={'Password'}
-                            value={password}
-                            onChangeText={setPassword}
-                            autoCapitalize={'none'}
-                            autoCorrect={false}
-                            secureTextEntry
-                            style={{...styles.h4, ...localStyles.input, color: theme.primaryText }}
-                    ></TextInput>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={{...localStyles.button, marginTop: 20, width: '60%'}} onPress={handleLogIn} disabled={loading}>
-                    <GlassBlurView theme={theme} isTablet={isTablet} color={theme.secondaryButton} glass={'clear'} />
-                    <Text
-                            style={{...styles.h4, ...localStyles.submit, color: theme.secondaryText }}
-                    >
-                        {loading ? 'Signing in...' : 'Log In'}
-                    </Text>
-                </TouchableOpacity>
+                <AuthCard isTablet={isTablet}>
+                    <AuthTitle isTablet={isTablet} />
+                    <AuthField isTablet={isTablet} label="Email" placeholder="email address" value={email} onChangeText={setEmail} />
+                    <AuthField isTablet={isTablet} label="Password" placeholder="password" value={password} onChangeText={setPassword} secureTextEntry />
+                    <AuthButton isTablet={isTablet} title={loading ? 'Signing in...' : 'Sign in'} onPress={handleLogIn} disabled={loading} />
+                    <TouchableOpacity onPress={() => router.push('/auth/sign_up')} style={{ alignSelf: 'center' }}>
+                        <Text style={[styles.h5, { color: theme.primaryText, fontWeight: 'bold', textDecorationLine: 'underline' }]}>Sign up</Text>
+                    </TouchableOpacity>
+                </AuthCard>
 
             </SafeAreaProvider>
 

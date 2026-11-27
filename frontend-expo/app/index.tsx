@@ -6,7 +6,7 @@ import GlobalStyle from '@/context/GlobalStyle';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import backgroundImages from '@/context/Backgrounds';
 import { Themes } from '@/constants/Themes';
-import GlassBlurView from '@/components/GlassBlurView';
+import { AuthButton, AuthCard, AuthTitle } from '@/components/AuthForm';
 import { supabase } from '@/api/SupabaseClient';
 import { useIsTablet } from '@/hooks/useIsTablet';
 
@@ -46,14 +46,6 @@ export default function HomeScreen() {
       width: '100%',
       alignItems: 'flex-end',
     },
-    button: {
-      padding: 20,
-      paddingHorizontal: 20,
-      borderRadius: isTablet ? 30 : 20,
-      width: '70%',
-      alignItems: 'center',
-      boxShadow: `0 7 0 ${theme.buttonShadow}`,
-    },
 
     logInSplash: {
       textAlign: 'center',
@@ -91,26 +83,12 @@ export default function HomeScreen() {
           </Text>
         </TouchableOpacity>
 
-        <Text style={[styles.title, { color: theme.primaryText, textAlign: 'center' }]}>
-          Create your{'\n'}ChessBlitz account
-        </Text>
-
-        <TouchableOpacity // Sign up
-          style={[localStyles.button]}
-          onPress={() => router.push('/auth/sign_up')}
-        >
-          <GlassBlurView theme={theme} isTablet={isTablet} color={theme.secondaryButton} glass={'clear'} />
-          <Text style={[styles.h4, { color: theme.secondaryText }]}>Sign Up with Email</Text>
-        </TouchableOpacity>
-
-        <Text style={[styles.h5, { color: theme.primaryText, paddingTop: 15 }]}>Already have an account?</Text>
-        <TouchableOpacity // Sign in
-          style={[localStyles.button]}
-          onPress={() => router.push('/auth/log_in')}
-        >
-          <GlassBlurView theme={theme} isTablet={isTablet} color={theme.primaryButton} glass={'clear'} />
-          <Text style={[styles.h4, { color: theme.primaryText }]}>Log In</Text>
-        </TouchableOpacity>
+        <AuthCard isTablet={isTablet}>
+          <AuthTitle isTablet={isTablet} subtitle="create your account" />
+          <AuthButton isTablet={isTablet} title="Sign up with Email" onPress={() => router.push('/auth/sign_up')} />
+          <Text style={[styles.h5, { color: theme.primaryText, textAlign: 'center', paddingTop: 10 }]}>Already have an account?</Text>
+          <AuthButton isTablet={isTablet} title="Sign in" onPress={() => router.push('/auth/log_in')} />
+        </AuthCard>
 
       </SafeAreaProvider>
 
