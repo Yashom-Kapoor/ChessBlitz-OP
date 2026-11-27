@@ -2,7 +2,7 @@ import { useHeaderHeight } from 'expo-router/react-navigation';
 import { getPuzzleActionAvailability } from '@/components/puzzles/puzzleActions';
 import React, { useEffect, useRef, useState } from 'react';
 import { useWindowDimensions, View, Text, StyleSheet, Pressable, Image } from 'react-native';
-import { useGlobalSearchParams, useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { usePuzzleBoard } from '@/context/PuzzleBoardContext';
 import ChessboardDemo from '@/components/puzzles/ChessboardDemo';
 import { IconSymbol } from '@/components/ui/IconSymbol';
@@ -33,6 +33,7 @@ import PuzzleDevHUD from '@/components/puzzles/PuzzleDevHUD';
 import WrongMovePrompt from '@/components/puzzles/WrongMovePrompt';
 import { opponentDelay, usePuzzleSettings } from '@/context/PuzzleSettingsContext';
 import * as Haptics from 'expo-haptics';
+import { useIsTablet } from '@/hooks/useIsTablet';
 
 type PuzzleData = {
     fen: string;
@@ -58,7 +59,7 @@ const toMoveNotation = (move: string): MoveNotation => ({
 export default function DemoPuzzle() {
     const { theme } = useTheme();
     const { autoFlip, opponentSpeed, haptics, showTimer } = usePuzzleSettings();
-    const isTablet = useGlobalSearchParams().isTablet === 'true';
+    const isTablet = useIsTablet();
     const windowSize = useWindowDimensions();
     const [layoutSize, setLayoutSize] = useState({ width: windowSize.width, height: windowSize.height });
     const headerHeight = useHeaderHeight();
@@ -267,10 +268,10 @@ export default function DemoPuzzle() {
         // Board checkmarks don't depend on the separate rating/statistics request finishing.
         if (typeof boardSession === 'string' && requestedPuzzleId === currentPuzzle.puzzleid &&
             completeBoardPuzzle?.(boardSession, currentPuzzle.puzzleid)) {
-            router.dismissTo({ pathname: '/(tabs)/puzzles', params: { isTablet: String(isTablet) } });
+            router.dismissTo('/(tabs)/puzzles');
         }
     }, [currentPuzzle, elapsedTime, hintsUsed, puzzleCompleted, redosUsed, undosUsed,
-        completeBoardPuzzle, requestedPuzzleId, boardSession, router, isTablet]);
+        completeBoardPuzzle, requestedPuzzleId, boardSession, router]);
 
     const initializePuzzle = (puzzle: PuzzleData) => {
         const nextMoves = splitMoves(puzzle.moves);

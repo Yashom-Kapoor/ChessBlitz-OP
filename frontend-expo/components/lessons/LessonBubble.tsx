@@ -1,8 +1,9 @@
 import { useTheme } from "@/context/ThemeContext";
 import GlassBlurView from "../GlassBlurView";
-import { useGlobalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { Image, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import GlobalStyle from "@/context/GlobalStyle";
+import { useIsTablet } from '@/hooks/useIsTablet';
 
 interface LessonBubbleProps {
     id: number;
@@ -14,11 +15,11 @@ interface LessonBubbleProps {
 
 export default function LessonBubble({ id, name, description, offset, available }: LessonBubbleProps) {
     const { theme } = useTheme();
-    const isTablet = useGlobalSearchParams().isTablet === 'true';
+    const isTablet = useIsTablet();
     const router = useRouter();
 
     const onPress = () => {
-        router.push(`/lessons/${id}?isTablet=${isTablet}`)
+        router.push(`/lessons/${id}`)
     }
 
     const styles = GlobalStyle(theme, isTablet);

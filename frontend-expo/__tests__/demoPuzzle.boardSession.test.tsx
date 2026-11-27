@@ -59,7 +59,7 @@ test('only a solved puzzle checks its piece and returns to the Puzzles tab, whil
   await solve();
   expect(context.board!.completedIds).toEqual([fakeBoard.puzzle.puzzleid]);
   expect(dismissTo).toHaveBeenCalledTimes(1);
-  expect(dismissTo).toHaveBeenCalledWith({ pathname: '/(tabs)/puzzles', params: { isTablet: 'false' } });
+  expect(dismissTo).toHaveBeenCalledWith('/(tabs)/puzzles');
   expect(submit).toHaveBeenCalledTimes(1);
   expect(submit).toHaveBeenCalledWith(expect.objectContaining({ puzzleid: fakeBoard.puzzle.puzzleid, completed: true }));
   await wait();

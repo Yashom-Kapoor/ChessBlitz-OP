@@ -1,9 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, Image, TouchableOpacity } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
-import { useGlobalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import GlobalStyle from '@/context/GlobalStyle';
 import GlassBlurView from '../GlassBlurView';
+import { useIsTablet } from '@/hooks/useIsTablet';
 
 interface LessonProps {
     name: string;
@@ -17,7 +18,7 @@ interface LessonProps {
 
 export default function Lesson({ name, description, id, icon, offset, available, onPress }: LessonProps) {
     const { theme } = useTheme();
-    const isTablet = useGlobalSearchParams().isTablet === 'true';
+    const isTablet = useIsTablet();
     const borderRadius = isTablet ? 30 : 20;
 
     const router = useRouter();

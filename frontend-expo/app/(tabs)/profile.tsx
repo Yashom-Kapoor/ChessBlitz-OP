@@ -7,11 +7,12 @@ import backgroundImages, { BackgroundContext } from '@/context/Backgrounds';
 import GlobalStyle from '@/context/GlobalStyle';
 import { useTheme } from '@/context/ThemeContext';
 import { useUser } from '@/context/UserContext';
-import { useFocusEffect, useGlobalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Switch, RefreshControl, Platform, ActivityIndicator, Alert } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { supabase } from '@/api/SupabaseClient';
+import { useIsTablet } from '@/hooks/useIsTablet';
 
 const InfoBox = ({
   children,
@@ -46,7 +47,7 @@ const InfoBox = ({
 
 export default function ProfileScreen() {
   const { theme } = useTheme();
-  const isTablet = useGlobalSearchParams().isTablet === 'true';
+  const isTablet = useIsTablet();
   const styles = GlobalStyle(theme, isTablet);
   const router = useRouter();
   const { authUserId, userData, loadUser, updateUserData, saveAvatar } = useUser();

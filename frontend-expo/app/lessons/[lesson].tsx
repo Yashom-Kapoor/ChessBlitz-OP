@@ -9,6 +9,7 @@ import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Markdown from 'react-native-markdown-display';
 import LessonPuzzle from "@/components/puzzles/LessonPuzzle";
+import { useIsTablet } from '@/hooks/useIsTablet';
 
 export default function Lesson() {
     const router = useRouter();
@@ -21,7 +22,7 @@ export default function Lesson() {
 
     const lessonId = params.lesson as string;
     const dynamicTitle = `Lesson: ${params.lesson}`;
-    const isTablet = global.isTablet === 'true';
+    const isTablet = useIsTablet();
 
     useLayoutEffect(() => {
         navigation.setOptions({

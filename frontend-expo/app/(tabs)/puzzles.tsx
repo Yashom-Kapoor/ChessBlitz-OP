@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect, useGlobalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { getMyRatings, ThemeRatings } from '@/api/Ratings';
 import ThemeRatingsList from '@/components/puzzles/ThemeRatingsList';
 import ThemePuzzleGrid from '@/components/puzzles/ThemePuzzleGrid';
@@ -12,6 +12,7 @@ import { darken } from '@/constants/PuzzleThemes';
 import { useTheme } from '@/context/ThemeContext';
 import { BackgroundContext } from '@/context/Backgrounds';
 import GlobalStyle from '@/context/GlobalStyle';
+import { useIsTablet } from '@/hooks/useIsTablet';
 
 /** Accent for the Rated Puzzles board and its buttons. Must be #RRGGBB (the grid tints it). */
 export const RATED_BOARD_COLOR = '#4C6EF5';
@@ -24,7 +25,7 @@ export default function PuzzlesScreen() {
   const router = useRouter();
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const isTablet = useGlobalSearchParams().isTablet === 'true';
+  const isTablet = useIsTablet();
   const styles = GlobalStyle(theme, isTablet);
   const unlockedThemes = useUnlockedThemes();
   const puzzleBoard = usePuzzleBoard();
@@ -79,7 +80,7 @@ export default function PuzzlesScreen() {
                   <ThemePuzzleGrid color={RATED_BOARD_COLOR} title="Rated" puzzleIds={board.puzzleIds}
                     completedIds={board.completedIds}
                     onSelect={puzzleId => router.push({ pathname: '/puzzles/demo_puzzle',
-                      params: { puzzle: puzzleId, boardSession: board.id, isTablet: String(isTablet) } })} />
+                      params: { puzzle: puzzleId, boardSession: board.id } })} />
                   <Text accessibilityLiveRegion="polite" style={[localStyles.progress, {
                     color: theme.primaryText, fontSize: isTablet ? 24 : 20,
                   }]}>

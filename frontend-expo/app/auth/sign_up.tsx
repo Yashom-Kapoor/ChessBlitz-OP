@@ -2,17 +2,17 @@ import GlassBlurView from "@/components/GlassBlurView";
 import { Themes } from "@/constants/Themes";
 import backgroundImages from "@/context/Backgrounds";
 import GlobalStyle from "@/context/GlobalStyle";
-import { DeviceType, getDeviceTypeAsync } from "expo-device";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Alert, Image, ImageBackground, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { supabase } from "@/api/SupabaseClient";
+import { useIsTablet } from '@/hooks/useIsTablet';
 
 export default function SignUpScreen() {
     const router = useRouter(); // Access router object
     const theme = Themes.default;
-    const [isTablet, setIsTablet] = useState(false);
+    const isTablet = useIsTablet();
 
     const [username, setUsername] = useState('');
     const [firstName, setFirstName] = useState('');
@@ -21,12 +21,6 @@ export default function SignUpScreen() {
     const [password, setPassword] = useState('');
     const [passwordConfirm, setPasswordConfirm] = useState('');
     const [loading, setLoading] = useState(false);
-
-    useEffect(() => {
-        getDeviceTypeAsync().then(deviceType => {
-            setIsTablet(deviceType === DeviceType.TABLET);
-        });
-    }, []);
 
     const handleSignUp = async () => {
     if (!username || !firstName || !lastName || !email || !password || !passwordConfirm) {
@@ -102,7 +96,7 @@ export default function SignUpScreen() {
         Alert.alert('Success', 'Signed up successfully!');
         }
 
-        router.push(`/(tabs)/puzzles?isTablet=${isTablet}`);
+        router.push('/(tabs)/puzzles');
     } catch (err: unknown) {
         if (err instanceof Error) {
             Alert.alert('Error', err.message);

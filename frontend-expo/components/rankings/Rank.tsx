@@ -2,9 +2,9 @@ import React from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
 import Avatar from '@/components/Avatar';
 import { useTheme } from '@/context/ThemeContext';
-import { useGlobalSearchParams } from 'expo-router';
 import GlobalStyle from '@/context/GlobalStyle';
 import GlassBlurView from '../GlassBlurView';
+import { useIsTablet } from '@/hooks/useIsTablet';
 interface RankingProps {
     rank: number;
     name: string;
@@ -27,7 +27,7 @@ const GetColorFromRanking = (ranking:number):string => { //Returns the crown col
 
 export default function RankingItem({ rank, name, rating, avatarUrl, isYou}: RankingProps) {
     const { theme } = useTheme();
-    const isTablet = useGlobalSearchParams().isTablet === 'true';
+    const isTablet = useIsTablet();
     const styles = GlobalStyle(theme, isTablet);
     const rankingStyles = StyleSheet.create({
         card: {

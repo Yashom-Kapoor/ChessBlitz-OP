@@ -10,6 +10,7 @@ import { BlurView } from "expo-blur";
 import getEquidistantSinePoints from "@/utils/EquidistantSinePoints";
 import LessonBubble from "@/components/lessons/LessonBubble";
 import { getApiUrl } from "@/constants/urls";
+import { useIsTablet } from '@/hooks/useIsTablet';
 
 type LessonData = {
   id: number
@@ -25,7 +26,7 @@ const LESSON_ICONS: Record<string, any> = {
 export default function LessonScreen() {
   const { theme } = useTheme();
   const global = useGlobalSearchParams()
-  const isTablet = global.isTablet === 'true';
+  const isTablet = useIsTablet();
 
   const [lessons, setLessons] = useState<LessonData[]>([]);
   const [loading, setLoading] = useState(true)

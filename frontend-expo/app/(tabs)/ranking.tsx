@@ -2,17 +2,18 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import React, { useCallback, useRef, useState } from 'react';
 import { ScrollView, View, ActivityIndicator, StyleSheet, Text, RefreshControl } from 'react-native';
 import RankingItem from '@/components/rankings/Rank';
-import { useFocusEffect, useGlobalSearchParams } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { useTheme } from '@/context/ThemeContext';
 import GlobalStyle from '@/context/GlobalStyle';
 import { BackgroundContext } from '@/context/Backgrounds';
 import { getRankings } from '@/api/Rankings';
+import { useIsTablet } from '@/hooks/useIsTablet';
 
 type RankingData = Awaited<ReturnType<typeof getRankings>>['rankings'][number];
 
 export default function RankingsScreen() {
   const { theme } = useTheme();
-  const isTablet = useGlobalSearchParams().isTablet === 'true';
+  const isTablet = useIsTablet();
   const [rankings, setRankings] = useState<RankingData[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

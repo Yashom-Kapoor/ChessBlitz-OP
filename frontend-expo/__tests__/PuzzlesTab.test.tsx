@@ -11,13 +11,15 @@ import { DEFAULT_UNLOCKED_THEMES, desaturate, PUZZLE_THEMES } from '@/constants/
 import { getMyRatings } from '@/api/Ratings';
 
 const mockRouter = { push: jest.fn(), back: jest.fn(), replace: jest.fn(), canGoBack: jest.fn(() => true) };
-let mockParams: { isTablet?: string } = {};
+let mockParams: Record<string, string> = {};
+let mockIsTablet = false;
 jest.mock('expo-router', () => ({
   useRouter: () => mockRouter,
   useGlobalSearchParams: () => mockParams,
   useLocalSearchParams: () => mockParams,
   useFocusEffect: (callback: () => void) => require('react').useEffect(callback, [callback]),
 }));
+jest.mock('@/hooks/useIsTablet', () => ({ useIsTablet: () => mockIsTablet }));
 jest.mock('@/api/Ratings', () => ({ ...jest.requireActual('@/api/Ratings'), getMyRatings: jest.fn() }));
 jest.mock('@/api/SupabaseClient', () => ({ supabase: {} }));
 jest.mock('@/api/RandomPuzzleSet', () => ({ fetchRandomPuzzleSet: jest.fn() }));
@@ -41,6 +43,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
   mockParams = {};
+  mockIsTablet = false;
   draw = 0;
   (getMyRatings as jest.Mock).mockResolvedValue({ fork: 1432, pin: 0, backrankmate: 1234 });
   (fetchRandomPuzzleSet as jest.Mock).mockImplementation(async () => {
@@ -61,7 +64,7 @@ test('the tab leads with the Rated Puzzles board drawn from every unlocked theme
   for (const [index, piece] of pieces().entries()) {
     await act(async () => { piece.props.onPress(); });
     expect(mockRouter.push).toHaveBeenLastCalledWith({ pathname: '/puzzles/demo_puzzle', params: {
-      puzzle: `draw1-${index}`, boardSession: board.board!.id, isTablet: 'false',
+      puzzle: `draw1-${index}`, boardSession: board.board!.id,
     } });
   }
 });
@@ -73,7 +76,7 @@ test('returning to the tab keeps the same board instead of drawing a new one', a
 });
 
 test('solved pieces are checked and disabled, and a new board appears only after all nine', async () => {
-  mockParams = { isTablet: 'true' };
+  mockIsTablet = true;
   await act(async () => { root = create(tab()); });
   const first = board.board!;
   await act(async () => { board.complete(first.id, first.puzzleIds[0]); });

@@ -7,13 +7,14 @@ import { useShop } from "@/context/ShopContext";
 import { Themes, ArtThemes } from "@/constants/Themes";
 import backgroundImages, { BackgroundContext } from "@/context/Backgrounds";
 import { BlurView } from "expo-blur";
-import { useFocusEffect, useGlobalSearchParams } from "expo-router";
+import { useFocusEffect } from "expo-router";
 import GlobalStyle from "@/context/GlobalStyle";
 import { Ionicons } from "@expo/vector-icons";
 import camelToTitle from "@/utils/CamelToTitle";
 import { buyItem } from "@/api/HandleShop";
 import SelectionRing from "@/components/SelectionRing";
 import { glassColorSchemeFor } from "@/utils/Glass";
+import { useIsTablet } from '@/hooks/useIsTablet';
 
 
 
@@ -22,7 +23,7 @@ const TILE_RADIUS = 16;
 // Main screen component that displays all themes
 export default function ShopScreen() {
   const { theme, setTheme } = useTheme();
-  const isTablet = useGlobalSearchParams().isTablet === 'true';
+  const isTablet = useIsTablet();
   const { width: screenWidth } = useWindowDimensions();
 
   const [shopPage, setShopPage] = useState(0);

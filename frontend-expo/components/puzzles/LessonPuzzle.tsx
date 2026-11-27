@@ -2,7 +2,7 @@ import { useHeaderHeight } from 'expo-router/react-navigation';
 import { getPuzzleActionAvailability } from '@/components/puzzles/puzzleActions';
 import React, { useRef, useState, useEffect, useLayoutEffect } from 'react';
 import { useWindowDimensions, View, Text, StyleSheet, Pressable, Image, ImageBackground, Platform, TouchableOpacity } from 'react-native';
-import { useGlobalSearchParams, useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import ChessboardDemo from '@/components/puzzles/ChessboardDemo';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { secondsToHMS } from '@/utils/Time';
@@ -22,6 +22,7 @@ import PuzzleDevHUD from '@/components/puzzles/PuzzleDevHUD';
 import { opponentDelay, usePuzzleSettings } from '@/context/PuzzleSettingsContext';
 import * as Haptics from 'expo-haptics';
 import WrongMovePrompt from '@/components/puzzles/WrongMovePrompt';
+import { useIsTablet } from '@/hooks/useIsTablet';
 
 interface LessonPuzzleProps {
     page: number;
@@ -36,7 +37,7 @@ interface LessonPuzzleProps {
 export default function LessonPuzzle({ length, page, pageBack, pageForward, pagePrevPuzzle, pageNextPuzzle, puzzleId }: LessonPuzzleProps) {
     const { theme } = useTheme();
     const { autoFlip, opponentSpeed, haptics } = usePuzzleSettings();
-    const isTablet = useGlobalSearchParams().isTablet === 'true';
+    const isTablet = useIsTablet();
     const windowSize = useWindowDimensions();
     const [layoutSize, setLayoutSize] = useState({ width: windowSize.width, height: windowSize.height });
     const headerHeight = useHeaderHeight();

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Image, StyleSheet, ImageBackground, Text, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { configureReanimatedLogger, ReanimatedLogLevel } from 'react-native-reanimated';
@@ -6,9 +6,9 @@ import GlobalStyle from '@/context/GlobalStyle';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import backgroundImages from '@/context/Backgrounds';
 import { Themes } from '@/constants/Themes';
-import { getDeviceTypeAsync, DeviceType } from 'expo-device';
 import GlassBlurView from '@/components/GlassBlurView';
 import { supabase } from '@/api/SupabaseClient';
+import { useIsTablet } from '@/hooks/useIsTablet';
 
 // This is the default configuration
 configureReanimatedLogger({
@@ -19,12 +19,7 @@ configureReanimatedLogger({
 export default function HomeScreen() {
   const router = useRouter(); // Access router object
   const theme = Themes.default;
-  const [isTablet, setIsTablet] = useState(false);
-  useEffect(() => {
-    getDeviceTypeAsync().then(deviceType => {
-      setIsTablet(deviceType === DeviceType.TABLET);
-    });
-  }, []);
+  const isTablet = useIsTablet();
 
   const styles = GlobalStyle(theme, isTablet);
   const localStyles = StyleSheet.create({
@@ -88,10 +83,7 @@ export default function HomeScreen() {
               console.error('[guest login] signInAnonymously failed:', error.message);
               return;
             }
-            router.push({
-              pathname: `/(tabs)/puzzles`,
-              params: { isTablet: String(isTablet) }
-            });
+            router.push('/(tabs)/puzzles');
           }}
         >
           <Text style={[styles.link, { color: theme.primaryText, textAlign: 'right' }]}>
@@ -105,7 +97,7 @@ export default function HomeScreen() {
 
         <TouchableOpacity // Sign up
           style={[localStyles.button]}
-          onPress={() => router.push(`/auth/sign_up?isTablet=${isTablet}`)}
+          onPress={() => router.push('/auth/sign_up')}
         >
           <GlassBlurView theme={theme} isTablet={isTablet} color={theme.secondaryButton} glass={'clear'} />
           <Text style={[styles.h4, { color: theme.secondaryText }]}>Sign Up with Email</Text>
@@ -114,7 +106,7 @@ export default function HomeScreen() {
         <Text style={[styles.h5, { color: theme.primaryText, paddingTop: 15 }]}>Already have an account?</Text>
         <TouchableOpacity // Sign in
           style={[localStyles.button]}
-          onPress={() => router.push(`/auth/log_in?isTablet=${isTablet}`)}
+          onPress={() => router.push('/auth/log_in')}
         >
           <GlassBlurView theme={theme} isTablet={isTablet} color={theme.primaryButton} glass={'clear'} />
           <Text style={[styles.h4, { color: theme.primaryText }]}>Log In</Text>

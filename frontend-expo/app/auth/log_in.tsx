@@ -2,25 +2,21 @@ import GlassBlurView from "@/components/GlassBlurView";
 import { Themes } from "@/constants/Themes";
 import backgroundImages from "@/context/Backgrounds";
 import GlobalStyle from "@/context/GlobalStyle";
-import { DeviceType, getDeviceTypeAsync } from "expo-device";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Alert, Image, ImageBackground, StyleSheet, Text, TextInput, TouchableOpacity } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { supabase } from "@/api/SupabaseClient";
+import { useIsTablet } from '@/hooks/useIsTablet';
 
 export default function LogInScreen() {
   const router = useRouter();
   const theme = Themes.default;
-  const [isTablet, setIsTablet] = useState(false);
+  const isTablet = useIsTablet();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    getDeviceTypeAsync().then(deviceType => setIsTablet(deviceType === DeviceType.TABLET));
-  }, []);
 
   const handleLogIn = async () => {
     if (!email || !password) {
@@ -64,7 +60,7 @@ export default function LogInScreen() {
       }
 
       Alert.alert('Success', 'Logged in successfully!');
-      router.push(`/(tabs)/puzzles?isTablet=${isTablet}`);
+      router.push('/(tabs)/puzzles');
     } catch (err: unknown) {
       if (err instanceof Error) {
         Alert.alert('Error', err.message);

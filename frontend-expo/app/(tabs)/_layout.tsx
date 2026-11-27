@@ -4,12 +4,13 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import IpadPagesBar from '@/components/IpadPagesBar';
 import NativePagesBar from '@/components/NativePagesBar';
-import { useFocusEffect, useGlobalSearchParams, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useUser } from '@/context/UserContext';
 import { useShop } from '@/context/ShopContext';
+import { useIsTablet } from '@/hooks/useIsTablet';
 
 export default function TabLayout() {
-  const isTablet = useGlobalSearchParams().isTablet === 'true';
+  const isTablet = useIsTablet();
   const { loadUser } = useUser();
   const { loadShop, loadPrices } = useShop();
 
