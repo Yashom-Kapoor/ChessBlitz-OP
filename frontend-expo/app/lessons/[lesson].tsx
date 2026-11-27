@@ -1,5 +1,5 @@
 import GlassBlurView from "@/components/GlassBlurView";
-import { lessonFiles } from "@/components/lessons/Lessons";
+import { loadLesson } from "@/components/lessons/Lessons";
 import { BackgroundContext } from "@/context/Backgrounds";
 import GlobalStyle from "@/context/GlobalStyle";
 import { useTheme } from "@/context/ThemeContext";
@@ -21,28 +21,24 @@ export default function Lesson() {
     const [page, setPage] = useState<number>(1);
 
     const lessonId = params.lesson as string;
-    const dynamicTitle = `Lesson: ${params.lesson}`;
+    const [title, setTitle] = useState<string>(`Lesson ${params.lesson}`);
     const isTablet = useIsTablet();
 
     useLayoutEffect(() => {
         navigation.setOptions({
-            title: dynamicTitle,
+            title,
         });
+    }, [navigation, title]);
 
-        const asset = lessonFiles[`lesson${lessonId}`];
-        if (!asset) return;
-
-        const uri = Image.resolveAssetSource(asset)?.uri;
-        if (!uri) return;
-
-        fetch(uri)
-            .then(res => res.text())
-            .then(text => {
-            const splitContent = text.split(/(\*\*\*PAGE\*\*\*|\*\*\*PUZZLE\*\*\*)/);
-            setContent(splitContent);
+    useEffect(() => {
+        loadLesson(parseInt(lessonId, 10))
+            .then(lesson => {
+                if (!lesson) return;
+                setTitle(lesson.title);
+                setContent(lesson.body.split(/(\*\*\*PAGE\*\*\*|\*\*\*PUZZLE\*\*\*)/));
             })
             .catch(err => console.log('md load error', err));
-    }, [router, dynamicTitle]); // Run whenever navigation or title changes
+    }, [lessonId]);
 
     function pageBack() {
         if (page > 1) {

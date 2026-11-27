@@ -1,3 +1,8 @@
+---
+title: The Pieces
+description: Meet the chess pieces and learn how they move!
+icon: default
+---
 START LESSON 1
 
 ***PAGE***

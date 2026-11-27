@@ -9,7 +9,7 @@ import backgroundImages, { BackgroundContext } from "@/context/Backgrounds";
 import { BlurView } from "expo-blur";
 import getEquidistantSinePoints from "@/utils/EquidistantSinePoints";
 import LessonBubble from "@/components/lessons/LessonBubble";
-import { getApiUrl } from "@/constants/urls";
+import { loadAllLessons } from "@/components/lessons/Lessons";
 import { useIsTablet } from '@/hooks/useIsTablet';
 
 type LessonData = {
@@ -39,9 +39,8 @@ export default function LessonScreen() {
   useEffect(() => {
     const fetchLessons = async () => {
       try {
-        const response = await fetch(`${getApiUrl()}/lessons`);
-        const data = await response.json();
-        setLessons(data);
+        const data = await loadAllLessons();
+        setLessons(data.map(l => ({ id: l.id, name: l.title, desc: l.description, icon: l.icon })));
       } catch (error) {
         setError(true);
       } finally {
@@ -85,7 +84,7 @@ export default function LessonScreen() {
           <Pressable style={{flex: 1}} onPress={() => setLessonBubble(-1)}/>
           {error && (
             <Text style={{ ...styles.b, color: theme.primaryText }} >
-              Error loading lessons oopsie daisies i dont think its implemented in backend yet but pretend this works
+              Couldn't load lessons
             </Text>
           )}
           {getEquidistantSinePoints(isTablet ? 220 : 130, 2.5, lessons.length * 7, lessons.length * (isTablet ? 300 : 250), isTablet ? 60 : 35).map((point, i) => {
@@ -98,7 +97,7 @@ export default function LessonScreen() {
                     name={lesson.name}
                     description={lesson.desc}
                     id={lesson.id}
-                    icon={LESSON_ICONS[lesson.icon || 'default']}
+                    icon={LESSON_ICONS[lesson.icon || 'default'] ?? LESSON_ICONS.default}
                     offset={{ x: point.y, y: point.x }}
                     available={isAvailable}
                     onPress={() => setLessonBubble(lesson.id)}
