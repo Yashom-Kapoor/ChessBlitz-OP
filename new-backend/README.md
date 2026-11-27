@@ -33,6 +33,7 @@ A connection error means it isn't up. (`Server: AirTunes` means macOS AirPlay ha
 |---|---|
 | `SUPABASE_URL` | Your Supabase project URL |
 | `SUPABASE_KEY` | The **anon** key — not the service-role key |
+| `SUPABASE_SERVICE_KEY` | The service-role key. **Server-side only.** Used only for the backend-only facts records (`facts/build_all_records.py`, `records_api.get_records`); see [facts/README.md](facts/README.md) |
 | `OPEN_ROUTER_KEY` | OpenRouter key, for AI hint generation |
 | `PORT` | Optional, defaults to `5050`; use `5050` to match the app |
 | `DEV_TOOLS` | Optional. `1` enables the dev console at `/dev` and its endpoints; anything else makes them 404 |

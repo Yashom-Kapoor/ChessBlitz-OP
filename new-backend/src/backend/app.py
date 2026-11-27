@@ -27,7 +27,8 @@ OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 app = Flask(__name__)
 CORS(app)
 
-# Facts records for hints (Ticket 1): GET /puzzles/<id>/records
+# Facts records (Puzzles_Mini_Records). Backend code reads them with records_api.get_records();
+# GET /puzzles/<id>/records is a debug-only view that 404s unless DEV_TOOLS=1.
 try:
     from backend.records_api import records_bp
 except ImportError:  # running app.py directly
