@@ -1,9 +1,10 @@
 import { useEffect, useCallback } from 'react';
-import { Platform } from 'react-native';
+import { Platform, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import IpadPagesBar from '@/components/IpadPagesBar';
 import NativePagesBar from '@/components/NativePagesBar';
+import TopBar from '@/components/TopBar';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useUser } from '@/context/UserContext';
 import { useShop } from '@/context/ShopContext';
@@ -22,9 +23,10 @@ export default function TabLayout() {
     }, [loadUser, loadShop, loadPrices])
   );
 
-  return (isTablet) ? (
-    <IpadPagesBar />
-  ) : (
-    <NativePagesBar />
+  return (
+    <View style={{ flex: 1 }}>
+      <TopBar />
+      {isTablet ? <IpadPagesBar /> : <NativePagesBar />}
+    </View>
   );
 }

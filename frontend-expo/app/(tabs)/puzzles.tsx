@@ -58,7 +58,7 @@ export default function PuzzlesScreen() {
     <GestureHandlerRootView style={{ ...styles.contentContainer }}>
       <BackgroundContext theme={theme}>
         <ScrollView contentContainerStyle={{
-          paddingTop: insets.top + (isTablet ? 40 : 24),
+          paddingTop: isTablet ? 40 : 24,
           paddingHorizontal: isTablet ? 36 : 20,
           paddingBottom: insets.bottom + 40,
         }}>

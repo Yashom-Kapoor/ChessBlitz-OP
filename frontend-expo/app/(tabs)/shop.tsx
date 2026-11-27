@@ -62,7 +62,7 @@ export default function ShopScreen() {
       justifyContent: "center",
       paddingHorizontal: 24,
       gap: tileGap,
-      marginTop: 40,
+      marginTop: 24,
     },
     switcherButton: {
       flex: 1,
@@ -83,23 +83,6 @@ export default function ShopScreen() {
     backgroundColor: "rgba(0,0,0,0.55)",
     alignItems: "center",
     justifyContent: "center",
-    },
-    header: {
-    marginTop: 60,
-    paddingHorizontal: 28,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-    },
-    headerTitle: {
-    textAlign: "center",
-    },
-    currencyText: {
-    position: "absolute",
-    right: 20,
-    fontSize: 22,
-    fontWeight: "900",
     },
     themeGrid: {
     paddingVertical: 22,
@@ -244,8 +227,6 @@ export default function ShopScreen() {
   return (
     <GestureHandlerRootView style={localStyles.root}>
       <BackgroundContext theme={theme}>
-        <View style={localStyles.header}>
-          <Text style={{...localStyles.currencyText, color: theme.primaryText}}>{ currency }</Text></View>
         <View style={localStyles.switcherContainer}>
           <Pressable
             style={[

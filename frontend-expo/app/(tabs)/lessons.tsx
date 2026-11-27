@@ -81,7 +81,7 @@ export default function LessonScreen() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: theme.background }}>
       <BackgroundContext theme={theme}>
-        <ScrollView contentContainerStyle={{...styles.scrollContainer, height: lessons.length * 300 + 200 }}>
+        <ScrollView contentContainerStyle={{...styles.scrollContainer, marginTop: 0, height: lessons.length * 300 + 200 }}>
           <Pressable style={{flex: 1}} onPress={() => setLessonBubble(-1)}/>
           {error && (
             <Text style={{ ...styles.b, color: theme.primaryText }} >

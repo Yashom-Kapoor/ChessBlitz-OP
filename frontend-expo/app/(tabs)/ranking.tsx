@@ -66,7 +66,7 @@ export default function RankingsScreen() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: theme.background }}>
       <BackgroundContext theme={theme}>
-        <ScrollView contentContainerStyle={styles.gapContainer}
+        <ScrollView contentContainerStyle={{ ...styles.gapContainer, marginTop: 0 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { void fetchRankings(true); }}
             tintColor={theme.primaryText} colors={[theme.primaryText]} />}>
           {error && (
