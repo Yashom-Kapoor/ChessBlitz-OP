@@ -1,11 +1,11 @@
-import GlassBlurView from "@/components/GlassBlurView";
+import { AuthButton, AuthCard, AuthField, AuthTitle } from "@/components/AuthForm";
 import { Themes } from "@/constants/Themes";
 import backgroundImages from "@/context/Backgrounds";
 import GlobalStyle from "@/context/GlobalStyle";
 import { DeviceType, getDeviceTypeAsync } from "expo-device";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, Image, ImageBackground, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, Image, ImageBackground, StyleSheet, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { supabase } from "@/api/SupabaseClient";
 
@@ -139,36 +139,6 @@ export default function SignUpScreen() {
             width: '100%',
             alignItems: 'flex-end',
         },
-        button: {
-            borderRadius: isTablet ? 30 : 20,
-            width: '70%',
-            alignItems: 'center',
-            boxShadow: `0 7 0 ${theme.buttonShadow}`,
-        },
-
-        logInSplash: {
-            textAlign: 'center',
-            color: theme.primaryText,
-        },
-        buttonText: {
-            fontSize: 20,
-            fontWeight: 'bold',
-            textAlign: 'center',
-        },
-        input: {
-            width: '100%',
-            padding: 20,
-            paddingHorizontal: 25,
-            lineHeight: 0,
-        },
-        submit: {
-            width: '100%',
-            padding: 20,
-            paddingHorizontal: 25,
-            lineHeight: 0,
-            textAlign: 'center',
-        }
-
     });
 
     return (
@@ -180,100 +150,18 @@ export default function SignUpScreen() {
 
             <SafeAreaProvider style={localStyles.landingContainer}>
 
-                <Text style={[styles.title, { color: theme.primaryText, textAlign: 'center' }]}>
-                    Sign up to your{'\n'}ChessBlitz account
-                </Text>
-
-                <TouchableOpacity style={[localStyles.button]}>
-                    <GlassBlurView theme={theme} isTablet={isTablet} color={theme.secondaryButton} glass={'clear'} />
-                    <TextInput
-                            placeholderTextColor={`${theme.secondaryText}30`}
-                            placeholder={'Username'}
-                            value={username}
-                            onChangeText={setUsername}
-                            autoCapitalize={'none'}
-                            autoCorrect={false}
-                            style={{...styles.h4, ...localStyles.input, color: theme.secondaryText }}
-                    ></TextInput>
-                </TouchableOpacity>
-
-                <View style={{flexDirection: 'row', justifyContent: 'space-between', width: '70%'}}>
-                    <TouchableOpacity style={{...localStyles.button, width: '49%'}}>
-                        <GlassBlurView theme={theme} isTablet={isTablet} color={theme.secondaryButton} glass={'clear'} />
-                        <TextInput
-                                placeholderTextColor={`${theme.secondaryText}30`}
-                                placeholder={'First Name'}
-                                value={firstName}
-                                onChangeText={setFirstName}
-                                autoCapitalize={'none'}
-                                autoCorrect={false}
-                                style={{...styles.h4, ...localStyles.input, color: theme.secondaryText }}
-                        ></TextInput>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={{...localStyles.button, width: '49%'}}>
-                        <GlassBlurView theme={theme} isTablet={isTablet} color={theme.secondaryButton} glass={'clear'} />
-                        <TextInput
-                                placeholderTextColor={`${theme.secondaryText}30`}
-                                placeholder={'Last Name'}
-                                value={lastName}
-                                onChangeText={setLastName}
-                                autoCapitalize={'none'}
-                                autoCorrect={false}
-                                style={{...styles.h4, ...localStyles.input, color: theme.secondaryText }}
-                        ></TextInput>
-                    </TouchableOpacity>
-                </View>
-
-                <TouchableOpacity style={[localStyles.button]}>
-                    <GlassBlurView theme={theme} isTablet={isTablet} color={theme.primaryButton} glass={'clear'} />
-                    <TextInput
-                            placeholderTextColor={`${theme.primaryText}30`}
-                            placeholder={'Email'}
-                            value={email}
-                            onChangeText={setEmail}
-                            autoCapitalize={'none'}
-                            autoCorrect={false}
-                            style={{...styles.h4, ...localStyles.input, color: theme.primaryText }}
-                    ></TextInput>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={[localStyles.button]}>
-                    <GlassBlurView theme={theme} isTablet={isTablet} color={theme.primaryButton} glass={'clear'} />
-                    <TextInput
-                            placeholderTextColor={`${theme.primaryText}30`}
-                            placeholder={'Password'}
-                            value={password}
-                            onChangeText={setPassword}
-                            autoCapitalize={'none'}
-                            autoCorrect={false}
-                            secureTextEntry
-                            style={{...styles.h4, ...localStyles.input, color: theme.primaryText }}
-                    ></TextInput>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={[localStyles.button]}>
-                    <GlassBlurView theme={theme} isTablet={isTablet} color={theme.primaryButton} glass={'clear'} />
-                    <TextInput
-                            placeholderTextColor={`${theme.primaryText}30`}
-                            placeholder={'Confirm Password'}
-                            value={passwordConfirm}
-                            onChangeText={setPasswordConfirm}
-                            autoCapitalize={'none'}
-                            autoCorrect={false}
-                            secureTextEntry
-                            style={{...styles.h4, ...localStyles.input, color: theme.primaryText }}
-                    ></TextInput>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={{...localStyles.button, marginTop: 20, width: '60%'}} onPress={handleSignUp} disabled={loading}>
-                    <GlassBlurView theme={theme} isTablet={isTablet} color={theme.secondaryButton} glass={'clear'} />
-                    <Text
-                            style={{...styles.h4, ...localStyles.submit, color: theme.secondaryText }}
-                    >
-                        {loading ? 'Registering...' : 'Sign Up'}
-                    </Text>
-                </TouchableOpacity>
+                <AuthCard isTablet={isTablet}>
+                    <AuthTitle isTablet={isTablet} subtitle="sign up to join" />
+                    <AuthField isTablet={isTablet} required label="Username" placeholder="username" value={username} onChangeText={setUsername} />
+                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                        <AuthField isTablet={isTablet} required label="First Name" placeholder="first name" value={firstName} onChangeText={setFirstName} style={{ flex: 1 }} />
+                        <AuthField isTablet={isTablet} required label="Last Name" placeholder="last name" value={lastName} onChangeText={setLastName} style={{ flex: 1 }} />
+                    </View>
+                    <AuthField isTablet={isTablet} required label="Email" placeholder="username@email.com" value={email} onChangeText={setEmail} />
+                    <AuthField isTablet={isTablet} required label="Password" placeholder="password" value={password} onChangeText={setPassword} secureTextEntry />
+                    <AuthField isTablet={isTablet} required label="Confirm Password" placeholder="password" value={passwordConfirm} onChangeText={setPasswordConfirm} secureTextEntry />
+                    <AuthButton isTablet={isTablet} title={loading ? 'Registering...' : 'Sign up'} onPress={handleSignUp} disabled={loading} />
+                </AuthCard>
 
             </SafeAreaProvider>
 
