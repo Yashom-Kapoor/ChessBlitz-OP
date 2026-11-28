@@ -705,9 +705,6 @@ def completed_puzzle_route():
     puzzle_rating = puzzle["Rating"]
     new_rating = round(update_elo(student_rating, puzzle_rating, int(completed)))
     rating_gain = new_rating - student_rating
-    
-    # Edit as needed
-    currency_gain = 1000
 
     # Basic validation
     if not puzzle_id or not student_id or not isinstance(completed, bool):
@@ -717,8 +714,7 @@ def completed_puzzle_route():
 
     update_user_info(supabase, token, update_info={ "rating": new_rating, "puzzles_completed": puzzles_completed + 1 })
 
-    update_currency(supabase, token, currency_gain)
-
+    # No blitz per puzzle: blitz comes from claiming a finished Rated board (/puzzles/board-reward).
     theme_updates = update_theme_ratings(supabase, g.user_id, puzzle.get("Themes"), puzzle_rating, completed)
 
     if not result:
@@ -729,6 +725,19 @@ def completed_puzzle_route():
         "data": result,
         "theme_ratings": theme_updates
     }), 201
+
+# Blitz for finishing all nine puzzles on a Rated board. The app tracks the board, so this trusts it.
+BOARD_REWARD = 1000
+
+@app.route("/puzzles/board-reward", methods=["POST"])
+@require_auth
+def board_reward_route():
+    token = get_bearer_token(request)
+    supabase = get_supabase_with_auth(token)
+    if not update_currency(supabase, token, BOARD_REWARD):
+        return jsonify({"error": "Could not add the reward. Please try again."}), 500
+    shop = get_shop_data(supabase) or {}
+    return jsonify({"currency": shop.get("currency")}), 201
 
 # -------- LESSONS (CONTENT SUBTEAM) -------- THIS WHOLE BLACK IS OLD AND TEMPORARY, JUST FOR TESTING PURPOSES.
     

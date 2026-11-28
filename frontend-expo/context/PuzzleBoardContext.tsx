@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchRandomPuzzleSet } from '@/api/RandomPuzzleSet';
+import { claimBoardReward } from '@/api/BoardReward';
 import { useUnlockedThemes } from '@/hooks/useUnlockedThemes';
 
 /** The Rated Puzzles board: nine puzzles mixed across the player's unlocked themes. */
@@ -12,13 +13,16 @@ export type PuzzleBoard = {
   puzzleIds: string[];
   completedIds: string[];
   excludedIds: string[];
+  /** Set once the reward for finishing this board has been paid; the next board is then drawn. */
+  claimed?: boolean;
   error?: string;
 };
 type BoardContext = {
   board: PuzzleBoard | null;
   ensure: () => void;
   retry: () => void;
-  reset: () => void;
+  /** Pays the reward for a finished board, then draws the next one. Rejects if the reward fails. */
+  claim: () => Promise<void>;
   complete: (boardId: string, puzzleId: string) => boolean;
 };
 const PuzzleBoardContext = createContext<BoardContext | null>(null);
@@ -38,6 +42,8 @@ function parseSavedBoard(raw: string | null): PuzzleBoard | null {
     if (typeof saved?.id !== 'string' || !isStringArray(saved.puzzleIds) || saved.puzzleIds.length !== BOARD_SIZE ||
       !isStringArray(saved.completedIds) || !saved.completedIds.every((id: string) => saved.puzzleIds.includes(id)) ||
       !isStringArray(saved.themes) || !isStringArray(saved.excludedIds)) return null;
+    // Already paid out (the app closed before the next board arrived): draw a fresh board instead.
+    if (saved.claimed === true) return null;
     return {
       id: saved.id, status: 'ready', themes: saved.themes, puzzleIds: saved.puzzleIds,
       completedIds: saved.completedIds, excludedIds: saved.excludedIds,
@@ -65,8 +71,8 @@ export function PuzzleBoardProvider({ userId = null, children }: { userId?: stri
     current.current = next;
     setBoard(next);
     if (storageKey && next.status === 'ready') {
-      const { id, themes, puzzleIds, completedIds, excludedIds } = next;
-      AsyncStorage.setItem(storageKey, JSON.stringify({ id, themes, puzzleIds, completedIds, excludedIds }))
+      const { id, themes, puzzleIds, completedIds, excludedIds, claimed } = next;
+      AsyncStorage.setItem(storageKey, JSON.stringify({ id, themes, puzzleIds, completedIds, excludedIds, claimed }))
         .catch(error => console.warn('Could not save the puzzle board:', error));
     }
   }, [storageKey]);
@@ -105,10 +111,22 @@ export function PuzzleBoardProvider({ userId = null, children }: { userId?: stri
     const failed = current.current;
     if (failed?.status === 'error') load(failed.themes, failed.excludedIds);
   }, [load]);
-  const reset = useCallback(() => {
+  const claiming = useRef(false);
+  const claim = useCallback(async () => {
     const finished = current.current;
-    if (finished?.status === 'ready' && finished.completedIds.length === BOARD_SIZE) load(unlocked.current, finished.puzzleIds);
-  }, [load]);
+    if (claiming.current || finished?.status !== 'ready' || finished.claimed ||
+      finished.completedIds.length !== BOARD_SIZE) return;
+    claiming.current = true;
+    try {
+      await claimBoardReward();
+    } finally {
+      claiming.current = false;
+    }
+    // Paid: never pay this board again, even if the app closes before the next board arrives.
+    if (!mounted.current || current.current !== finished) return;
+    publish({ ...finished, claimed: true });
+    load(unlocked.current, finished.puzzleIds);
+  }, [load, publish]);
   const complete = useCallback((boardId: string, puzzleId: string) => {
     const active = current.current;
     if (!mounted.current || active?.status !== 'ready' || active.id !== boardId ||
@@ -116,7 +134,7 @@ export function PuzzleBoardProvider({ userId = null, children }: { userId?: stri
     publish({ ...active, completedIds: [...active.completedIds, puzzleId] });
     return true;
   }, [publish]);
-  const value = useMemo(() => ({ board, ensure, retry, reset, complete }), [board, ensure, retry, reset, complete]);
+  const value = useMemo(() => ({ board, ensure, retry, claim, complete }), [board, ensure, retry, claim, complete]);
   return <PuzzleBoardContext.Provider value={value}>{children}</PuzzleBoardContext.Provider>;
 }
 

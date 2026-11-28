@@ -6,12 +6,12 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Avatar from '@/components/Avatar';
 import { useShop } from '@/context/ShopContext';
+import { BLITZ_COLOR } from '@/constants/Blitz';
 import { useTheme } from '@/context/ThemeContext';
 import { useUser } from '@/context/UserContext';
 import { useIsTablet } from '@/hooks/useIsTablet';
 import { glassColorSchemeFor, useGlassAvailable } from '@/utils/Glass';
 
-const BLITZ_COLOR = '#FFC83D';
 
 /** Rounds the stored rating for display; anything non-numeric (e.g. while loading) shows a dash. */
 export function formatElo(rating: unknown): string {

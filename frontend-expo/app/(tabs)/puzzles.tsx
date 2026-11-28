@@ -7,7 +7,11 @@ import { getMyRatings, ThemeRatings } from '@/api/Ratings';
 import ThemeRatingsList from '@/components/puzzles/ThemeRatingsList';
 import ThemePuzzleGrid from '@/components/puzzles/ThemePuzzleGrid';
 import PageHeading from '@/components/PageHeading';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { usePuzzleBoard } from '@/context/PuzzleBoardContext';
+import { useShop } from '@/context/ShopContext';
+import { BOARD_REWARD } from '@/api/BoardReward';
+import { BLITZ_COLOR } from '@/constants/Blitz';
 import { useUnlockedThemes } from '@/hooks/useUnlockedThemes';
 import { darken } from '@/constants/PuzzleThemes';
 import { useTheme } from '@/context/ThemeContext';
@@ -35,6 +39,23 @@ export default function PuzzlesScreen() {
   const ensure = puzzleBoard?.ensure;
 
   useEffect(() => { ensure?.(); }, [ensure]);
+
+  const { loadShop } = useShop();
+  const [claiming, setClaiming] = useState(false);
+  const [claimError, setClaimError] = useState<string | null>(null);
+  const claimReward = async () => {
+    if (claiming || !puzzleBoard) return;
+    setClaiming(true);
+    setClaimError(null);
+    try {
+      await puzzleBoard.claim();
+      void loadShop();
+    } catch {
+      setClaimError("Couldn't claim your blitz. Try again!");
+    } finally {
+      setClaiming(false);
+    }
+  };
 
   const [ratings, setRatings] = useState<ThemeRatings | null>(null);
   const [ratingsUpdating, setRatingsUpdating] = useState(false);
@@ -84,11 +105,24 @@ export default function PuzzlesScreen() {
                   }]}>
                     {solved} of 9 solved
                   </Text>
-                  {solved === 9 && (
-                    <TouchableOpacity accessibilityRole="button" accessibilityLabel="New board"
-                      onPress={() => puzzleBoard?.reset()} style={buttonStyle}>
-                      <Text style={[localStyles.buttonText, { fontSize: isTablet ? 24 : 20 }]}>New board</Text>
+                  {solved === 9 && !board.claimed && (
+                    <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Claim ${BOARD_REWARD} blitz`}
+                      accessibilityState={{ disabled: claiming, busy: claiming }} disabled={claiming}
+                      onPress={claimReward} style={[buttonStyle, localStyles.claimButton]}>
+                      {claiming ? <ActivityIndicator testID="claim-spinner" color="#FFFFFF" /> : (
+                        <>
+                          <MaterialCommunityIcons name="lightning-bolt" size={isTablet ? 32 : 28} color={BLITZ_COLOR} />
+                          <Text style={[localStyles.buttonText, { fontSize: isTablet ? 24 : 20 }]}>
+                            Claim {BOARD_REWARD}
+                          </Text>
+                        </>
+                      )}
                     </TouchableOpacity>
+                  )}
+                  {claimError && (
+                    <Text accessibilityRole="alert" style={[localStyles.statusText, { color: theme.primaryText }]}>
+                      {claimError}
+                    </Text>
                   )}
                 </>
               ) : board?.status === 'error' ? (
@@ -130,5 +164,6 @@ const localStyles = StyleSheet.create({
   actionButton: { borderRadius: 24, borderBottomWidth: 6, padding: 14, marginTop: 18,
     alignItems: 'center', justifyContent: 'center' },
   buttonText: { fontFamily: 'Nunito', fontWeight: '900', color: '#FFFFFF' },
+  claimButton: { flexDirection: 'row', gap: 8 },
   ratingsHeading: { textAlign: 'center', width: '100%' },
 });
