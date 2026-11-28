@@ -9,6 +9,7 @@ import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useUser } from '@/context/UserContext';
 import { useShop } from '@/context/ShopContext';
 import { useIsTablet } from '@/hooks/useIsTablet';
+import { waitForPendingCompletion } from '@/utils/pendingCompletion';
 
 // Fallbacks and redirects inside the tabs land on Home.
 export const unstable_settings = { initialRouteName: 'home' };
@@ -20,8 +21,11 @@ export default function TabLayout() {
 
   useFocusEffect(
     useCallback(() => {
-      loadUser();
-      loadShop();
+      // A just-solved puzzle may still be saving; wait so rating and coins aren't stale.
+      void waitForPendingCompletion().then(() => {
+        loadUser();
+        loadShop();
+      });
       loadPrices();
     }, [loadUser, loadShop, loadPrices])
   );

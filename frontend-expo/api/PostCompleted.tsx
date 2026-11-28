@@ -1,5 +1,6 @@
 import { getApiUrl } from "@/constants/urls";
 import { supabase } from "@/api/SupabaseClient";
+import { trackCompletion } from "@/utils/pendingCompletion";
 
 export interface CompletedPuzzleData {
     studentid: string;
@@ -11,7 +12,14 @@ export interface CompletedPuzzleData {
     redosUsed?: number;
 }
 
-export async function postCompletedPuzzle(data: CompletedPuzzleData): Promise<unknown> {
+/** Saves a result. Screens that reload rating or coins wait for it via `waitForPendingCompletion`. */
+export function postCompletedPuzzle(data: CompletedPuzzleData): Promise<unknown> {
+    const save = sendCompletedPuzzle(data);
+    trackCompletion(save);
+    return save;
+}
+
+async function sendCompletedPuzzle(data: CompletedPuzzleData): Promise<unknown> {
     try {
         const payload = {
             studentid: data.studentid,

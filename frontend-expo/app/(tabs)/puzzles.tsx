@@ -14,6 +14,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { BackgroundContext } from '@/context/Backgrounds';
 import GlobalStyle from '@/context/GlobalStyle';
 import { useIsTablet } from '@/hooks/useIsTablet';
+import { waitForPendingCompletion } from '@/utils/pendingCompletion';
 
 /** Accent for the Rated Puzzles board and its buttons. Must be #RRGGBB (the grid tints it). */
 export const RATED_BOARD_COLOR = '#4C6EF5';
@@ -41,8 +42,10 @@ export default function PuzzlesScreen() {
   useFocusEffect(
     useCallback(() => {
       let active = true;
-      getMyRatings()
-        .then((data) => { if (active) setRatings(data); })
+      // A just-solved puzzle may still be saving; reloading first would show the old ratings.
+      waitForPendingCompletion()
+        .then(() => (active ? getMyRatings() : null))
+        .then((data) => { if (active && data) setRatings(data); })
         .catch((error) => console.log('Error loading theme ratings:', error));
       return () => { active = false; };
     }, [])
