@@ -17,12 +17,9 @@ type LessonData = {
   id: number
   name: string;
   desc: string;
-  icon?: string;
 }
 
-const LESSON_ICONS: Record<string, any> = {
-  'default': require('@/assets/images/lessons/default.png'),
-}
+const LESSON_ICON = require('@/assets/images/lessons/default.png');
 
 export default function LessonScreen() {
   const { theme } = useTheme();
@@ -41,7 +38,7 @@ export default function LessonScreen() {
     const fetchLessons = async () => {
       try {
         const data = await loadAllLessons();
-        setLessons(data.map(l => ({ id: l.id, name: l.title, desc: l.description, icon: l.icon })));
+        setLessons(data.map(l => ({ id: l.id, name: l.title, desc: l.description })));
       } catch (error) {
         setError(true);
       } finally {
@@ -103,7 +100,7 @@ export default function LessonScreen() {
                     name={lesson.name}
                     description={lesson.desc}
                     id={lesson.id}
-                    icon={LESSON_ICONS[lesson.icon || 'default'] ?? LESSON_ICONS.default}
+                    icon={LESSON_ICON}
                     offset={{ x: point.y, y: point.x }}
                     available={isAvailable}
                     onPress={() => setLessonBubble(lesson.id)}

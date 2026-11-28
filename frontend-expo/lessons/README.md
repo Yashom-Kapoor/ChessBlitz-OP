@@ -10,13 +10,11 @@ The header sets what kids see on the Lessons page card.
 ---
 title: Hanging Pieces
 description: Spot pieces you can capture for free!
-icon: default
 ---
 ```
 
 - `title` – the card name. Keep it short.
 - `description` – one sentence shown when the card is tapped.
-- `icon` – leave as `default` for now.
 
 The `---` must be the very first line. Each field is optional. With no title, the
 card uses the first line of the file; with no description, it shows none.

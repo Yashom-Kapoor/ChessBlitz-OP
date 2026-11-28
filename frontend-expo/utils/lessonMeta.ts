@@ -2,19 +2,17 @@ export type LessonMeta = {
   id: number;
   title: string;
   description: string;
-  icon: string;
   /** Lesson text with the header block removed. */
   body: string;
 };
 
 /**
  * Reads a lesson .md file. An optional header block at the very top sets the
- * card title/description/icon:
+ * card title/description:
  *
  *   ---
  *   title: The Pieces
  *   description: Meet the chess pieces!
- *   icon: default
  *   ---
  *
  * Without a title, the first non-empty line of the file is used.
@@ -45,7 +43,6 @@ export function parseLesson(text: string, id: number): LessonMeta {
     id,
     title: fields.title || firstLine || `Lesson ${id}`,
     description: fields.description || '',
-    icon: fields.icon || 'default',
     body,
   };
 }

@@ -1,11 +1,15 @@
 import { parseLesson } from '@/utils/lessonMeta';
 
 describe('parseLesson', () => {
-  it('reads title, description and icon from the header', () => {
-    const text = '---\ntitle: The Pieces\ndescription: Meet the pieces!\nicon: knight\n---\nSTART LESSON 1\n\n***PAGE***\n# Hi';
+  it('reads title and description from the header', () => {
+    const text = '---\ntitle: The Pieces\ndescription: Meet the pieces!\n---\nSTART LESSON 1\n\n***PAGE***\n# Hi';
     const lesson = parseLesson(text, 1);
-    expect(lesson).toMatchObject({ id: 1, title: 'The Pieces', description: 'Meet the pieces!', icon: 'knight' });
-    expect(lesson.body).toBe('START LESSON 1\n\n***PAGE***\n# Hi');
+    expect(lesson).toEqual({ id: 1, title: 'The Pieces', description: 'Meet the pieces!', body: 'START LESSON 1\n\n***PAGE***\n# Hi' });
+  });
+
+  it('ignores unknown header fields', () => {
+    const lesson = parseLesson('---\ntitle: T\nicon: knight\n---\nbody', 1);
+    expect(lesson).toEqual({ id: 1, title: 'T', description: '', body: 'body' });
   });
 
   it('keeps colons inside values', () => {
@@ -14,7 +18,7 @@ describe('parseLesson', () => {
 
   it('falls back to the first line as title with no description', () => {
     const lesson = parseLesson('\nSTART LESSON 4\n\n***PAGE***\n', 4);
-    expect(lesson).toMatchObject({ title: 'START LESSON 4', description: '', icon: 'default' });
+    expect(lesson).toMatchObject({ title: 'START LESSON 4', description: '' });
     expect(lesson.body).toBe('\nSTART LESSON 4\n\n***PAGE***\n');
   });
 
