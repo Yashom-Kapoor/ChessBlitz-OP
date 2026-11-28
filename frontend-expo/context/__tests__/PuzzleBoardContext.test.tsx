@@ -1,6 +1,7 @@
 import React, { act } from 'react';
 import { create, ReactTestRenderer } from 'react-test-renderer';
-import { PuzzleBoardProvider, usePuzzleBoard } from '../PuzzleBoardContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { boardStorageKey, PuzzleBoardProvider, usePuzzleBoard } from '../PuzzleBoardContext';
 import { fetchRandomPuzzleSet } from '@/api/RandomPuzzleSet';
 import { useUnlockedThemes } from '@/hooks/useUnlockedThemes';
 import { DEFAULT_UNLOCKED_THEMES } from '@/constants/PuzzleThemes';
@@ -10,12 +11,13 @@ jest.mock('@/hooks/useUnlockedThemes', () => ({ useUnlockedThemes: jest.fn() }))
 let root: ReactTestRenderer;
 let context: NonNullable<ReturnType<typeof usePuzzleBoard>>;
 function Consumer() { context = usePuzzleBoard()!; return null; }
-const render = (key = 'alice', visible = true) => <PuzzleBoardProvider key={key}>{visible && <Consumer />}</PuzzleBoardProvider>;
+const render = (key = 'alice', visible = true) => <PuzzleBoardProvider key={key} userId={key}>{visible && <Consumer />}</PuzzleBoardProvider>;
 let draw = 0;
 const ids = () => { draw += 1; return Array.from({ length: 9 }, (_, i) => `draw${draw}-${i}`); };
 beforeEach(async () => {
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
   jest.clearAllMocks();
+  await AsyncStorage.clear();
   draw = 0;
   (useUnlockedThemes as jest.Mock).mockReturnValue(DEFAULT_UNLOCKED_THEMES);
   (fetchRandomPuzzleSet as jest.Mock).mockImplementation(async () => ids());
@@ -86,11 +88,62 @@ test('account changes discard the board and ignore requests and completions from
   expect(context.board!.status).toBe('ready');
 });
 
-test('a new app mount starts empty; nothing is persisted', async () => {
+const remount = async (key = 'alice') => {
+  await act(async () => root.unmount());
+  await act(async () => { root = create(render(key)); });
+};
+
+test('checkmarks survive an app restart without drawing a new board', async () => {
   await act(async () => { context.ensure(); });
-  await act(async () => { context.complete(context.board!.id, context.board!.puzzleIds[0]); root.unmount(); });
+  const board = context.board!;
+  await act(async () => { context.complete(board.id, board.puzzleIds[0]); context.complete(board.id, board.puzzleIds[4]); });
+  await remount();
+  expect(context.board).toMatchObject({ id: board.id, status: 'ready', puzzleIds: board.puzzleIds,
+    completedIds: [board.puzzleIds[0], board.puzzleIds[4]] });
+  await act(async () => { context.ensure(); });
+  expect(fetchRandomPuzzleSet).toHaveBeenCalledTimes(1);
+  await act(async () => { expect(context.complete(board.id, board.puzzleIds[1])).toBe(true); });
+});
+
+test('ensure() before the saved board is read does not draw a new one', async () => {
+  await act(async () => { context.ensure(); });
+  const board = context.board!;
+  await act(async () => root.unmount());
+  await act(async () => { root = create(render()); context.ensure(); });
+  expect(fetchRandomPuzzleSet).toHaveBeenCalledTimes(1);
+  expect(context.board!.puzzleIds).toEqual(board.puzzleIds);
+});
+
+test('a new board after all nine replaces the saved one', async () => {
+  await act(async () => { context.ensure(); });
+  const first = context.board!;
+  await act(async () => { first.puzzleIds.forEach(id => context.complete(first.id, id)); });
+  await act(async () => { context.reset(); });
+  const second = context.board!;
+  await remount();
+  expect(context.board).toMatchObject({ id: second.id, puzzleIds: second.puzzleIds, completedIds: [] });
+});
+
+test('each account only sees its own saved board', async () => {
+  await act(async () => { context.ensure(); });
+  const alice = context.board!;
+  await act(async () => { context.complete(alice.id, alice.puzzleIds[0]); });
+  await remount('bob');
+  expect(context.board).toBeNull();
+  await act(async () => { context.ensure(); });
+  expect(context.board!.puzzleIds).not.toEqual(alice.puzzleIds);
+  await remount('alice');
+  expect(context.board).toMatchObject({ id: alice.id, completedIds: [alice.puzzleIds[0]] });
+});
+
+test('a corrupt saved board is ignored and a fresh one is drawn', async () => {
+  await act(async () => root.unmount());
+  await AsyncStorage.setItem(boardStorageKey('alice'), '{not json');
   await act(async () => { root = create(render()); });
   expect(context.board).toBeNull();
+  await act(async () => { context.ensure(); });
+  expect(fetchRandomPuzzleSet).toHaveBeenCalledTimes(1);
+  expect(context.board!.status).toBe('ready');
 });
 
 test('failed reset retries with the same themes and exclusions and cannot mark old pieces', async () => {
