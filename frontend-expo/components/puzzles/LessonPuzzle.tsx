@@ -17,6 +17,7 @@ import GlobalStyle from '@/context/GlobalStyle';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import GlassBlurView from '@/components/GlassBlurView';
 import { postCompletedPuzzle } from '@/api/PostCompleted';
+import { trackCompletion } from '@/utils/pendingCompletion';
 import { supabase } from '@/api/SupabaseClient';
 import PuzzleDevHUD from '@/components/puzzles/PuzzleDevHUD';
 import { opponentDelay, usePuzzleSettings } from '@/context/PuzzleSettingsContext';
@@ -403,7 +404,7 @@ export default function LessonPuzzle({ length, page, pageBack, pageForward, page
                     console.error('Failed to submit puzzle completion:', error);
                 }
             };
-            submitCompletion();
+            trackCompletion(submitCompletion());
         }
     }, [puzzleCompleted]);
 
