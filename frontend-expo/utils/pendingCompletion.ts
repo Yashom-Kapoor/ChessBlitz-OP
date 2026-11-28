@@ -8,11 +8,18 @@
 export const PENDING_COMPLETION_TIMEOUT_MS = 5000;
 
 let pending: Promise<void> = Promise.resolve();
+let inFlight = 0;
 
 /** Remember an in-flight save. A failed save counts as finished. */
 export function trackCompletion(save: Promise<unknown>): void {
-  const settled = save.then(() => undefined, () => undefined);
+  inFlight += 1;
+  const settled = save.then(() => undefined, () => undefined).then(() => { inFlight -= 1; });
   pending = Promise.all([pending, settled]).then(() => undefined);
+}
+
+/** True while a save is still running, so screens can show a spinner instead of a stale number. */
+export function isCompletionPending(): boolean {
+  return inFlight > 0;
 }
 
 /** Resolves once every save started so far has finished, or after the timeout. Never rejects. */

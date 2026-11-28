@@ -14,7 +14,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { BackgroundContext } from '@/context/Backgrounds';
 import GlobalStyle from '@/context/GlobalStyle';
 import { useIsTablet } from '@/hooks/useIsTablet';
-import { waitForPendingCompletion } from '@/utils/pendingCompletion';
+import { isCompletionPending, waitForPendingCompletion } from '@/utils/pendingCompletion';
 
 /** Accent for the Rated Puzzles board and its buttons. Must be #RRGGBB (the grid tints it). */
 export const RATED_BOARD_COLOR = '#4C6EF5';
@@ -37,16 +37,19 @@ export default function PuzzlesScreen() {
   useEffect(() => { ensure?.(); }, [ensure]);
 
   const [ratings, setRatings] = useState<ThemeRatings | null>(null);
+  const [ratingsUpdating, setRatingsUpdating] = useState(false);
 
   // Refetch whenever the tab comes back into focus, so ratings update after solving a puzzle.
   useFocusEffect(
     useCallback(() => {
       let active = true;
-      // A just-solved puzzle may still be saving; reloading first would show the old ratings.
+      // A just-solved puzzle may still be saving: show spinners, not the old ratings, until it's in.
+      if (isCompletionPending()) setRatingsUpdating(true);
       waitForPendingCompletion()
         .then(() => (active ? getMyRatings() : null))
         .then((data) => { if (active && data) setRatings(data); })
-        .catch((error) => console.log('Error loading theme ratings:', error));
+        .catch((error) => console.log('Error loading theme ratings:', error))
+        .finally(() => { if (active) setRatingsUpdating(false); });
       return () => { active = false; };
     }, [])
   );
@@ -110,7 +113,8 @@ export default function PuzzlesScreen() {
               marginBottom: isTablet ? 24 : 18 }]}>
               Puzzle Ratings
             </Text>
-            <ThemeRatingsList ratings={ratings} isTablet={isTablet} unlockedThemes={unlockedThemes} />
+            <ThemeRatingsList ratings={ratings} isTablet={isTablet} unlockedThemes={unlockedThemes}
+              updating={ratingsUpdating} />
           </View>
         </ScrollView>
       </BackgroundContext>

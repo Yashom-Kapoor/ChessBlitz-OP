@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { GlassView } from 'expo-glass-effect';
 import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Avatar from '@/components/Avatar';
 import { useShop } from '@/context/ShopContext';
@@ -20,7 +20,10 @@ export function formatElo(rating: unknown): string {
 }
 
 /** Bar across the top of the main tabs: blitz and elo on the left, the player's name and photo on the right. */
-export default function TopBar() {
+export default function TopBar({ updating = false }: {
+  /** A just-solved puzzle is still saving: show spinners instead of blitz and elo that are about to change. */
+  updating?: boolean;
+} = {}) {
   const { theme } = useTheme();
   const { currency } = useShop();
   const { userData } = useUser();
@@ -33,6 +36,8 @@ export default function TopBar() {
   const fontSize = isTablet ? 28 : 21;
   const iconSize = isTablet ? 34 : 27;
   const textStyle = [styles.text, { color: theme.primaryText, fontSize }];
+  // Roughly a 4-digit number at this size, so the bar doesn't shift when the values come back.
+  const valueWidth = Math.round(fontSize * 2.4);
 
   return (
     <View testID="top-bar" style={[styles.bar, {
@@ -48,13 +53,17 @@ export default function TopBar() {
       )}
 
       <View style={styles.stats}>
-        <View style={styles.stat} accessible accessibilityLabel={`${currency} blitz`}>
+        <View style={styles.stat} accessible
+          accessibilityLabel={updating ? 'Blitz updating' : `${currency} blitz`}>
           <MaterialCommunityIcons name="lightning-bolt" size={iconSize} color={BLITZ_COLOR} />
-          <Text style={textStyle}>{currency}</Text>
+          {updating ? <Spinner testID="top-bar-blitz-updating" color={BLITZ_COLOR} width={valueWidth} />
+            : <Text style={textStyle}>{currency}</Text>}
         </View>
-        <View style={styles.stat} accessible accessibilityLabel={`Elo ${formatElo(userData.overallRating)}`}>
+        <View style={styles.stat} accessible
+          accessibilityLabel={updating ? 'Elo updating' : `Elo ${formatElo(userData.overallRating)}`}>
           <MaterialCommunityIcons name="chess-knight" size={iconSize} color={theme.primaryText} />
-          <Text style={textStyle}>{formatElo(userData.overallRating)}</Text>
+          {updating ? <Spinner testID="top-bar-elo-updating" color={theme.primaryText} width={valueWidth} />
+            : <Text style={textStyle}>{formatElo(userData.overallRating)}</Text>}
         </View>
       </View>
 
@@ -68,7 +77,16 @@ export default function TopBar() {
   );
 }
 
+function Spinner({ testID, color, width }: { testID: string; color: string; width: number }) {
+  return (
+    <View testID={testID} style={[styles.spinner, { minWidth: width }]}>
+      <ActivityIndicator size="small" color={color} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  spinner: { alignItems: 'flex-start', justifyContent: 'center' },
   bar: {
     flexDirection: 'row',
     alignItems: 'center',

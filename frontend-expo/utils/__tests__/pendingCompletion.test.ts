@@ -1,10 +1,11 @@
 describe('pendingCompletion', () => {
   let trackCompletion: typeof import('@/utils/pendingCompletion').trackCompletion;
   let waitForPendingCompletion: typeof import('@/utils/pendingCompletion').waitForPendingCompletion;
+  let isCompletionPending: typeof import('@/utils/pendingCompletion').isCompletionPending;
 
   beforeEach(() => {
     jest.resetModules();
-    ({ trackCompletion, waitForPendingCompletion } = require('@/utils/pendingCompletion'));
+    ({ trackCompletion, waitForPendingCompletion, isCompletionPending } = require('@/utils/pendingCompletion'));
   });
   afterEach(() => jest.useRealTimers());
 
@@ -19,6 +20,21 @@ describe('pendingCompletion', () => {
     for (let i = 0; i < 20; i++) await Promise.resolve();
     return settled;
   };
+
+  it('reports whether any save is still running, failed saves included', async () => {
+    const flush = async () => { for (let i = 0; i < 20; i++) await Promise.resolve(); };
+    expect(isCompletionPending()).toBe(false);
+    const ok = deferred(), bad = deferred();
+    trackCompletion(ok.promise);
+    trackCompletion(bad.promise);
+    expect(isCompletionPending()).toBe(true);
+    ok.resolve();
+    await flush();
+    expect(isCompletionPending()).toBe(true);
+    bad.reject(new Error('offline'));
+    await flush();
+    expect(isCompletionPending()).toBe(false);
+  });
 
   it('resolves right away when nothing is saving', async () => {
     expect(await isSettled(waitForPendingCompletion())).toBe(true);

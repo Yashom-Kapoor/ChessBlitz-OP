@@ -133,3 +133,23 @@ test('locked themes show a washed-out tint of their own color with a lock instea
   expect(color(pin)).not.toBe(color(skewer));
   expect(pin.findAllByType(Text).map(t => t.props.children)).not.toContain(900);
 });
+
+test('coming back while a solved puzzle is still saving shows spinners until the new ratings arrive', async () => {
+  const { trackCompletion } = require('@/utils/pendingCompletion');
+  let finishSave!: () => void;
+  trackCompletion(new Promise<void>(resolve => { finishSave = resolve; }));
+  (getMyRatings as jest.Mock).mockResolvedValue({ fork: 1450, pin: 0, backrankmate: 1234 });
+  await act(async () => { root = create(tab()); });
+  expect(ratingRow('Fork, rating updating')).toBeDefined();
+  expect(root.root.findAllByProps({ testID: 'theme-rating-fork-updating' }).length).toBeGreaterThan(0);
+  expect(getMyRatings).not.toHaveBeenCalled();
+  await act(async () => { finishSave(); });
+  expect(ratingRow('Fork, rating 1450')).toBeDefined();
+  expect(root.root.findAllByProps({ testID: 'theme-rating-fork-updating' })).toHaveLength(0);
+});
+
+test('an ordinary visit with nothing saving never shows rating spinners', async () => {
+  await act(async () => { root = create(tab()); });
+  expect(ratingRow('Fork, rating 1432')).toBeDefined();
+  expect(root.root.findAllByProps({ testID: 'theme-rating-fork-updating' })).toHaveLength(0);
+});

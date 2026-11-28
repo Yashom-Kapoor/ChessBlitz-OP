@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { Platform, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
@@ -9,7 +9,7 @@ import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useUser } from '@/context/UserContext';
 import { useShop } from '@/context/ShopContext';
 import { useIsTablet } from '@/hooks/useIsTablet';
-import { waitForPendingCompletion } from '@/utils/pendingCompletion';
+import { isCompletionPending, waitForPendingCompletion } from '@/utils/pendingCompletion';
 
 // Fallbacks and redirects inside the tabs land on Home.
 export const unstable_settings = { initialRouteName: 'home' };
@@ -19,20 +19,25 @@ export default function TabLayout() {
   const { loadUser } = useUser();
   const { loadShop, loadPrices } = useShop();
 
+  const [statsUpdating, setStatsUpdating] = useState(false);
+
   useFocusEffect(
     useCallback(() => {
-      // A just-solved puzzle may still be saving; wait so rating and coins aren't stale.
-      void waitForPendingCompletion().then(() => {
-        loadUser();
-        loadShop();
-      });
+      let active = true;
+      // A just-solved puzzle may still be saving: show spinners, not the old blitz and elo, until it's in.
+      if (isCompletionPending()) setStatsUpdating(true);
+      void waitForPendingCompletion()
+        .then(() => Promise.all([loadUser(), loadShop()]))
+        .catch(() => undefined)
+        .finally(() => { if (active) setStatsUpdating(false); });
       loadPrices();
+      return () => { active = false; };
     }, [loadUser, loadShop, loadPrices])
   );
 
   return (
     <View style={{ flex: 1 }}>
-      <TopBar />
+      <TopBar updating={statsUpdating} />
       {isTablet ? <IpadPagesBar /> : <NativePagesBar />}
     </View>
   );

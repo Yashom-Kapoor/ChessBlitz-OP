@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { ratingFor, ThemeRatings } from '@/api/Ratings';
 import { darken, desaturate, PUZZLE_THEMES, PUZZLE_THEME_TEXT_COLOR } from '@/constants/PuzzleThemes';
@@ -9,6 +9,8 @@ type Props = {
   isTablet: boolean;
   /** Theme keys the player has unlocked. Locked themes keep a washed-out tint of their color. */
   unlockedThemes: readonly string[];
+  /** A just-solved puzzle is still saving: show spinners instead of ratings that are about to change. */
+  updating?: boolean;
 };
 
 /** How far a locked row's color moves toward gray: soft, but each theme keeps its own tint. */
@@ -16,7 +18,7 @@ export const LOCKED_DESATURATION = 0.6;
 const COMING_SOON_COLOR = '#B8B8C8';
 
 // Display only: puzzles come from the Rated Puzzles board above, not from these rows.
-export default function ThemeRatingsList({ ratings, isTablet, unlockedThemes }: Props) {
+export default function ThemeRatingsList({ ratings, isTablet, unlockedThemes, updating = false }: Props) {
   const rowStyle = {
     minHeight: isTablet ? 136 : 104,
     borderRadius: isTablet ? 36 : 28,
@@ -42,6 +44,7 @@ export default function ThemeRatingsList({ ratings, isTablet, unlockedThemes }: 
         return (
           <View key={puzzle.key} accessible testID={`theme-rating-${puzzle.key}`}
             accessibilityLabel={locked ? `${puzzle.title}, locked`
+              : updating ? `${puzzle.title}, rating updating`
               : `${puzzle.title}, ${rating === null ? 'rating unavailable' : `rating ${rating}`}`}
             style={[styles.row, rowStyle, { backgroundColor: color, borderBottomColor: darken(color, 0.22) }]}>
             <Text style={[styles.title, titleStyle, { color: PUZZLE_THEME_TEXT_COLOR }]}>{puzzle.title}</Text>
@@ -50,7 +53,15 @@ export default function ThemeRatingsList({ ratings, isTablet, unlockedThemes }: 
             ) : (
               <View style={[styles.pill, pillStyle]}>
                 <FontAwesome6 name="chess-knight" iconStyle="solid" size={iconSize} color={puzzle.color} />
-                <Text style={[styles.ratingText, { color: puzzle.color, fontSize: isTablet ? 26 : 21 }]}>{rating ?? '—'}</Text>
+                {updating ? (
+                  // Same width as a 4-digit rating so the pill doesn't jump when the number comes back.
+                  <View testID={`theme-rating-${puzzle.key}-updating`}
+                    style={[styles.spinnerSlot, { minWidth: isTablet ? 60 : 48 }]}>
+                    <ActivityIndicator size="small" color={puzzle.color} />
+                  </View>
+                ) : (
+                  <Text style={[styles.ratingText, { color: puzzle.color, fontSize: isTablet ? 26 : 21 }]}>{rating ?? '—'}</Text>
+                )}
               </View>
             )}
           </View>
@@ -73,4 +84,5 @@ const styles = StyleSheet.create({
   pill: { flexDirection: 'row', alignItems: 'center', flexShrink: 0, backgroundColor: '#FFFFFF' },
   ratingText: { fontFamily: 'Nunito', fontWeight: '900', fontVariant: ['tabular-nums'] },
   comingSoon: { opacity: 0.75 },
+  spinnerSlot: { alignItems: 'center', justifyContent: 'center' },
 });
