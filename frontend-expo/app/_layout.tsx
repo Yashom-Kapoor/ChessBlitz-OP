@@ -60,7 +60,7 @@ function SessionRoot({ isTablet }: { isTablet: boolean }) {
   if (!authReady) return null;
   return (
     <ShopProvider>
-      <PuzzleBoardProvider key={authUserId ?? 'signed-out'}>
+      <PuzzleBoardProvider key={authUserId ?? 'signed-out'} userId={authUserId}>
         <ThemedRoot isTablet={isTablet} />
       </PuzzleBoardProvider>
     </ShopProvider>

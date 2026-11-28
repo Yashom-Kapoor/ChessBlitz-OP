@@ -57,3 +57,15 @@ test('formatElo shows a dash until the rating is numeric', () => {
   expect(formatElo(null)).toBe('—');
   expect(formatElo('1500')).toBe('1500');
 });
+
+test('while a puzzle save is in flight, blitz and elo show spinners instead of stale numbers', async () => {
+  await act(async () => { root = create(<TopBar updating />); });
+  expect(texts()).not.toContain(1250);
+  expect(texts()).not.toContain('1488');
+  expect(root.root.findAllByProps({ testID: 'top-bar-blitz-updating' }).length).toBeGreaterThan(0);
+  expect(root.root.findAllByProps({ testID: 'top-bar-elo-updating' }).length).toBeGreaterThan(0);
+  expect(root.root.findAllByProps({ accessibilityLabel: 'Blitz updating' }).length).toBeGreaterThan(0);
+  await act(async () => { root.update(<TopBar />); });
+  expect(texts()).toEqual(expect.arrayContaining([1250, '1488']));
+  expect(root.root.findAllByProps({ testID: 'top-bar-blitz-updating' })).toHaveLength(0);
+});

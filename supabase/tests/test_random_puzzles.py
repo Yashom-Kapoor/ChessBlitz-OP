@@ -7,6 +7,13 @@ import test_leaderboard_sync as fixtures
 MIGRATION = Path(__file__).resolve().parents[1] / 'migrations' / '20261118000300_random_puzzles_by_theme.sql'
 SET_MIGRATION = MIGRATION.with_name('20261118000400_theme_puzzle_sets.sql')
 MIXED_MIGRATION = MIGRATION.with_name('20261126000100_puzzle_set_by_themes.sql')
+RATING_MIGRATION = MIGRATION.with_name('20261127000100_puzzle_set_rating_window.sql')
+
+
+def strip(row):
+    """Older assertions predate the Rating column."""
+    row.pop('Rating', None)
+    return row
 
 
 class RandomPuzzleTests(unittest.TestCase):
@@ -19,7 +26,7 @@ class RandomPuzzleTests(unittest.TestCase):
           drop schema public cascade;
           create schema public;
           grant usage on schema public to anon, authenticated;
-          create table public."Puzzles" ("PuzzleId" text primary key, "Themes" text);
+          create table public."Puzzles" ("PuzzleId" text primary key, "Themes" text, "Rating" integer);
           grant select on public."Puzzles" to authenticated;
           insert into public."Puzzles" values
             ('fork-only', 'middlegame fork short'), ('pin-only', 'pin'),
@@ -30,12 +37,13 @@ class RandomPuzzleTests(unittest.TestCase):
         self.sql(MIGRATION.read_text())
         self.sql(SET_MIGRATION.read_text())
         self.sql(MIXED_MIGRATION.read_text())
+        self.sql(RATING_MIGRATION.read_text())
 
     def sample(self, themes, count=1):
         array = 'array[' + ','.join("'" + theme.replace("'", "''") + "'" for theme in themes) + ']::text[]'
         values = self.sql('set role authenticated; ' + '\n'.join(
             f'select row_to_json(p) from public.get_random_puzzle_by_themes({array}) p;' for _ in range(count)))
-        return [json.loads(line) for line in values.splitlines() if line]
+        return [strip(json.loads(line)) for line in values.splitlines() if line]
 
     def test_whole_tags_match_in_any_position_with_whitespace(self):
         rows = self.sample(['fork'], 100)
@@ -74,7 +82,7 @@ class RandomPuzzleTests(unittest.TestCase):
     def batch(self, theme='pin', exclude=()):
         array = 'array[' + ','.join("'" + item.replace("'", "''") + "'" for item in exclude) + ']::text[]'
         rows = self.sql(f"set role authenticated; select row_to_json(p) from public.get_random_puzzle_set('{theme}', {array}) p;")
-        return [json.loads(row) for row in rows.splitlines() if row]
+        return [strip(json.loads(row)) for row in rows.splitlines() if row]
 
     def test_set_draws_nine_distinct_exact_matches_and_reset_excludes_previous_set(self):
         self.sql('''insert into public."Puzzles" select 'extra-' || n, 'middlegame pin short' from generate_series(1, 1500) n;''')
@@ -112,7 +120,7 @@ class RandomPuzzleTests(unittest.TestCase):
         def arr(items):
             return 'array[' + ','.join("'" + item.replace("'", "''") + "'" for item in items) + ']::text[]'
         rows = self.sql(f"set role authenticated; select row_to_json(p) from public.get_random_puzzle_set_by_themes({arr(themes)}, {arr(exclude)}) p;")
-        return [json.loads(row) for row in rows.splitlines() if row]
+        return [strip(json.loads(row)) for row in rows.splitlines() if row]
 
     def test_mixed_set_draws_nine_distinct_puzzles_from_only_the_requested_themes(self):
         self.sql('''insert into public."Puzzles" select 'fork-' || n, 'middlegame fork' from generate_series(1, 30) n;
@@ -138,7 +146,56 @@ class RandomPuzzleTests(unittest.TestCase):
         self.assertEqual({row['PuzzleId'] for row in self.mixed(['backRankMate', 'skewer'])}, {'camel', 'other'})
 
     def test_mixed_set_respects_permissions_and_row_level_security(self):
-        self.assertEqual(self.sql("select has_function_privilege('anon', 'public.get_random_puzzle_set_by_themes(text[],text[])', 'EXECUTE');"), 'f')
+        self.assertEqual(self.sql("select has_function_privilege('anon', 'public.get_random_puzzle_set_by_themes(text[],text[],integer)', 'EXECUTE');"), 'f')
         self.sql('''alter table public."Puzzles" enable row level security;
           create policy visible on public."Puzzles" to authenticated using ("PuzzleId" = 'pin-only');''')
         self.assertEqual(self.mixed(['fork', 'pin']), [{'PuzzleId': 'pin-only', 'Themes': 'pin'}])
+
+    def rated(self, themes, target, exclude=()):
+        def arr(items):
+            return 'array[' + ','.join("'" + item + "'" for item in items) + ']::text[]'
+        target_sql = 'null' if target is None else str(target)
+        rows = self.sql(f"set role authenticated; select row_to_json(p) from public.get_random_puzzle_set_by_themes({arr(themes)}, {arr(exclude)}, {target_sql}) p;")
+        return [json.loads(row) for row in rows.splitlines() if row]
+
+    def test_rated_set_stays_within_100_when_enough_puzzles_are_close(self):
+        self.sql('''insert into public."Puzzles" select 'r-' || n, 'fork', 700 + n * 10 from generate_series(0, 80) n;''')
+        for _ in range(10):
+            ratings = [row['Rating'] for row in self.rated(['fork'], 1100)]
+            self.assertEqual(len(ratings), 9)
+            self.assertTrue(all(1000 <= rating <= 1200 for rating in ratings), ratings)
+
+    def test_rated_set_widens_closest_first_when_few_are_close(self):
+        self.sql('''insert into public."Puzzles" values
+            ('near-1', 'pin', 1050), ('near-2', 'pin', 950), ('near-3', 'pin', 1100),
+            ('mid-1', 'pin', 1150), ('mid-2', 'pin', 820),
+            ('wide-1', 'pin', 1390), ('wide-2', 'pin', 650),
+            ('far-1', 'pin', 2000), ('far-2', 'pin', 100), ('far-3', 'pin', 2500), ('far-4', 'pin', 3000);
+          update public."Puzzles" set "Rating" = 1000 where "PuzzleId" in ('pin-only', 'both');''')
+        expected = {'near-1', 'near-2', 'near-3', 'pin-only', 'both', 'mid-1', 'mid-2', 'wide-1', 'wide-2'}
+        for _ in range(10):
+            self.assertEqual({row['PuzzleId'] for row in self.rated(['pin'], 1000)}, expected)
+
+    def test_rated_set_falls_back_to_any_rating_including_unrated(self):
+        self.sql('''insert into public."Puzzles" select 'far-' || n, 'skewer', 2500 + n from generate_series(1, 8) n;''')
+        ids = {row['PuzzleId'] for row in self.rated(['skewer'], 800)}
+        self.assertEqual(ids, {'other'} | {f'far-{n}' for n in range(1, 9)})
+
+    def test_rated_set_keeps_theme_filter_and_exclusions(self):
+        self.sql('''insert into public."Puzzles" select 'fork-' || n, 'fork', 1000 from generate_series(1, 20) n;
+          insert into public."Puzzles" select 'skewer-' || n, 'skewer', 1000 from generate_series(1, 20) n;''')
+        excluded = [f'fork-{n}' for n in range(1, 10)]
+        for _ in range(10):
+            rows = self.rated(['fork'], 1000, excluded)
+            self.assertEqual(len(rows), 9)
+            self.assertTrue(all('fork' in row['Themes'].split() and row['PuzzleId'] not in excluded for row in rows))
+
+    def test_null_target_and_two_argument_calls_still_work(self):
+        self.sql('''insert into public."Puzzles" select 'fork-' || n, 'fork', n * 100 from generate_series(1, 20) n;''')
+        self.assertEqual(len(self.rated(['fork'], None)), 9)
+        self.assertEqual(len(self.mixed(['fork'])), 9)
+        self.assertEqual(self.sql("select count(*) from pg_proc where proname = 'get_random_puzzle_set_by_themes';"), '1')
+
+    def test_rated_migration_replays_cleanly(self):
+        self.sql(RATING_MIGRATION.read_text())
+        self.assertEqual(self.sql('select count(*) from public."Puzzles";'), '9')

@@ -6,13 +6,19 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { getMyRatings, ThemeRatings } from '@/api/Ratings';
 import ThemeRatingsList from '@/components/puzzles/ThemeRatingsList';
 import ThemePuzzleGrid from '@/components/puzzles/ThemePuzzleGrid';
+import PageHeading from '@/components/PageHeading';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { usePuzzleBoard } from '@/context/PuzzleBoardContext';
+import { useShop } from '@/context/ShopContext';
+import { BOARD_REWARD } from '@/api/BoardReward';
+import { BLITZ_COLOR } from '@/constants/Blitz';
 import { useUnlockedThemes } from '@/hooks/useUnlockedThemes';
 import { darken } from '@/constants/PuzzleThemes';
 import { useTheme } from '@/context/ThemeContext';
 import { BackgroundContext } from '@/context/Backgrounds';
 import GlobalStyle from '@/context/GlobalStyle';
 import { useIsTablet } from '@/hooks/useIsTablet';
+import { isCompletionPending, waitForPendingCompletion } from '@/utils/pendingCompletion';
 
 /** Accent for the Rated Puzzles board and its buttons. Must be #RRGGBB (the grid tints it). */
 export const RATED_BOARD_COLOR = '#4C6EF5';
@@ -34,15 +40,37 @@ export default function PuzzlesScreen() {
 
   useEffect(() => { ensure?.(); }, [ensure]);
 
+  const { loadShop } = useShop();
+  const [claiming, setClaiming] = useState(false);
+  const [claimError, setClaimError] = useState<string | null>(null);
+  const claimReward = async () => {
+    if (claiming || !puzzleBoard) return;
+    setClaiming(true);
+    setClaimError(null);
+    try {
+      await puzzleBoard.claim();
+      void loadShop();
+    } catch {
+      setClaimError("Couldn't claim your blitz. Try again!");
+    } finally {
+      setClaiming(false);
+    }
+  };
+
   const [ratings, setRatings] = useState<ThemeRatings | null>(null);
+  const [ratingsUpdating, setRatingsUpdating] = useState(false);
 
   // Refetch whenever the tab comes back into focus, so ratings update after solving a puzzle.
   useFocusEffect(
     useCallback(() => {
       let active = true;
-      getMyRatings()
-        .then((data) => { if (active) setRatings(data); })
-        .catch((error) => console.log('Error loading theme ratings:', error));
+      // A just-solved puzzle may still be saving: show spinners, not the old ratings, until it's in.
+      if (isCompletionPending()) setRatingsUpdating(true);
+      waitForPendingCompletion()
+        .then(() => (active ? getMyRatings() : null))
+        .then((data) => { if (active && data) setRatings(data); })
+        .catch((error) => console.log('Error loading theme ratings:', error))
+        .finally(() => { if (active) setRatingsUpdating(false); });
       return () => { active = false; };
     }, [])
   );
@@ -63,16 +91,7 @@ export default function PuzzlesScreen() {
           paddingBottom: insets.bottom + 40,
         }}>
           <View style={localStyles.content}>
-            <Text accessibilityRole="header" style={[localStyles.heading, {
-              color: theme.primaryText, fontSize: isTablet ? 48 : 36, lineHeight: isTablet ? 58 : 44,
-            }]}>
-              {RATED_PUZZLES_TITLE}
-            </Text>
-            <Text style={[localStyles.subheading, {
-              color: theme.primaryText, fontSize: isTablet ? 22 : 17, lineHeight: isTablet ? 30 : 24,
-            }]}>
-              {RATED_PUZZLES_SUBTITLE}
-            </Text>
+            <PageHeading tab="puzzles" title={RATED_PUZZLES_TITLE} subtitle={RATED_PUZZLES_SUBTITLE} />
 
             <View style={{ marginTop: isTablet ? 32 : 24 }}>
               {board?.status === 'ready' ? (
@@ -86,11 +105,24 @@ export default function PuzzlesScreen() {
                   }]}>
                     {solved} of 9 solved
                   </Text>
-                  {solved === 9 && (
-                    <TouchableOpacity accessibilityRole="button" accessibilityLabel="New board"
-                      onPress={() => puzzleBoard?.reset()} style={buttonStyle}>
-                      <Text style={[localStyles.buttonText, { fontSize: isTablet ? 24 : 20 }]}>New board</Text>
+                  {solved === 9 && !board.claimed && (
+                    <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Claim ${BOARD_REWARD} blitz`}
+                      accessibilityState={{ disabled: claiming, busy: claiming }} disabled={claiming}
+                      onPress={claimReward} style={[buttonStyle, localStyles.claimButton]}>
+                      {claiming ? <ActivityIndicator testID="claim-spinner" color="#FFFFFF" /> : (
+                        <>
+                          <MaterialCommunityIcons name="lightning-bolt" size={isTablet ? 32 : 28} color={BLITZ_COLOR} />
+                          <Text style={[localStyles.buttonText, { fontSize: isTablet ? 24 : 20 }]}>
+                            Claim {BOARD_REWARD}
+                          </Text>
+                        </>
+                      )}
                     </TouchableOpacity>
+                  )}
+                  {claimError && (
+                    <Text accessibilityRole="alert" style={[localStyles.statusText, { color: theme.primaryText }]}>
+                      {claimError}
+                    </Text>
                   )}
                 </>
               ) : board?.status === 'error' ? (
@@ -115,7 +147,8 @@ export default function PuzzlesScreen() {
               marginBottom: isTablet ? 24 : 18 }]}>
               Puzzle Ratings
             </Text>
-            <ThemeRatingsList ratings={ratings} isTablet={isTablet} unlockedThemes={unlockedThemes} />
+            <ThemeRatingsList ratings={ratings} isTablet={isTablet} unlockedThemes={unlockedThemes}
+              updating={ratingsUpdating} />
           </View>
         </ScrollView>
       </BackgroundContext>
@@ -125,13 +158,12 @@ export default function PuzzlesScreen() {
 
 const localStyles = StyleSheet.create({
   content: { width: '100%', maxWidth: 760, alignSelf: 'center' },
-  heading: { fontFamily: 'Nunito', fontWeight: '900', textAlign: 'center' },
-  subheading: { fontFamily: 'Nunito', fontWeight: '700', textAlign: 'center', marginTop: 6, opacity: 0.85 },
   progress: { fontFamily: 'Nunito', fontWeight: '900', textAlign: 'center', marginTop: 18 },
   status: { minHeight: 280, justifyContent: 'center' },
   statusText: { fontFamily: 'Nunito', fontSize: 17, fontWeight: '700', textAlign: 'center', marginTop: 12 },
   actionButton: { borderRadius: 24, borderBottomWidth: 6, padding: 14, marginTop: 18,
     alignItems: 'center', justifyContent: 'center' },
   buttonText: { fontFamily: 'Nunito', fontWeight: '900', color: '#FFFFFF' },
+  claimButton: { flexDirection: 'row', gap: 8 },
   ratingsHeading: { textAlign: 'center', width: '100%' },
 });

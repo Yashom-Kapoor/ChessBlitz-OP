@@ -10,6 +10,7 @@ import { BlurView } from "expo-blur";
 import getEquidistantSinePoints from "@/utils/EquidistantSinePoints";
 import LessonBubble from "@/components/lessons/LessonBubble";
 import { loadAllLessons } from "@/components/lessons/Lessons";
+import PageHeading from "@/components/PageHeading";
 import { useIsTablet } from '@/hooks/useIsTablet';
 
 type LessonData = {
@@ -80,7 +81,12 @@ export default function LessonScreen() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: theme.background }}>
       <BackgroundContext theme={theme}>
-        <ScrollView contentContainerStyle={{...styles.scrollContainer, marginTop: 0, height: lessons.length * 300 + 200 }}>
+        <ScrollView contentContainerStyle={{ paddingTop: isTablet ? 40 : 24 }}>
+          <View style={{ paddingHorizontal: isTablet ? 36 : 20, paddingBottom: isTablet ? 24 : 16 }}>
+            <PageHeading tab="lessons" />
+          </View>
+          {/* The lesson path is absolutely positioned, so it gets its own box below the heading. */}
+          <View style={{ ...styles.scrollContainer, marginTop: 0, minHeight: undefined, height: lessons.length * 300 + 200 }}>
           <Pressable style={{flex: 1}} onPress={() => setLessonBubble(-1)}/>
           {error && (
             <Text style={{ ...styles.b, color: theme.primaryText }} >
@@ -119,6 +125,7 @@ export default function LessonScreen() {
             return <View key={i} style={{ opacity: (i % 7 == 1 || i % 7 == 6 || i > lessons.length * 7 - 6) ? 0 : (isAvailable ? 1 : 0.3), height: isTablet ? 24 : 18, width: isTablet ? 24 : 18, borderRadius: '100%', backgroundColor: theme.secondaryButton, position: 'absolute', 
                 left: '50%', top: 60, transform: `translate(${point.y - (isTablet ? 12 : 9)}px, ${point.x - (isTablet ? 12 : 9)}px)`, transformOrigin: 'center', pointerEvents: 'none' }} />;
           })}
+          </View>
         </ScrollView>
       </BackgroundContext>
     </GestureHandlerRootView>

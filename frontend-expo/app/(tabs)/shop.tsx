@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import camelToTitle from "@/utils/CamelToTitle";
 import { buyItem } from "@/api/HandleShop";
 import SelectionRing from "@/components/SelectionRing";
+import PageHeading from "@/components/PageHeading";
 import { glassColorSchemeFor } from "@/utils/Glass";
 import { useIsTablet } from '@/hooks/useIsTablet';
 
@@ -62,7 +63,11 @@ export default function ShopScreen() {
       justifyContent: "center",
       paddingHorizontal: 24,
       gap: tileGap,
-      marginTop: 24,
+      marginTop: isTablet ? 24 : 16,
+    },
+    heading: {
+      paddingTop: isTablet ? 40 : 24,
+      paddingHorizontal: isTablet ? 36 : 20,
     },
     switcherButton: {
       flex: 1,
@@ -227,6 +232,9 @@ export default function ShopScreen() {
   return (
     <GestureHandlerRootView style={localStyles.root}>
       <BackgroundContext theme={theme}>
+        <View style={localStyles.heading}>
+          <PageHeading tab="shop" />
+        </View>
         <View style={localStyles.switcherContainer}>
           <Pressable
             style={[

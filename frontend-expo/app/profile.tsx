@@ -13,6 +13,7 @@ import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Switch
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { supabase } from '@/api/SupabaseClient';
 import { useIsTablet } from '@/hooks/useIsTablet';
+import { waitForPendingCompletion } from '@/utils/pendingCompletion';
 
 const InfoBox = ({
   children,
@@ -131,7 +132,7 @@ export default function ProfileScreen() {
   const logoutBusy = useRef(false);
 
   useFocusEffect(useCallback(() => {
-    void loadUser();
+    void waitForPendingCompletion().then(() => loadUser());
   }, [loadUser]));
 
   const handleRefresh = useCallback(async () => {

@@ -4,6 +4,7 @@ import { create, ReactTestRenderer } from 'react-test-renderer';
 import RootLayout from '@/app/_layout';
 
 jest.mock('@/api/RandomPuzzleSet', () => ({ fetchRandomPuzzleSet: jest.fn() }));
+jest.mock('@/api/BoardReward', () => ({ claimBoardReward: jest.fn() }));
 
 let mockAuth = { authUserId: 'alice' as string | null, authReady: true };
 const mockShopUnmount = jest.fn();

@@ -28,6 +28,7 @@ import GlobalStyle from '@/context/GlobalStyle';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import GlassBlurView from '@/components/GlassBlurView';
 import { postCompletedPuzzle } from '@/api/PostCompleted';
+import { trackCompletion } from '@/utils/pendingCompletion';
 import { supabase } from '@/api/SupabaseClient';
 import PuzzleDevHUD from '@/components/puzzles/PuzzleDevHUD';
 import WrongMovePrompt from '@/components/puzzles/WrongMovePrompt';
@@ -264,7 +265,8 @@ export default function DemoPuzzle() {
             }
         };
 
-        void submitCompletion();
+        // Track the whole save (user lookup included) before leaving, so the Puzzles tab's reload waits for it.
+        trackCompletion(submitCompletion());
         // Board checkmarks don't depend on the separate rating/statistics request finishing.
         if (typeof boardSession === 'string' && requestedPuzzleId === currentPuzzle.puzzleid &&
             completeBoardPuzzle?.(boardSession, currentPuzzle.puzzleid)) {

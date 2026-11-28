@@ -9,6 +9,7 @@ import { PuzzleBoardProvider, usePuzzleBoard } from '@/context/PuzzleBoardContex
 import { fetchRandomPuzzleSet } from '@/api/RandomPuzzleSet';
 import { DEFAULT_UNLOCKED_THEMES, desaturate, PUZZLE_THEMES } from '@/constants/PuzzleThemes';
 import { getMyRatings } from '@/api/Ratings';
+import { claimBoardReward } from '@/api/BoardReward';
 
 const mockRouter = { push: jest.fn(), back: jest.fn(), replace: jest.fn(), canGoBack: jest.fn(() => true) };
 let mockParams: Record<string, string> = {};
@@ -23,6 +24,9 @@ jest.mock('@/hooks/useIsTablet', () => ({ useIsTablet: () => mockIsTablet }));
 jest.mock('@/api/Ratings', () => ({ ...jest.requireActual('@/api/Ratings'), getMyRatings: jest.fn() }));
 jest.mock('@/api/SupabaseClient', () => ({ supabase: {} }));
 jest.mock('@/api/RandomPuzzleSet', () => ({ fetchRandomPuzzleSet: jest.fn() }));
+jest.mock('@/api/BoardReward', () => ({ ...jest.requireActual('@/api/BoardReward'), claimBoardReward: jest.fn() }));
+const mockLoadShop = jest.fn(async () => {});
+jest.mock('@/context/ShopContext', () => ({ useShop: () => ({ loadShop: mockLoadShop }) }));
 jest.mock('@/constants/urls', () => ({ getApiUrl: jest.fn() }));
 jest.mock('@/context/ThemeContext', () => ({ useTheme: () => ({ theme: require('@/constants/Themes').Themes.default }) }));
 jest.mock('@/context/Backgrounds', () => ({ BackgroundContext: ({ children }: any) => children }));
@@ -46,6 +50,7 @@ beforeEach(() => {
   mockIsTablet = false;
   draw = 0;
   (getMyRatings as jest.Mock).mockResolvedValue({ fork: 1432, pin: 0, backrankmate: 1234 });
+  (claimBoardReward as jest.Mock).mockResolvedValue(2000);
   (fetchRandomPuzzleSet as jest.Mock).mockImplementation(async () => {
     draw += 1;
     return Array.from({ length: 9 }, (_, i) => `draw${draw}-${i}`);
@@ -75,7 +80,7 @@ test('returning to the tab keeps the same board instead of drawing a new one', a
   expect(fetchRandomPuzzleSet).toHaveBeenCalledTimes(1);
 });
 
-test('solved pieces are checked and disabled, and a new board appears only after all nine', async () => {
+test('solved pieces are checked and disabled, and claiming 1000 blitz appears only after all nine', async () => {
   mockIsTablet = true;
   await act(async () => { root = create(tab()); });
   const first = board.board!;
@@ -83,13 +88,30 @@ test('solved pieces are checked and disabled, and a new board appears only after
   expect(pieces()[0].props).toMatchObject({ disabled: true, accessibilityLabel: 'Rated puzzle 1 of 9, completed' });
   expect(texts().filter(t => t === '✓')).toHaveLength(1);
   expect(root.root.findAllByType(Text).some(t => Array.isArray(t.props.children) && t.props.children.join('') === '1 of 9 solved')).toBe(true);
-  expect(button('New board')).toBeUndefined();
+  expect(button('Claim 1000 blitz')).toBeUndefined();
   await act(async () => { first.puzzleIds.slice(1).forEach(id => board.complete(first.id, id)); });
   expect(texts().filter(t => t === '✓')).toHaveLength(9);
-  await act(async () => { button('New board')!.props.onPress(); });
+  expect(button('New board')).toBeUndefined();
+  const claim = button('Claim 1000 blitz')!;
+  expect(root.root.findAllByType(Text).some(t => Array.isArray(t.props.children) && t.props.children.join('') === 'Claim 1000')).toBe(true);
+  await act(async () => { claim.props.onPress(); });
+  expect(claimBoardReward).toHaveBeenCalledTimes(1);
+  expect(mockLoadShop).toHaveBeenCalledTimes(1);
   expect(fetchRandomPuzzleSet).toHaveBeenLastCalledWith(DEFAULT_UNLOCKED_THEMES, first.puzzleIds);
   expect(pieces().every(piece => !piece.props.disabled)).toBe(true);
-  expect(button('New board')).toBeUndefined();
+  expect(button('Claim 1000 blitz')).toBeUndefined();
+});
+
+test('a failed claim shows a friendly message and keeps the claim button', async () => {
+  await act(async () => { root = create(tab()); });
+  const first = board.board!;
+  await act(async () => { first.puzzleIds.forEach(id => board.complete(first.id, id)); });
+  (claimBoardReward as jest.Mock).mockRejectedValueOnce(new Error('offline'));
+  await act(async () => { button('Claim 1000 blitz')!.props.onPress(); });
+  expect(texts()).toContain("Couldn't claim your blitz. Try again!");
+  expect(mockLoadShop).not.toHaveBeenCalled();
+  expect(button('Claim 1000 blitz')!.props.disabled).toBe(false);
+  expect(fetchRandomPuzzleSet).toHaveBeenCalledTimes(1);
 });
 
 test('loading errors offer retry without showing selectable empty pieces', async () => {
@@ -132,4 +154,24 @@ test('locked themes show a washed-out tint of their own color with a lock instea
   // Each locked row keeps its own tint rather than one shared gray.
   expect(color(pin)).not.toBe(color(skewer));
   expect(pin.findAllByType(Text).map(t => t.props.children)).not.toContain(900);
+});
+
+test('coming back while a solved puzzle is still saving shows spinners until the new ratings arrive', async () => {
+  const { trackCompletion } = require('@/utils/pendingCompletion');
+  let finishSave!: () => void;
+  trackCompletion(new Promise<void>(resolve => { finishSave = resolve; }));
+  (getMyRatings as jest.Mock).mockResolvedValue({ fork: 1450, pin: 0, backrankmate: 1234 });
+  await act(async () => { root = create(tab()); });
+  expect(ratingRow('Fork, rating updating')).toBeDefined();
+  expect(root.root.findAllByProps({ testID: 'theme-rating-fork-updating' }).length).toBeGreaterThan(0);
+  expect(getMyRatings).not.toHaveBeenCalled();
+  await act(async () => { finishSave(); });
+  expect(ratingRow('Fork, rating 1450')).toBeDefined();
+  expect(root.root.findAllByProps({ testID: 'theme-rating-fork-updating' })).toHaveLength(0);
+});
+
+test('an ordinary visit with nothing saving never shows rating spinners', async () => {
+  await act(async () => { root = create(tab()); });
+  expect(ratingRow('Fork, rating 1432')).toBeDefined();
+  expect(root.root.findAllByProps({ testID: 'theme-rating-fork-updating' })).toHaveLength(0);
 });
